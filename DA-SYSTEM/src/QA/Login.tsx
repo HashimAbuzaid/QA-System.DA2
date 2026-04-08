@@ -5,10 +5,13 @@ function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sendingRecovery, setSendingRecovery] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   async function handleLogin() {
     setErrorMessage('');
+    setSuccessMessage('');
 
     if (!email || !password) {
       setErrorMessage('Please enter email and password.');
@@ -30,6 +33,33 @@ function Login() {
     }
   }
 
+  async function handleForgotPassword() {
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    if (!email) {
+      setErrorMessage('Enter your email first, then click Forgot password.');
+      return;
+    }
+
+    setSendingRecovery(true);
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/`,
+    });
+
+    setSendingRecovery(false);
+
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+
+    setSuccessMessage(
+      'Password recovery email sent. Open the email link to set a new password.'
+    );
+  }
+
   return (
     <div style={shellStyle}>
       <div style={glowTopStyle} />
@@ -39,8 +69,9 @@ function Login() {
         <div style={eyebrowStyle}>Detroit Axle Workspace</div>
         <h1 style={titleStyle}>Detroit Axle QA System</h1>
 
-        {errorMessage ? (
-          <div style={errorBannerStyle}>{errorMessage}</div>
+        {errorMessage ? <div style={errorBannerStyle}>{errorMessage}</div> : null}
+        {successMessage ? (
+          <div style={successBannerStyle}>{successMessage}</div>
         ) : null}
 
         <div style={formStyle}>
@@ -49,10 +80,7 @@ function Login() {
             <input
               type="email"
               value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (errorMessage) setErrorMessage('');
-              }}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="you@detroitaxle.com"
               style={inputStyle}
             />
@@ -63,10 +91,7 @@ function Login() {
             <input
               type="password"
               value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (errorMessage) setErrorMessage('');
-              }}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               style={inputStyle}
             />
@@ -74,6 +99,15 @@ function Login() {
 
           <button onClick={handleLogin} disabled={loading} style={buttonStyle}>
             {loading ? 'Logging in...' : 'Login'}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            disabled={sendingRecovery}
+            style={secondaryButtonStyle}
+          >
+            {sendingRecovery ? 'Sending recovery...' : 'Forgot password?'}
           </button>
         </div>
       </div>
@@ -144,15 +178,6 @@ const titleStyle = {
   color: '#f8fafc',
 };
 
-const errorBannerStyle = {
-  marginBottom: '20px',
-  padding: '14px 16px',
-  borderRadius: '16px',
-  border: '1px solid rgba(248,113,113,0.22)',
-  background: 'rgba(127,29,29,0.24)',
-  color: '#fecaca',
-};
-
 const formStyle = {
   display: 'grid',
   gap: '18px',
@@ -184,6 +209,36 @@ const buttonStyle = {
   fontWeight: 800,
   cursor: 'pointer',
   boxShadow: '0 16px 32px rgba(37,99,235,0.28)',
+};
+
+const secondaryButtonStyle = {
+  padding: '14px 18px',
+  borderRadius: '16px',
+  border: '1px solid rgba(148,163,184,0.16)',
+  background: 'rgba(15,23,42,0.72)',
+  color: '#e5eefb',
+  fontWeight: 700,
+  cursor: 'pointer',
+};
+
+const errorBannerStyle = {
+  marginBottom: '16px',
+  padding: '14px 16px',
+  borderRadius: '16px',
+  backgroundColor: 'rgba(127,29,29,0.24)',
+  border: '1px solid rgba(252,165,165,0.24)',
+  color: '#fecaca',
+  fontWeight: 700,
+};
+
+const successBannerStyle = {
+  marginBottom: '16px',
+  padding: '14px 16px',
+  borderRadius: '16px',
+  backgroundColor: 'rgba(22,101,52,0.24)',
+  border: '1px solid rgba(134,239,172,0.22)',
+  color: '#bbf7d0',
+  fontWeight: 700,
 };
 
 export default Login;
