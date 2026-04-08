@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './lib/supabase';
 import Login from './QA/Login';
 import ResetPassword from './QA/ResetPassword';
@@ -42,6 +42,22 @@ type StaffPage =
 
 type ProfileStatus = 'idle' | 'loading' | 'ready' | 'missing';
 
+function isRecoveryLinkActive() {
+  if (typeof window === 'undefined') return false;
+
+  const hash = window.location.hash || '';
+  const search = window.location.search || '';
+
+  return hash.includes('type=recovery') || search.includes('type=recovery');
+}
+
+function clearRecoveryUrlState() {
+  if (typeof window === 'undefined') return;
+
+  const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+  window.history.replaceState({}, document.title, cleanUrl);
+}
+
 function App() {
   const [session, setSession] = useState<any>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -51,6 +67,12 @@ function App() {
   const [profileErrorMessage, setProfileErrorMessage] = useState('');
   const [recoveryMode, setRecoveryMode] = useState(false);
 
+  const recoveryModeRef = useRef(false);
+
+  useEffect(() => {
+    recoveryModeRef.current = recoveryMode;
+  }, [recoveryMode]);
+
   useEffect(() => {
     void loadInitialSession();
 
@@ -59,8 +81,15 @@ function App() {
     } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
 
-      if (event === 'PASSWORD_RECOVERY') {
+      const shouldStayInRecovery =
+        event === 'PASSWORD_RECOVERY' ||
+        isRecoveryLinkActive() ||
+        recoveryModeRef.current;
+
+      if (shouldStayInRecovery && newSession?.user) {
         setRecoveryMode(true);
+        setProfileStatus('idle');
+        setProfileErrorMessage('');
         setLoading(false);
         return;
       }
@@ -82,8 +111,9 @@ function App() {
   }, []);
 
   async function loadInitialSession() {
-    const hash = typeof window !== 'undefined' ? window.location.hash : '';
-    if (hash.includes('type=recovery')) {
+    const recoveryActive = isRecoveryLinkActive();
+
+    if (recoveryActive) {
       setRecoveryMode(true);
     }
 
@@ -98,7 +128,9 @@ function App() {
 
     setSession(data.session);
 
-    if (hash.includes('type=recovery')) {
+    if (recoveryActive && data.session?.user) {
+      setProfileStatus('idle');
+      setProfileErrorMessage('');
       setLoading(false);
       return;
     }
@@ -148,6 +180,7 @@ function App() {
 
   async function handleLogout() {
     await supabase.auth.signOut();
+    clearRecoveryUrlState();
     setSession(null);
     setProfile(null);
     setProfileStatus('idle');
@@ -157,7 +190,11 @@ function App() {
   }
 
   function handleRecoveryComplete() {
+    clearRecoveryUrlState();
     setRecoveryMode(false);
+    setProfileStatus('idle');
+    setProfileErrorMessage('');
+
     if (session?.user?.id) {
       void loadProfile(session.user.id);
     }
