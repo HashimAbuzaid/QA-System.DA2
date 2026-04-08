@@ -90,8 +90,6 @@ function ReportsSupabase() {
   >([]);
   const [agentFeedback, setAgentFeedback] = useState<AgentFeedback[]>([]);
   const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
 
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -122,7 +120,6 @@ function ReportsSupabase() {
 
   async function loadReportsData() {
     setLoading(true);
-    setErrorMessage('');
 
     const [
       auditsResult,
@@ -439,10 +436,8 @@ function ReportsSupabase() {
   }
 
   function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
-    setErrorMessage('');
-    setSuccessMessage('');
     if (rows.length === 0) {
-      setErrorMessage('No data to export.');
+      alert('No data to export.');
       return;
     }
 
@@ -464,7 +459,6 @@ function ReportsSupabase() {
     link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
-    setSuccessMessage(`${filename} downloaded successfully.`);
   }
 
   function exportSummaryCsv() {
