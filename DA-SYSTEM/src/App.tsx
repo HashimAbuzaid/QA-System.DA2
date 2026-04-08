@@ -1,21 +1,20 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from './lib/supabase';
-import { usePersistentState } from './hooks/usePersistentState';
 import Login from './QA/Login';
+import ResetPassword from './QA/ResetPassword';
 import AgentPortal from './QA/AgentPortal';
 import SupervisorPortal from './QA/SupervisorPortal';
+import Dashboard from './QA/Dashboard';
+import NewAuditSupabase from './QA/NewAuditSupabase';
+import CallsUploadSupabase from './QA/CallsUploadSupabase';
+import TicketsUploadSupabase from './QA/TicketsUploadSupabase';
+import SalesUploadSupabase from './QA/SalesUploadSupabase';
+import AuditsListSupabase from './QA/AuditsListSupabase';
+import AccountsSupabase from './QA/AccountsSupabase';
 import SupervisorRequestsSupabase from './QA/SupervisorRequestsSupabase';
-
-const Dashboard = lazy(() => import('./QA/Dashboard'));
-const NewAuditSupabase = lazy(() => import('./QA/NewAuditSupabase'));
-const CallsUploadSupabase = lazy(() => import('./QA/CallsUploadSupabase'));
-const TicketsUploadSupabase = lazy(() => import('./QA/TicketsUploadSupabase'));
-const SalesUploadSupabase = lazy(() => import('./QA/SalesUploadSupabase'));
-const AuditsListSupabase = lazy(() => import('./QA/AuditsListSupabase'));
-const AccountsSupabase = lazy(() => import('./QA/AccountsSupabase'));
-const AgentFeedbackSupabase = lazy(() => import('./QA/AgentFeedbackSupabase'));
-const ReportsSupabase = lazy(() => import('./QA/ReportsSupabase'));
-const MonitoringSupabase = lazy(() => import('./QA/MonitoringSupabase'));
+import AgentFeedbackSupabase from './QA/AgentFeedbackSupabase';
+import ReportsSupabase from './QA/ReportsSupabase';
+import MonitoringSupabase from './QA/MonitoringSupabase';
 
 export type UserProfile = {
   id: string;
@@ -41,114 +40,81 @@ type StaffPage =
   | 'reports'
   | 'profile';
 
-type MountedPagesState = Partial<Record<StaffPage, boolean>>;
-type ProfileStatus = 'idle' | 'loading' | 'loaded' | 'missing' | 'error';
+type ProfileStatus = 'idle' | 'loading' | 'ready' | 'missing';
 
 function App() {
   const [session, setSession] = useState<any>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState<StaffPage>('dashboard');
   const [profileStatus, setProfileStatus] = useState<ProfileStatus>('idle');
-  const [page, setPage] = usePersistentState<StaffPage>(
-    'detroit-axle-active-staff-page',
-    'dashboard'
-  );
-  const [mountedPages, setMountedPages] = useState<MountedPagesState>({
-    dashboard: true,
-  });
-  const [profileLoadError, setProfileLoadError] = useState('');
-
-  const isMountedRef = useRef(true);
-  const profileRequestIdRef = useRef(0);
+  const [profileErrorMessage, setProfileErrorMessage] = useState('');
+  const [recoveryMode, setRecoveryMode] = useState(false);
 
   useEffect(() => {
-    isMountedRef.current = true;
     void loadInitialSession();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      if (!isMountedRef.current) return;
-
+    } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
 
+      if (event === 'PASSWORD_RECOVERY') {
+        setRecoveryMode(true);
+        setLoading(false);
+        return;
+      }
+
       if (newSession?.user) {
-        setLoading(true);
+        setRecoveryMode(false);
         void loadProfile(newSession.user.id);
       } else {
-        resetSignedOutState();
+        setProfile(null);
+        setProfileStatus('idle');
+        setProfileErrorMessage('');
+        setPage('dashboard');
+        setRecoveryMode(false);
+        setLoading(false);
       }
     });
 
-    return () => {
-      isMountedRef.current = false;
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
-
-  useEffect(() => {
-    setMountedPages((prev) => {
-      if (prev[page]) return prev;
-      return { ...prev, [page]: true };
-    });
-  }, [page]);
-
-  useEffect(() => {
-    const preloadModules = () => {
-      void import('./QA/Dashboard');
-      void import('./QA/NewAuditSupabase');
-      void import('./QA/AuditsListSupabase');
-      void import('./QA/CallsUploadSupabase');
-      void import('./QA/TicketsUploadSupabase');
-      void import('./QA/SalesUploadSupabase');
-      void import('./QA/AgentFeedbackSupabase');
-      void import('./QA/MonitoringSupabase');
-      void import('./QA/ReportsSupabase');
-    };
-
-    const timerId = window.setTimeout(preloadModules, 350);
-    return () => window.clearTimeout(timerId);
-  }, []);
-
-  function resetSignedOutState() {
-    setSession(null);
-    setProfile(null);
-    setProfileLoadError('');
-    setProfileStatus('idle');
-    setPage('dashboard');
-    setLoading(false);
-  }
 
   async function loadInitialSession() {
+    const hash = typeof window !== 'undefined' ? window.location.hash : '';
+    if (hash.includes('type=recovery')) {
+      setRecoveryMode(true);
+    }
+
     const { data, error } = await supabase.auth.getSession();
 
-    if (!isMountedRef.current) return;
-
     if (error) {
-      setSession(null);
-      setProfile(null);
-      setProfileStatus('error');
-      setProfileLoadError(error.message);
       setLoading(false);
+      setProfileStatus('idle');
+      setProfileErrorMessage('');
       return;
     }
 
     setSession(data.session);
 
+    if (hash.includes('type=recovery')) {
+      setLoading(false);
+      return;
+    }
+
     if (data.session?.user) {
       await loadProfile(data.session.user.id);
     } else {
-      setProfile(null);
-      setProfileStatus('idle');
       setLoading(false);
+      setProfileStatus('idle');
+      setProfileErrorMessage('');
     }
   }
 
   async function loadProfile(userId: string) {
-    const requestId = ++profileRequestIdRef.current;
-
     setProfileStatus('loading');
-    setProfileLoadError('');
+    setProfileErrorMessage('');
 
     const { data, error } = await supabase
       .from('profiles')
@@ -156,14 +122,10 @@ function App() {
       .eq('id', userId)
       .maybeSingle();
 
-    if (!isMountedRef.current || requestId !== profileRequestIdRef.current) {
-      return;
-    }
-
     if (error) {
       setProfile(null);
-      setProfileStatus('error');
-      setProfileLoadError(error.message || 'Could not load profile.');
+      setProfileStatus('missing');
+      setProfileErrorMessage('Could not load profile.');
       setLoading(false);
       return;
     }
@@ -171,28 +133,40 @@ function App() {
     if (!data) {
       setProfile(null);
       setProfileStatus('missing');
-      setProfileLoadError('Profile row not found for this user.');
+      setProfileErrorMessage('');
       setLoading(false);
       return;
     }
 
-    setProfile(data as UserProfile);
-    setProfileStatus('loaded');
-    setProfileLoadError('');
+    const loadedProfile = data as UserProfile;
+    setProfile(loadedProfile);
+    setProfileStatus('ready');
+    setProfileErrorMessage('');
+    setPage('dashboard');
     setLoading(false);
   }
 
   async function handleLogout() {
-    setLoading(true);
     await supabase.auth.signOut();
-    resetSignedOutState();
+    setSession(null);
+    setProfile(null);
+    setProfileStatus('idle');
+    setProfileErrorMessage('');
+    setPage('dashboard');
+    setRecoveryMode(false);
+  }
+
+  function handleRecoveryComplete() {
+    setRecoveryMode(false);
+    if (session?.user?.id) {
+      void loadProfile(session.user.id);
+    }
   }
 
   const isAdmin = profile?.role === 'admin';
   const isQA = profile?.role === 'qa';
   const isSupervisor = profile?.role === 'supervisor';
   const isStaff = isAdmin || isQA;
-  const canAccessReports = isAdmin || isQA;
 
   const profileLabel = useMemo(() => {
     if (!profile) return '';
@@ -218,12 +192,9 @@ function App() {
     if (isAdmin) {
       baseItems.push(
         { key: 'accounts', label: 'Accounts' },
-        { key: 'supervisorRequests', label: 'Supervisor Requests' }
+        { key: 'supervisorRequests', label: 'Supervisor Requests' },
+        { key: 'reports', label: 'Reports' }
       );
-    }
-
-    if (canAccessReports) {
-      baseItems.push({ key: 'reports', label: 'Reports' });
     }
 
     baseItems.push({
@@ -232,19 +203,10 @@ function App() {
     });
 
     return baseItems;
-  }, [profile, isStaff, isAdmin, canAccessReports]);
+  }, [profile, isStaff, isAdmin]);
 
-  useEffect(() => {
-    if (!isStaff) return;
-
-    const allowedPages = new Set(navItems.map((item) => item.key));
-    if (!allowedPages.has(page)) {
-      setPage('dashboard');
-    }
-  }, [isStaff, navItems, page, setPage]);
-
-  function renderStaffPage(targetPage: StaffPage) {
-    switch (targetPage) {
+  function renderStaffPage() {
+    switch (page) {
       case 'dashboard':
         return <Dashboard />;
       case 'newAudit':
@@ -268,7 +230,7 @@ function App() {
           <SupervisorRequestsSupabase currentUser={profile} />
         ) : null;
       case 'reports':
-        return canAccessReports ? <ReportsSupabase /> : null;
+        return isAdmin ? <ReportsSupabase /> : null;
       case 'profile':
         return (
           <div style={profilePanelStyle}>
@@ -300,13 +262,7 @@ function App() {
     }
   }
 
-  const shouldShowLoading =
-    loading ||
-    (!!session &&
-      !profile &&
-      (profileStatus === 'idle' || profileStatus === 'loading'));
-
-  if (shouldShowLoading) {
+  if (loading || profileStatus === 'loading') {
     return (
       <div style={loadingShellStyle}>
         <div style={loadingCardStyle}>
@@ -322,16 +278,25 @@ function App() {
     );
   }
 
+  if (recoveryMode) {
+    return (
+      <ResetPassword
+        onComplete={handleRecoveryComplete}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
   if (!session) return <Login />;
 
-  if (!profile && (profileStatus === 'missing' || profileStatus === 'error')) {
+  if (!profile) {
     return (
       <div style={loadingShellStyle}>
         <div style={errorCardStyle}>
           <div style={sectionEyebrow}>Profile Error</div>
           <h1 style={{ marginTop: 0 }}>Profile not found</h1>
           <p style={{ color: '#94a3b8' }}>
-            {profileLoadError ||
+            {profileErrorMessage ||
               'This user exists in Supabase Auth but does not have a profile row yet.'}
           </p>
           <button onClick={handleLogout} style={logoutButtonStyle}>
@@ -342,25 +307,10 @@ function App() {
     );
   }
 
-  if (!profile) {
-    return (
-      <div style={loadingShellStyle}>
-        <div style={loadingCardStyle}>
-          <div style={loadingDotStyle} />
-          <h1 style={{ margin: '0 0 8px 0' }}>Loading profile</h1>
-          <p style={{ margin: 0, color: '#94a3b8' }}>
-            Finalizing your Detroit Axle workspace...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div style={appShellStyle}>
       <div style={backgroundGlowTopStyle} />
       <div style={backgroundGlowBottomStyle} />
-
       <header style={headerShellStyle}>
         <div style={headerLeftStyle}>
           <div style={brandWrapStyle}>
@@ -376,7 +326,6 @@ function App() {
             <div style={metaPillStyle}>Email: {profile.email}</div>
           </div>
         </div>
-
         <button onClick={handleLogout} style={logoutButtonStyle}>
           Logout
         </button>
@@ -401,26 +350,8 @@ function App() {
               ))}
             </div>
           </nav>
-
           <main style={contentShellStyle}>
-            <div style={contentInnerStyle}>
-              {navItems.map((item) =>
-                mountedPages[item.key] ? (
-                  <section
-                    key={item.key}
-                    style={
-                      page === item.key
-                        ? visiblePagePaneStyle
-                        : hiddenPagePaneStyle
-                    }
-                  >
-                    <Suspense fallback={<InlinePageLoader />}>
-                      {renderStaffPage(item.key)}
-                    </Suspense>
-                  </section>
-                ) : null
-              )}
-            </div>
+            <div style={contentInnerStyle}>{renderStaffPage()}</div>
           </main>
         </>
       ) : isSupervisor ? (
@@ -436,22 +367,6 @@ function App() {
           </div>
         </main>
       )}
-    </div>
-  );
-}
-
-function InlinePageLoader() {
-  return (
-    <div style={inlineLoaderStyle}>
-      <div style={inlineLoaderDotStyle} />
-      <div>
-        <div style={{ color: '#f8fafc', fontWeight: 700 }}>
-          Loading workspace...
-        </div>
-        <div style={{ color: '#94a3b8', fontSize: '13px', marginTop: '4px' }}>
-          Preparing this page for the first time.
-        </div>
-      </div>
     </div>
   );
 }
@@ -617,32 +532,6 @@ const contentInnerStyle = {
     'linear-gradient(180deg, rgba(15,23,42,0.78) 0%, rgba(15,23,42,0.56) 100%)',
   boxShadow: '0 20px 55px rgba(2,6,23,0.42)',
   backdropFilter: 'blur(18px)',
-};
-
-const visiblePagePaneStyle = {
-  display: 'block',
-};
-
-const hiddenPagePaneStyle = {
-  display: 'none',
-};
-
-const inlineLoaderStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '14px',
-  padding: '16px',
-  borderRadius: '16px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(15,23,42,0.5)',
-};
-
-const inlineLoaderDotStyle = {
-  width: '18px',
-  height: '18px',
-  borderRadius: '999px',
-  background: 'linear-gradient(135deg, #60a5fa 0%, #2563eb 100%)',
-  boxShadow: '0 0 18px rgba(37,99,235,0.35)',
 };
 
 const profilePanelStyle = {
