@@ -11,7 +11,7 @@ type UserProfile = {
   role: 'admin' | 'qa' | 'agent' | 'supervisor';
   agent_id: string | null;
   agent_name: string;
-  display_name?: string | null;
+  display_name: string | null;
   team: TeamName | null;
   email: string;
 };
@@ -150,23 +150,21 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
       .eq('status', 'active')
       .order('created_at', { ascending: false });
 
-    let recordsPromise: Promise<any>;
-    if (currentUser.team === 'Calls') {
-      recordsPromise = supabase
-        .from('calls_records')
-        .select('*')
-        .order('call_date', { ascending: false });
-    } else if (currentUser.team === 'Tickets') {
-      recordsPromise = supabase
-        .from('tickets_records')
-        .select('*')
-        .order('ticket_date', { ascending: false });
-    } else {
-      recordsPromise = supabase
-        .from('sales_records')
-        .select('*')
-        .order('sale_date', { ascending: false });
-    }
+    const recordsPromise =
+      currentUser.team === 'Calls'
+        ? supabase
+            .from('calls_records')
+            .select('*')
+            .order('call_date', { ascending: false })
+        : currentUser.team === 'Tickets'
+        ? supabase
+            .from('tickets_records')
+            .select('*')
+            .order('ticket_date', { ascending: false })
+        : supabase
+            .from('sales_records')
+            .select('*')
+            .order('sale_date', { ascending: false });
 
     const [agentsResult, auditsResult, recordsResult, monitoringResult] =
       await Promise.all([
