@@ -1,9 +1,10 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './lib/supabase';
 import { usePersistentState } from './hooks/usePersistentState';
 import Login from './QA/Login';
 import AgentPortal from './QA/AgentPortal';
 import SupervisorPortal from './QA/SupervisorPortal';
+import SupervisorRequestsSupabase from './QA/SupervisorRequestsSupabase';
 
 const Dashboard = lazy(() => import('./QA/Dashboard'));
 const NewAuditSupabase = lazy(() => import('./QA/NewAuditSupabase'));
@@ -12,9 +13,6 @@ const TicketsUploadSupabase = lazy(() => import('./QA/TicketsUploadSupabase'));
 const SalesUploadSupabase = lazy(() => import('./QA/SalesUploadSupabase'));
 const AuditsListSupabase = lazy(() => import('./QA/AuditsListSupabase'));
 const AccountsSupabase = lazy(() => import('./QA/AccountsSupabase'));
-const SupervisorRequestsSupabase = lazy(() =>
-  import('./QA/SupervisorRequestsSupabase')
-);
 const AgentFeedbackSupabase = lazy(() => import('./QA/AgentFeedbackSupabase'));
 const ReportsSupabase = lazy(() => import('./QA/ReportsSupabase'));
 const MonitoringSupabase = lazy(() => import('./QA/MonitoringSupabase'));
@@ -44,11 +42,13 @@ type StaffPage =
   | 'profile';
 
 type MountedPagesState = Partial<Record<StaffPage, boolean>>;
+type ProfileStatus = 'idle' | 'loading' | 'loaded' | 'missing' | 'error';
 
 function App() {
   const [session, setSession] = useState<any>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileStatus, setProfileStatus] = useState<ProfileStatus>('idle');
   const [page, setPage] = usePersistentState<StaffPage>(
     'detroit-axle-active-staff-page',
     'dashboard'
@@ -58,25 +58,32 @@ function App() {
   });
   const [profileLoadError, setProfileLoadError] = useState('');
 
+  const isMountedRef = useRef(true);
+  const profileRequestIdRef = useRef(0);
+
   useEffect(() => {
+    isMountedRef.current = true;
     void loadInitialSession();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!isMountedRef.current) return;
+
       setSession(newSession);
 
       if (newSession?.user) {
+        setLoading(true);
         void loadProfile(newSession.user.id);
       } else {
-        setProfile(null);
-        setProfileLoadError('');
-        setPage('dashboard');
-        setLoading(false);
+        resetSignedOutState();
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMountedRef.current = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -103,12 +110,26 @@ function App() {
     return () => window.clearTimeout(timerId);
   }, []);
 
+  function resetSignedOutState() {
+    setSession(null);
+    setProfile(null);
+    setProfileLoadError('');
+    setProfileStatus('idle');
+    setPage('dashboard');
+    setLoading(false);
+  }
+
   async function loadInitialSession() {
     const { data, error } = await supabase.auth.getSession();
 
+    if (!isMountedRef.current) return;
+
     if (error) {
-      setLoading(false);
+      setSession(null);
+      setProfile(null);
+      setProfileStatus('error');
       setProfileLoadError(error.message);
+      setLoading(false);
       return;
     }
 
@@ -117,11 +138,16 @@ function App() {
     if (data.session?.user) {
       await loadProfile(data.session.user.id);
     } else {
+      setProfile(null);
+      setProfileStatus('idle');
       setLoading(false);
     }
   }
 
   async function loadProfile(userId: string) {
+    const requestId = ++profileRequestIdRef.current;
+
+    setProfileStatus('loading');
     setProfileLoadError('');
 
     const { data, error } = await supabase
@@ -130,31 +156,36 @@ function App() {
       .eq('id', userId)
       .maybeSingle();
 
+    if (!isMountedRef.current || requestId !== profileRequestIdRef.current) {
+      return;
+    }
+
     if (error) {
       setProfile(null);
-      setLoading(false);
+      setProfileStatus('error');
       setProfileLoadError(error.message || 'Could not load profile.');
+      setLoading(false);
       return;
     }
 
     if (!data) {
       setProfile(null);
-      setLoading(false);
+      setProfileStatus('missing');
       setProfileLoadError('Profile row not found for this user.');
+      setLoading(false);
       return;
     }
 
-    const loadedProfile = data as UserProfile;
-    setProfile(loadedProfile);
+    setProfile(data as UserProfile);
+    setProfileStatus('loaded');
+    setProfileLoadError('');
     setLoading(false);
   }
 
   async function handleLogout() {
+    setLoading(true);
     await supabase.auth.signOut();
-    setSession(null);
-    setProfile(null);
-    setProfileLoadError('');
-    setPage('dashboard');
+    resetSignedOutState();
   }
 
   const isAdmin = profile?.role === 'admin';
@@ -269,7 +300,13 @@ function App() {
     }
   }
 
-  if (loading) {
+  const shouldShowLoading =
+    loading ||
+    (!!session &&
+      !profile &&
+      (profileStatus === 'idle' || profileStatus === 'loading'));
+
+  if (shouldShowLoading) {
     return (
       <div style={loadingShellStyle}>
         <div style={loadingCardStyle}>
@@ -287,7 +324,7 @@ function App() {
 
   if (!session) return <Login />;
 
-  if (!profile) {
+  if (!profile && (profileStatus === 'missing' || profileStatus === 'error')) {
     return (
       <div style={loadingShellStyle}>
         <div style={errorCardStyle}>
@@ -300,6 +337,20 @@ function App() {
           <button onClick={handleLogout} style={logoutButtonStyle}>
             Logout
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div style={loadingShellStyle}>
+        <div style={loadingCardStyle}>
+          <div style={loadingDotStyle} />
+          <h1 style={{ margin: '0 0 8px 0' }}>Loading profile</h1>
+          <p style={{ margin: 0, color: '#94a3b8' }}>
+            Finalizing your Detroit Axle workspace...
+          </p>
         </div>
       </div>
     );
