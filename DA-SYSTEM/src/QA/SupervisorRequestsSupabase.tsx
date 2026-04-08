@@ -55,7 +55,6 @@ function SupervisorRequestsSupabase({
   const [statusSavingId, setStatusSavingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [agentLoadError, setAgentLoadError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -116,7 +115,6 @@ function SupervisorRequestsSupabase({
   async function loadRequestsAndProfiles() {
     setLoading(true);
     setErrorMessage('');
-    setSuccessMessage('');
     setAgentLoadError('');
 
     let profile = currentUser;
@@ -316,18 +314,15 @@ function SupervisorRequestsSupabase({
   async function handleCreateRequest() {
     if (!viewerProfile || !canCreate) return;
 
-    setErrorMessage('');
-    setSuccessMessage('');
-
     if (!caseReference || !caseType || !priority || !requestNote) {
-      setErrorMessage(
+      alert(
         'Please fill Case Reference, Case Type, Priority, and Request Note.'
       );
       return;
     }
 
     if (!supervisorName.trim()) {
-      setErrorMessage('Requester name is required.');
+      alert('Requester name is required.');
       return;
     }
 
@@ -337,9 +332,7 @@ function SupervisorRequestsSupabase({
       selectedAgent?.team &&
       selectedAgent.team !== viewerProfile.team
     ) {
-      setErrorMessage(
-        'Supervisors can only create requests for their own team.'
-      );
+      alert('Supervisors can only create requests for their own team.');
       return;
     }
 
@@ -361,7 +354,7 @@ function SupervisorRequestsSupabase({
     setSaving(false);
 
     if (error) {
-      setErrorMessage(error.message);
+      alert(error.message);
       return;
     }
 
@@ -373,7 +366,6 @@ function SupervisorRequestsSupabase({
     setPriority('Medium');
     setRequestNote('');
 
-    setSuccessMessage('Supervisor request created successfully.');
     await handleRefreshRequests();
   }
 
@@ -382,9 +374,6 @@ function SupervisorRequestsSupabase({
     nextStatus: 'Open' | 'Under Review' | 'Closed'
   ) {
     if (!canUpdateStatus) return;
-
-    setErrorMessage('');
-    setSuccessMessage('');
 
     setStatusSavingId(requestId);
 
@@ -396,11 +385,9 @@ function SupervisorRequestsSupabase({
     setStatusSavingId(null);
 
     if (error) {
-      setErrorMessage(error.message);
+      alert(error.message);
       return;
     }
-
-    setSuccessMessage(`Request status updated to ${nextStatus}.`);
 
     setRequests((prev) =>
       prev.map((item) =>
