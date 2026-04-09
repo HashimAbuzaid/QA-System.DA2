@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { supabase } from '../lib/supabase';
 
 function Login() {
@@ -33,6 +33,11 @@ function Login() {
     }
   }
 
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void handleLogin();
+  }
+
   async function handleForgotPassword() {
     setErrorMessage('');
     setSuccessMessage('');
@@ -60,12 +65,6 @@ function Login() {
     );
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (loading) return;
-    await handleLogin();
-  }
-
   return (
     <div style={shellStyle}>
       <div style={glowTopStyle} />
@@ -89,7 +88,6 @@ function Login() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@detroitaxle.com"
               style={inputStyle}
-              autoComplete="username"
             />
           </div>
 
@@ -101,7 +99,6 @@ function Login() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               style={inputStyle}
-              autoComplete="current-password"
             />
           </div>
 
