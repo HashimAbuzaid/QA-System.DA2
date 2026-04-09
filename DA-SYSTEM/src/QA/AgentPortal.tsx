@@ -7,7 +7,6 @@ import {
 } from '../lib/viewCache';
 import MonitoringWidget from './MonitoringWidget';
 import MonitoringDrawer from './MonitoringDrawer';
-
 type UserProfile = {
   id: string;
   role: 'admin' | 'qa' | 'agent' | 'supervisor';
@@ -17,7 +16,6 @@ type UserProfile = {
   team: 'Calls' | 'Tickets' | 'Sales' | null;
   email: string;
 };
-
 type ScoreDetail = {
   metric: string;
   result: string;
@@ -25,9 +23,22 @@ type ScoreDetail = {
   borderline: number;
   adjustedWeight: number;
   earned: number;
+  counts_toward_score?: boolean;
+  metric_comment?: string | null;
 };
 
 type AuditItem = {
+
+    
+        
+          
+    
+
+        
+        Expand All
+    
+    @@ -44,6 +42,9 @@ type AuditItem = {
+  
   id: string;
   agent_id: string;
   agent_name: string;
@@ -42,12 +53,26 @@ type AuditItem = {
   score_details: ScoreDetail[];
   shared_with_agent?: boolean;
   shared_at?: string | null;
-  created_by_name?: string | null;
-  created_by_email?: string | null;
-  created_by_role?: string | null;
 };
 
 type CallsRecord = {
+
+    
+          
+            
+    
+
+          
+          Expand Down
+          
+            
+    
+
+          
+          Expand Up
+    
+    @@ -124,7 +125,6 @@ type AgentPortalCachePayload = {
+  
   id: string;
   agent_id: string;
   agent_name: string;
@@ -56,7 +81,6 @@ type CallsRecord = {
   date_to?: string | null;
   notes: string | null;
 };
-
 type TicketsRecord = {
   id: string;
   agent_id: string;
@@ -66,7 +90,6 @@ type TicketsRecord = {
   date_to?: string | null;
   notes: string | null;
 };
-
 type SalesRecord = {
   id: string;
   agent_id: string;
@@ -76,7 +99,6 @@ type SalesRecord = {
   date_to?: string | null;
   notes: string | null;
 };
-
 type AgentFeedback = {
   id: string;
   agent_id: string;
@@ -91,7 +113,6 @@ type AgentFeedback = {
   status: 'Open' | 'In Progress' | 'Closed';
   created_at: string;
 };
-
 type MonitoringItem = {
   id: string;
   order_number: string;
@@ -110,11 +131,9 @@ type MonitoringItem = {
   resolved_by_name: string | null;
   resolved_by_email: string | null;
 };
-
 type AgentPortalProps = {
   currentUser: UserProfile;
 };
-
 type AgentPortalCachePayload = {
   audits: AuditItem[];
   callsRecords: CallsRecord[];
@@ -125,9 +144,27 @@ type AgentPortalCachePayload = {
 };
 
 const AGENT_PORTAL_CACHE_TTL_MS = 1000 * 60 * 3;
+const HIDDEN_AGENT_METRICS = new Set(['Issue was resolved']);
 
 function AgentPortal({ currentUser }: AgentPortalProps) {
   const [audits, setAudits] = useState<AuditItem[]>([]);
+
+    
+          
+            
+    
+
+          
+          Expand Down
+          
+            
+    
+
+          
+          Expand Up
+    
+    @@ -152,6 +152,15 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
+  
   const [callsRecords, setCallsRecords] = useState<CallsRecord[]>([]);
   const [ticketsRecords, setTicketsRecords] = useState<TicketsRecord[]>([]);
   const [salesRecords, setSalesRecords] = useState<SalesRecord[]>([]);
@@ -141,40 +178,44 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
   const [auditDateTo, setAuditDateTo] = useState('');
   const [lastLoadedAt, setLastLoadedAt] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-
   const cacheKey = useMemo(() => {
     return `agent-portal:${currentUser.id}:${
       currentUser.agent_id || 'no-agent'
     }:${currentUser.team || 'no-team'}`;
   }, [currentUser.id, currentUser.agent_id, currentUser.team]);
-
   useEffect(() => {
     void loadAgentData();
-  }, [cacheKey]);
-
-  useEffect(() => {
-    function handleWindowFocus() {
-      void loadAgentData({ force: true, background: true });
-    }
-
-    window.addEventListener('focus', handleWindowFocus);
-    return () => window.removeEventListener('focus', handleWindowFocus);
   }, [cacheKey]);
 
   function applyAgentData(payload: AgentPortalCachePayload) {
     setAudits(payload.audits);
     setCallsRecords(payload.callsRecords);
+
+    
+          
+            
+    
+
+          
+          Expand Down
+          
+            
+    
+
+          
+          Expand Up
+    
+    @@ -393,6 +402,10 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
+  
     setTicketsRecords(payload.ticketsRecords);
     setSalesRecords(payload.salesRecords);
     setFeedbackItems(payload.feedbackItems);
     setMonitoringItems(payload.monitoringItems);
   }
-
   async function fetchAgentData() {
     if (!currentUser.agent_id || !currentUser.team) {
       throw new Error('Your profile is missing agent_id or team.');
     }
-
     const auditsPromise = supabase
       .from('audits')
       .select('*')
@@ -182,7 +223,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
       .eq('team', currentUser.team)
       .eq('shared_with_agent', true)
       .order('audit_date', { ascending: false });
-
     const callsPromise =
       currentUser.team === 'Calls'
         ? supabase
@@ -191,7 +231,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
             .eq('agent_id', currentUser.agent_id)
             .order('call_date', { ascending: false })
         : Promise.resolve({ data: [], error: null });
-
     const ticketsPromise =
       currentUser.team === 'Tickets'
         ? supabase
@@ -200,7 +239,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
             .eq('agent_id', currentUser.agent_id)
             .order('ticket_date', { ascending: false })
         : Promise.resolve({ data: [], error: null });
-
     const salesPromise =
       currentUser.team === 'Sales'
         ? supabase
@@ -209,14 +247,12 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
             .eq('agent_id', currentUser.agent_id)
             .order('sale_date', { ascending: false })
         : Promise.resolve({ data: [], error: null });
-
     const feedbackPromise = supabase
       .from('agent_feedback')
       .select('*')
       .eq('agent_id', currentUser.agent_id)
       .eq('team', currentUser.team)
       .order('created_at', { ascending: false });
-
     const monitoringPromise = supabase
       .from('monitoring_items')
       .select('*')
@@ -224,7 +260,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
       .eq('team', currentUser.team)
       .eq('status', 'active')
       .order('created_at', { ascending: false });
-
     const [
       auditsResult,
       callsResult,
@@ -240,7 +275,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
       feedbackPromise,
       monitoringPromise,
     ]);
-
     const errors = [
       auditsResult.error?.message,
       callsResult.error?.message,
@@ -249,11 +283,9 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
       feedbackResult.error?.message,
       monitoringResult.error?.message,
     ].filter(Boolean);
-
     if (errors.length > 0) {
       throw new Error(errors.join(' | '));
     }
-
     return {
       audits: (auditsResult.data as AuditItem[]) || [],
       callsRecords: (callsResult.data as CallsRecord[]) || [],
@@ -263,7 +295,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
       monitoringItems: (monitoringResult.data as MonitoringItem[]) || [],
     } satisfies AgentPortalCachePayload;
   }
-
   async function loadAgentData(options?: {
     force?: boolean;
     background?: boolean;
@@ -280,32 +311,26 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
       setRefreshing(false);
       return;
     }
-
     const force = options?.force ?? false;
     const background = options?.background ?? false;
     const cached = force
       ? null
       : peekCachedValue<AgentPortalCachePayload>(cacheKey);
-
     if (cached) {
       applyAgentData(cached);
       setLoading(false);
     }
-
     if (background || cached) {
       setRefreshing(true);
     } else {
       setLoading(true);
     }
-
     setErrorMessage('');
-
     try {
       const payload = await getCachedValue(cacheKey, fetchAgentData, {
         ttlMs: AGENT_PORTAL_CACHE_TTL_MS,
         force,
       });
-
       applyAgentData(payload);
       setLastLoadedAt(new Date().toISOString());
     } catch (error) {
@@ -326,7 +351,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
       return matchesFrom && matchesTo;
     });
   }, [audits, auditDateFrom, auditDateTo]);
-
   const averageQuality =
     filteredAudits.length > 0
       ? (
@@ -336,7 +360,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           ) / filteredAudits.length
         ).toFixed(2)
       : '0.00';
-
   const totalCalls = callsRecords.reduce(
     (sum, item) => sum + Number(item.calls_count),
     0
@@ -349,20 +372,17 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
     (sum, item) => sum + Number(item.amount),
     0
   );
-
   function getStatusColor(statusValue: string) {
     if (statusValue === 'Closed') return '#166534';
     if (statusValue === 'In Progress') return '#92400e';
     return '#1d4ed8';
   }
-
   function getTypeColor(typeValue: string) {
     if (typeValue === 'Warning') return '#991b1b';
     if (typeValue === 'Audit Feedback') return '#7c3aed';
     if (typeValue === 'Follow-up') return '#b45309';
     return '#166534';
   }
-
   function getResultBadgeColor(result: string) {
     if (result === 'Pass') return '#166534';
     if (result === 'Borderline') return '#92400e';
@@ -370,31 +390,26 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
     if (result === 'N/A') return '#374151';
     return '#1f2937';
   }
-
   function formatDate(dateValue?: string | null) {
     if (!dateValue) return '-';
     const date = new Date(dateValue);
     if (Number.isNaN(date.getTime())) return '-';
     return date.toLocaleString();
   }
-
   function formatDateOnly(dateValue?: string | null) {
     if (!dateValue) return '-';
     const date = new Date(`${dateValue}T00:00:00`);
     if (Number.isNaN(date.getTime())) return dateValue;
     return date.toLocaleDateString();
   }
-
   function getAuditReference(audit: AuditItem) {
     if (audit.team === 'Tickets') {
       return `Ticket ID: ${audit.ticket_id || '-'}`;
     }
-
     return `Order #: ${audit.order_number || '-'} | Phone: ${
       audit.phone_number || '-'
     }`;
   }
-
   function getCommentsPreview(value?: string | null) {
     const text = (value || '').trim();
     if (!text) return '-';
@@ -402,15 +417,27 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
     return `${text.slice(0, 117)}...`;
   }
 
-  function getCreatedByLabel(audit: AuditItem) {
-    return audit.created_by_name || audit.created_by_email || '-';
-  }
-
   function clearAuditDateFilters() {
     setAuditDateFrom('');
     setAuditDateTo('');
-  }
 
+    
+          
+            
+    
+
+          
+          Expand Down
+          
+            
+    
+
+          
+          Expand Up
+    
+    @@ -679,58 +692,90 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
+  
+  }
   const hasVisibleData =
     audits.length > 0 ||
     callsRecords.length > 0 ||
@@ -418,11 +445,9 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
     salesRecords.length > 0 ||
     feedbackItems.length > 0 ||
     monitoringItems.length > 0;
-
   if (loading && !hasVisibleData) {
     return <div style={{ color: '#cbd5e1' }}>Loading profile data...</div>;
   }
-
   return (
     <div style={{ color: '#e5eefb' }}>
       <div style={pageHeaderStyle}>
@@ -434,7 +459,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
             audits released to you by QA/Admin.
           </p>
         </div>
-
         <button
           type="button"
           onClick={() => {
@@ -447,9 +471,7 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           {refreshing ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
-
       {errorMessage ? <div style={errorBanner}>{errorMessage}</div> : null}
-
       <div style={filterActionsStyle}>
         <div style={filterPillStyle}>
           Cache: {refreshing ? 'Refreshing in background' : 'Warm'}
@@ -459,7 +481,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           {lastLoadedAt ? formatDate(lastLoadedAt) : 'Current session'}
         </div>
       </div>
-
       <div style={panelStyle}>
         <p>
           <strong>Name:</strong> {currentUser.agent_name}
@@ -480,7 +501,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           <strong>Role:</strong> {currentUser.role}
         </p>
       </div>
-
       <div style={summaryGridStyle}>
         <SummaryCard
           title="Released Audits"
@@ -524,7 +544,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           />
         )}
       </div>
-
       <Section title="My Feedback / Coaching">
         {feedbackItems.length === 0 ? (
           <p>No feedback found.</p>
@@ -577,7 +596,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           </div>
         )}
       </Section>
-
       <Section title="My Released Audits">
         <div style={{ ...panelStyle, marginTop: '16px' }}>
           <div style={filterGridStyle}>
@@ -590,7 +608,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
                 style={fieldStyle}
               />
             </div>
-
             <div>
               <label style={labelStyle}>Audit Date To</label>
               <input
@@ -601,7 +618,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
               />
             </div>
           </div>
-
           <div style={filterActionsStyle}>
             <button
               type="button"
@@ -610,7 +626,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
             >
               Clear Audit Dates
             </button>
-
             <div style={filterPillStyle}>
               Showing {filteredAudits.length} audit
               {filteredAudits.length === 1 ? '' : 's'} • Average Quality{' '}
@@ -618,7 +633,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
             </div>
           </div>
         </div>
-
         {filteredAudits.length === 0 ? (
           <p>No audits were released to you for this date range.</p>
         ) : (
@@ -633,7 +647,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
                 <div style={auditCellCommentsStyle}>Comments</div>
                 <div style={auditCellActionsStyle}>Actions</div>
               </div>
-
               {filteredAudits.map((audit) => {
                 const isExpanded = expandedId === audit.id;
                 return (
@@ -645,29 +658,24 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
                         </div>
                         <div style={secondaryCellTextStyle}>{audit.team}</div>
                       </div>
-
                       <div style={auditCellCaseStyle}>
                         <div style={primaryCellTextStyle}>{audit.case_type}</div>
                       </div>
-
                       <div style={auditCellReferenceStyle}>
                         <div style={primaryCellTextStyle}>
                           {getAuditReference(audit)}
                         </div>
                       </div>
-
                       <div style={auditCellScoreStyle}>
                         <span style={scorePillStyle}>
                           {Number(audit.quality_score).toFixed(2)}%
                         </span>
                       </div>
-
                       <div style={auditCellReleasedStyle}>
                         <div style={primaryCellTextStyle}>
                           {formatDate(audit.shared_at)}
                         </div>
                       </div>
-
                       <div style={auditCellCommentsStyle}>
                         <div style={primaryCellTextStyle}>
                           {getCommentsPreview(audit.comments)}
@@ -688,97 +696,81 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
                         </button>
                       </div>
                     </div>
-
                     {isExpanded ? (
                       <div style={auditExpandedRowStyle}>
                         <div style={expandedPanelStyle}>
-                          <div style={sectionEyebrow}>Audit Details</div>
-
-                          <div style={detailInfoGridStyle}>
-                            <div style={detailInfoCardStyle}>
-                              <div style={detailLabelStyle}>Created By</div>
-                              <div style={detailValueStyle}>
-                                {getCreatedByLabel(audit)}
-                              </div>
-                              <div style={detailSubValueStyle}>
-                                {audit.created_by_role || '-'}
-                              </div>
-                            </div>
-
-                            <div style={detailInfoCardStyle}>
-                              <div style={detailLabelStyle}>Creator Email</div>
-                              <div style={detailValueStyle}>
-                                {audit.created_by_email || '-'}
-                              </div>
-                            </div>
-
-                            <div style={detailInfoCardStyle}>
-                              <div style={detailLabelStyle}>Reference</div>
-                              <div style={detailValueStyle}>
-                                {getAuditReference(audit)}
-                              </div>
-                            </div>
-
-                            <div style={detailInfoCardStyle}>
-                              <div style={detailLabelStyle}>Release Date</div>
-                              <div style={detailValueStyle}>
-                                {formatDate(audit.shared_at)}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div style={fullCommentCardStyle}>
-                            <div style={detailLabelStyle}>Full Comment</div>
-                            <div style={fullCommentTextStyle}>
-                              {audit.comments?.trim() || '-'}
-                            </div>
-                          </div>
-
-                          <div style={{ ...sectionEyebrow, marginTop: '18px' }}>
-                            Score Details
-                          </div>
+                          <div style={sectionEyebrow}>Score Details</div>
                           <div style={{ display: 'grid', gap: '10px' }}>
-                            {(audit.score_details || []).map((detail) => (
-                              <div
-                                key={`${audit.id}-${detail.metric}`}
-                                style={detailRowStyle}
-                              >
-                                <div>
-                                  <div
-                                    style={{
-                                      color: '#f8fafc',
-                                      fontWeight: 700,
-                                    }}
-                                  >
-                                    {detail.metric}
-                                  </div>
-                                  <div
-                                    style={{
-                                      color: '#94a3b8',
-                                      fontSize: '12px',
-                                      marginTop: '4px',
-                                    }}
-                                  >
-                                    Pass {detail.pass} • Borderline{' '}
-                                    {detail.borderline} • Adjusted{' '}
-                                    {detail.adjustedWeight.toFixed(2)}
-                                  </div>
-                                </div>
-                                <span
-                                  style={{
-                                    ...pillStyle,
-                                    backgroundColor: getResultBadgeColor(
-                                      detail.result
-                                    ),
-                                  }}
+                            {(audit.score_details || [])
+                              .filter(
+                                (detail) => !HIDDEN_AGENT_METRICS.has(detail.metric)
+                              )
+                              .map((detail) => (
+                                <div
+                                  key={`${audit.id}-${detail.metric}`}
+                                  style={detailRowStyle}
                                 >
-                                  {detail.result}
-                                </span>
-                              </div>
-                            ))}
+                                  <div>
+                                    <div
+                                      style={{
+                                        color: '#f8fafc',
+                                        fontWeight: 700,
+                                      }}
+                                    >
+                                      {detail.metric}
+                                    </div>
+                                    <div
+                                      style={{
+                                        color: '#94a3b8',
+                                        fontSize: '12px',
+                                        marginTop: '4px',
+                                      }}
+                                    >
+                                      {detail.counts_toward_score === false
+                                        ? 'Administrative question'
+                                        : `Pass ${detail.pass} • Borderline ${detail.borderline} • Adjusted ${detail.adjustedWeight.toFixed(2)}`}
+                                    </div>
+                                    {detail.metric_comment ? (
+                                      <div style={metricNoteCardStyle}>
+                                        <div style={metricNoteLabelStyle}>QA Note</div>
+                                        <div style={metricNoteTextStyle}>
+                                          {detail.metric_comment}
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                  <span
+                                    style={{
+                                      ...pillStyle,
+                                      backgroundColor: getResultBadgeColor(
+                                        detail.result
+                                      ),
+                                    }}
+                                  >
+                                    {detail.result}
+                                  </span>
+                                </div>
+                              ))}
                           </div>
                         </div>
                       </div>
+
+    
+          
+            
+    
+
+          
+          Expand Down
+          
+            
+    
+
+          
+          Expand Up
+    
+    @@ -1074,39 +1119,68 @@ const expandedPanelStyle = {
+  
                     ) : null}
                   </div>
                 );
@@ -787,7 +779,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           </div>
         )}
       </Section>
-
       {currentUser.team === 'Calls' && (
         <Section title="My Calls Records">
           {callsRecords.length === 0 ? (
@@ -814,7 +805,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           )}
         </Section>
       )}
-
       {currentUser.team === 'Tickets' && (
         <Section title="My Tickets Records">
           {ticketsRecords.length === 0 ? (
@@ -841,7 +831,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           )}
         </Section>
       )}
-
       {currentUser.team === 'Sales' && (
         <Section title="My Sales Records">
           {salesRecords.length === 0 ? (
@@ -868,7 +857,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           )}
         </Section>
       )}
-
       <MonitoringWidget
         count={monitoringItems.length}
         onClick={() => setMonitoringOpen(true)}
@@ -883,7 +871,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
     </div>
   );
 }
-
 function SummaryCard({
   title,
   value,
@@ -909,7 +896,6 @@ function SummaryCard({
     </div>
   );
 }
-
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div style={{ marginTop: '35px' }}>
@@ -918,7 +904,6 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
     </div>
   );
 }
-
 const pageHeaderStyle = {
   display: 'flex',
   gap: '12px',
@@ -927,7 +912,6 @@ const pageHeaderStyle = {
   flexWrap: 'wrap' as const,
   marginBottom: '18px',
 };
-
 const sectionEyebrow = {
   color: '#60a5fa',
   fontSize: '12px',
@@ -936,7 +920,6 @@ const sectionEyebrow = {
   textTransform: 'uppercase' as const,
   marginBottom: '12px',
 };
-
 const panelStyle = {
   background:
     'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
@@ -944,13 +927,11 @@ const panelStyle = {
   borderRadius: '20px',
   padding: '20px',
 };
-
 const filterGridStyle = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
   gap: '16px',
 };
-
 const filterActionsStyle = {
   marginTop: '12px',
   display: 'flex',
@@ -959,7 +940,6 @@ const filterActionsStyle = {
   alignItems: 'center',
   justifyContent: 'space-between',
 };
-
 const filterPillStyle = {
   padding: '10px 14px',
   borderRadius: '999px',
@@ -969,7 +949,6 @@ const filterPillStyle = {
   fontSize: '13px',
   fontWeight: 600,
 };
-
 const summaryGridStyle = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -977,7 +956,6 @@ const summaryGridStyle = {
   marginTop: '24px',
   marginBottom: '30px',
 };
-
 const cardStyle = {
   background:
     'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
@@ -986,7 +964,6 @@ const cardStyle = {
   padding: '20px',
   boxShadow: '0 8px 24px rgba(2,6,23,0.2)',
 };
-
 const auditTableWrapStyle = {
   marginTop: '16px',
   overflowX: 'auto' as const,
@@ -996,13 +973,10 @@ const auditTableWrapStyle = {
     'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
   boxShadow: '0 8px 24px rgba(2,6,23,0.2)',
 };
-
 const auditTableStyle = {
   minWidth: '1040px',
 };
-
 const auditEntryStyle = { borderBottom: '1px solid rgba(148,163,184,0.08)' };
-
 const auditRowStyle = {
   display: 'grid',
   gridTemplateColumns:
@@ -1011,7 +985,6 @@ const auditRowStyle = {
   alignItems: 'center',
   padding: '14px 16px',
 };
-
 const auditHeaderRowStyle = {
   position: 'sticky' as const,
   top: 0,
@@ -1023,7 +996,6 @@ const auditHeaderRowStyle = {
   textTransform: 'uppercase' as const,
   letterSpacing: '0.12em',
 };
-
 const auditCellDateStyle = {};
 const auditCellCaseStyle = {};
 const auditCellReferenceStyle = {};
@@ -1035,14 +1007,12 @@ const auditCellActionsStyle = {
   gap: '8px',
   flexWrap: 'wrap' as const,
 };
-
 const primaryCellTextStyle = {
   color: '#f8fafc',
   fontSize: '14px',
   fontWeight: 600,
   lineHeight: 1.4,
 };
-
 const secondaryCellTextStyle = {
   marginTop: '4px',
   color: '#64748b',
@@ -1051,7 +1021,6 @@ const secondaryCellTextStyle = {
   textTransform: 'uppercase' as const,
   letterSpacing: '0.08em',
 };
-
 const scorePillStyle = {
   display: 'inline-flex',
   alignItems: 'center',
@@ -1065,7 +1034,6 @@ const scorePillStyle = {
   fontSize: '13px',
   fontWeight: 800,
 };
-
 const labelStyle = {
   display: 'block',
   marginBottom: '8px',
@@ -1073,7 +1041,6 @@ const labelStyle = {
   fontWeight: 700,
   fontSize: '13px',
 };
-
 const fieldStyle = {
   width: '100%',
   padding: '12px 14px',
@@ -1082,7 +1049,6 @@ const fieldStyle = {
   background: 'rgba(15,23,42,0.7)',
   color: '#e5eefb',
 };
-
 const secondaryButton = {
   backgroundColor: 'rgba(15,23,42,0.78)',
   color: 'white',
@@ -1091,7 +1057,6 @@ const secondaryButton = {
   borderRadius: '10px',
   cursor: 'pointer',
 };
-
 const errorBanner = {
   marginTop: '16px',
   padding: '12px 14px',
@@ -1100,7 +1065,6 @@ const errorBanner = {
   border: '1px solid rgba(248,113,113,0.22)',
   color: '#fecaca',
 };
-
 const pillStyle = {
   color: 'white',
   padding: '4px 8px',
@@ -1108,68 +1072,13 @@ const pillStyle = {
   fontSize: '12px',
   fontWeight: 'bold',
 };
-
 const auditExpandedRowStyle = { padding: '0 16px 16px 16px' };
-
 const expandedPanelStyle = {
   borderRadius: '18px',
   border: '1px solid rgba(148,163,184,0.12)',
   background:
     'linear-gradient(180deg, rgba(15,23,42,0.78) 0%, rgba(15,23,42,0.6) 100%)',
   padding: '18px',
-};
-
-const detailInfoGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-  gap: '12px',
-  marginBottom: '18px',
-};
-
-const detailInfoCardStyle = {
-  borderRadius: '14px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(15,23,42,0.52)',
-  padding: '14px 16px',
-};
-
-const detailLabelStyle = {
-  color: '#94a3b8',
-  fontSize: '12px',
-  fontWeight: 700,
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.08em',
-  marginBottom: '8px',
-};
-
-const detailValueStyle = {
-  color: '#f8fafc',
-  fontSize: '14px',
-  fontWeight: 700,
-  lineHeight: 1.5,
-};
-
-const detailSubValueStyle = {
-  color: '#64748b',
-  fontSize: '12px',
-  fontWeight: 600,
-  marginTop: '6px',
-};
-
-const fullCommentCardStyle = {
-  borderRadius: '14px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(15,23,42,0.52)',
-  padding: '14px 16px',
-  marginBottom: '18px',
-};
-
-const fullCommentTextStyle = {
-  color: '#f8fafc',
-  fontSize: '14px',
-  lineHeight: 1.7,
-  whiteSpace: 'pre-wrap' as const,
-  wordBreak: 'break-word' as const,
 };
 
 const detailRowStyle = {
@@ -1183,7 +1092,42 @@ const detailRowStyle = {
   background: 'rgba(15,23,42,0.52)',
 };
 
+const metricNoteCardStyle = {
+  marginTop: '10px',
+  borderRadius: '12px',
+  border: '1px solid rgba(148,163,184,0.12)',
+  background: 'rgba(15,23,42,0.52)',
+  padding: '10px 12px',
+};
+
+const metricNoteLabelStyle = {
+  color: '#93c5fd',
+  fontSize: '11px',
+  fontWeight: 800,
+  letterSpacing: '0.1em',
+  textTransform: 'uppercase' as const,
+  marginBottom: '6px',
+};
+
+const metricNoteTextStyle = {
+  color: '#e5eefb',
+  fontSize: '13px',
+  lineHeight: 1.55,
+  whiteSpace: 'pre-wrap' as const,
+};
+
 const miniSecondaryButton = {
+
+    
+          
+            
+    
+
+          
+          Expand Down
+    
+    
+  
   padding: '8px 10px',
   background: 'rgba(15,23,42,0.82)',
   color: '#e5eefb',
@@ -1193,5 +1137,4 @@ const miniSecondaryButton = {
   fontWeight: 700,
   fontSize: '12px',
 };
-
 export default AgentPortal;
