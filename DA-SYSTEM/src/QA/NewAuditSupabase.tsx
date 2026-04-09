@@ -109,6 +109,7 @@ const ticketsMetrics: Metric[] = [
   { name: 'Refund Form', pass: 6, borderline: 3 },
   { name: 'Providing RL', pass: 5, borderline: 3 },
   { name: 'Ending', pass: 5, borderline: 3 },
+  ISSUE_WAS_RESOLVED_QUESTION,
 ];
 
 const salesMetrics: Metric[] = [
@@ -124,6 +125,7 @@ const salesMetrics: Metric[] = [
   { name: 'Refund Form', pass: 5, borderline: 3 },
   { name: 'Up-selling', pass: 8, borderline: 4 },
   { name: 'Ending', pass: 5, borderline: 3 },
+  ISSUE_WAS_RESOLVED_QUESTION,
 ];
 
 function pickPreferredName(values: Array<string | null | undefined>) {
