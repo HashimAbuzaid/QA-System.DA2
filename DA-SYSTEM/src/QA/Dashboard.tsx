@@ -664,7 +664,7 @@ function Dashboard() {
   }
 
   return (
-    <div style={{ color: '#e5eefb' }}>
+    <div style={{ color: 'var(--da-page-text, #e5eefb)' }}>
       <div style={heroStyle}>
         <div>
           <div style={eyebrowStyle}>Operations Overview</div>
@@ -1113,6 +1113,7 @@ function getTeamAverage(audits: AuditItem[]) {
 }
 
 const heroStyle = {
+  marginTop: '8px',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'flex-start',
@@ -1124,12 +1125,12 @@ const heroStyle = {
 const heroTitleStyle = {
   margin: 0,
   fontSize: '32px',
-  color: '#f8fafc',
+  color: 'var(--da-title, #f8fafc)',
 };
 
 const heroSubtitleStyle = {
   margin: '10px 0 0 0',
-  color: '#94a3b8',
+  color: 'var(--da-subtitle, #94a3b8)',
   fontSize: '15px',
 };
 
@@ -1143,9 +1144,9 @@ const infoPillRowStyle = {
 const metaPillStyle = {
   padding: '10px 12px',
   borderRadius: '999px',
-  background: 'rgba(15, 23, 42, 0.62)',
-  border: '1px solid rgba(148, 163, 184, 0.14)',
-  color: '#cbd5e1',
+  background: 'var(--da-meta-bg, rgba(15, 23, 42, 0.62))',
+  border: 'var(--da-meta-border, 1px solid rgba(148, 163, 184, 0.14))',
+  color: 'var(--da-meta-text, #cbd5e1)',
   fontWeight: 700,
   fontSize: '12px',
 };
@@ -1158,7 +1159,7 @@ const heroActionWrapStyle = {
 };
 
 const eyebrowStyle = {
-  color: '#60a5fa',
+  color: 'var(--da-eyebrow, #60a5fa)',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -1172,7 +1173,7 @@ const sectionHeaderStyle = {
 };
 
 const sectionEyebrowStyle = {
-  color: '#93c5fd',
+  color: 'var(--da-section-eyebrow, #93c5fd)',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -1188,9 +1189,9 @@ const sectionSubtitleStyle = {
 const fieldStyle = {
   padding: '12px 14px',
   borderRadius: '14px',
-  border: '1px solid rgba(148, 163, 184, 0.18)',
-  background: 'rgba(15, 23, 42, 0.74)',
-  color: '#e5eefb',
+  border: 'var(--da-field-border, 1px solid rgba(148, 163, 184, 0.18))',
+  background: 'var(--da-field-bg, rgba(15, 23, 42, 0.74))',
+  color: 'var(--da-field-text, #e5eefb)',
 };
 
 const primaryButton = {
@@ -1205,9 +1206,9 @@ const primaryButton = {
 
 const secondaryButton = {
   padding: '12px 16px',
-  background: 'rgba(15, 23, 42, 0.74)',
-  color: '#e5eefb',
-  border: '1px solid rgba(148, 163, 184, 0.18)',
+  background: 'var(--da-secondary-bg, rgba(15, 23, 42, 0.74))',
+  color: 'var(--da-secondary-text, #e5eefb)',
+  border: 'var(--da-secondary-border, 1px solid rgba(148, 163, 184, 0.18))',
   borderRadius: '14px',
   cursor: 'pointer',
   fontWeight: 700,
@@ -1220,17 +1221,16 @@ const kpiGridStyle = {
 };
 
 const summaryCardStyle = {
-  background:
-    'linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%)',
-  border: '1px solid rgba(148, 163, 184, 0.14)',
+  background: 'var(--da-panel-bg, linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%))',
+  border: 'var(--da-panel-border, 1px solid rgba(148, 163, 184, 0.14))',
   borderRadius: '20px',
   padding: '20px',
-  boxShadow: '0 18px 40px rgba(2, 6, 23, 0.35)',
+  boxShadow: 'var(--da-panel-shadow, 0 18px 40px rgba(2, 6, 23, 0.35))',
   backdropFilter: 'blur(14px)',
 };
 
 const summaryCardLabelStyle = {
-  color: '#94a3b8',
+  color: 'var(--da-card-label, #94a3b8)',
   fontSize: '13px',
   fontWeight: 700,
   marginBottom: '10px',
@@ -1239,12 +1239,12 @@ const summaryCardLabelStyle = {
 const summaryCardValueStyle = {
   fontSize: '30px',
   fontWeight: 800,
-  color: '#f8fafc',
+  color: 'var(--da-card-value, #f8fafc)',
   marginBottom: '8px',
 };
 
 const summaryCardSubtitleStyle = {
-  color: '#64748b',
+  color: 'var(--da-card-subtitle, #64748b)',
   fontSize: '12px',
 };
 
@@ -1257,12 +1257,11 @@ const teamCardGridStyle = {
 
 const teamCardStyle = {
   position: 'relative' as const,
-  background:
-    'linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%)',
-  border: '1px solid rgba(148, 163, 184, 0.14)',
+  background: 'var(--da-panel-bg, linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%))',
+  border: 'var(--da-panel-border, 1px solid rgba(148, 163, 184, 0.14))',
   borderRadius: '22px',
   padding: '22px',
-  boxShadow: '0 18px 40px rgba(2, 6, 23, 0.35)',
+  boxShadow: 'var(--da-panel-shadow, 0 18px 40px rgba(2, 6, 23, 0.35))',
   backdropFilter: 'blur(14px)',
   overflow: 'hidden' as const,
 };
@@ -1276,7 +1275,7 @@ const teamAccentStyle = {
 };
 
 const teamTitleStyle = {
-  color: '#f8fafc',
+  color: 'var(--da-card-value, #f8fafc)',
   fontSize: '20px',
   fontWeight: 800,
   marginBottom: '18px',
@@ -1289,7 +1288,7 @@ const teamMetricGridStyle = {
 };
 
 const teamMetricLabelStyle = {
-  color: '#94a3b8',
+  color: 'var(--da-card-label, #94a3b8)',
   fontSize: '12px',
   fontWeight: 700,
   textTransform: 'uppercase' as const,
@@ -1298,7 +1297,7 @@ const teamMetricLabelStyle = {
 };
 
 const teamMetricValueStyle = {
-  color: '#f8fafc',
+  color: 'var(--da-card-value, #f8fafc)',
   fontSize: '24px',
   fontWeight: 800,
 };
@@ -1307,7 +1306,7 @@ const teamMetaRowStyle = {
   display: 'grid',
   gap: '8px',
   marginTop: '18px',
-  color: '#cbd5e1',
+  color: 'var(--da-team-meta, #cbd5e1)',
   fontSize: '13px',
 };
 
@@ -1318,12 +1317,11 @@ const rankingGridStyle = {
 };
 
 const panelStyle = {
-  background:
-    'linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%)',
-  border: '1px solid rgba(148, 163, 184, 0.14)',
+  background: 'var(--da-panel-bg, linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%))',
+  border: 'var(--da-panel-border, 1px solid rgba(148, 163, 184, 0.14))',
   borderRadius: '22px',
   padding: '22px',
-  boxShadow: '0 18px 40px rgba(2, 6, 23, 0.35)',
+  boxShadow: 'var(--da-panel-shadow, 0 18px 40px rgba(2, 6, 23, 0.35))',
   backdropFilter: 'blur(14px)',
 };
 
@@ -1353,8 +1351,8 @@ const rowCardStyle = {
   alignItems: 'center',
   padding: '14px 16px',
   borderRadius: '16px',
-  border: '1px solid rgba(148, 163, 184, 0.12)',
-  background: 'rgba(15, 23, 42, 0.52)',
+  border: 'var(--da-row-border, 1px solid rgba(148, 163, 184, 0.12))',
+  background: 'var(--da-row-bg, rgba(15, 23, 42, 0.52))',
 };
 
 const rankBadgeStyle = {
@@ -1364,28 +1362,28 @@ const rankBadgeStyle = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: 'rgba(37, 99, 235, 0.22)',
-  color: '#bfdbfe',
+  background: 'var(--da-rank-badge-bg, rgba(37, 99, 235, 0.22))',
+  color: 'var(--da-rank-badge-text, #bfdbfe)',
   fontWeight: 800,
   flexShrink: 0,
 };
 
 const rowTitleStyle = {
   fontWeight: 700,
-  color: '#f8fafc',
+  color: 'var(--da-row-title, #f8fafc)',
 };
 
 const rowSubtitleStyle = {
   fontSize: '12px',
-  color: '#94a3b8',
+  color: 'var(--da-row-subtitle, #94a3b8)',
   marginTop: '4px',
 };
 
 const pillStyle = {
   padding: '8px 12px',
   borderRadius: '999px',
-  background: 'linear-gradient(135deg, #0f4c81 0%, #2563eb 100%)',
-  color: '#ffffff',
+  background: 'var(--da-pill-bg, linear-gradient(135deg, #0f4c81 0%, #2563eb 100%))',
+  color: 'var(--da-pill-text, #ffffff)',
   fontWeight: 700,
   minWidth: '96px',
   textAlign: 'center' as const,
@@ -1399,17 +1397,16 @@ const insightGridStyle = {
 };
 
 const insightCardStyle = {
-  background:
-    'linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%)',
-  border: '1px solid rgba(148, 163, 184, 0.14)',
+  background: 'var(--da-panel-bg, linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%))',
+  border: 'var(--da-panel-border, 1px solid rgba(148, 163, 184, 0.14))',
   borderRadius: '22px',
   padding: '22px',
-  boxShadow: '0 18px 40px rgba(2, 6, 23, 0.35)',
+  boxShadow: 'var(--da-panel-shadow, 0 18px 40px rgba(2, 6, 23, 0.35))',
   backdropFilter: 'blur(14px)',
 };
 
 const insightTitleStyle = {
-  color: '#93c5fd',
+  color: 'var(--da-insight-title, #93c5fd)',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -1418,14 +1415,14 @@ const insightTitleStyle = {
 };
 
 const insightHeadlineStyle = {
-  color: '#f8fafc',
+  color: 'var(--da-card-value, #f8fafc)',
   fontSize: '20px',
   fontWeight: 800,
   marginBottom: '10px',
 };
 
 const insightBodyStyle = {
-  color: '#cbd5e1',
+  color: 'var(--da-insight-body, #cbd5e1)',
   lineHeight: 1.5,
 };
 
@@ -1433,9 +1430,9 @@ const emptyStateStyle = {
   marginTop: '16px',
   padding: '18px',
   borderRadius: '16px',
-  border: '1px dashed rgba(148, 163, 184, 0.24)',
-  backgroundColor: 'rgba(15, 23, 42, 0.52)',
-  color: '#94a3b8',
+  border: 'var(--da-empty-border, 1px dashed rgba(148, 163, 184, 0.24))',
+  backgroundColor: 'var(--da-empty-bg, rgba(15, 23, 42, 0.52))',
+  color: 'var(--da-empty-text, #94a3b8)',
   textAlign: 'center' as const,
 };
 
@@ -1452,9 +1449,9 @@ const errorBannerStyle = {
   marginBottom: '18px',
   padding: '14px 16px',
   borderRadius: '16px',
-  backgroundColor: 'rgba(127, 29, 29, 0.24)',
-  border: '1px solid rgba(248, 113, 113, 0.22)',
-  color: '#fecaca',
+  backgroundColor: 'var(--da-error-bg, rgba(127, 29, 29, 0.24))',
+  border: 'var(--da-error-border, 1px solid rgba(248, 113, 113, 0.22))',
+  color: 'var(--da-error-text, #fecaca)',
 };
 
 const statusRowStyle = {
@@ -1467,9 +1464,9 @@ const statusRowStyle = {
 const statusPillStyle = {
   padding: '10px 12px',
   borderRadius: '999px',
-  background: 'rgba(15, 23, 42, 0.62)',
-  border: '1px solid rgba(148, 163, 184, 0.14)',
-  color: '#cbd5e1',
+  background: 'var(--da-meta-bg, rgba(15, 23, 42, 0.62))',
+  border: 'var(--da-meta-border, 1px solid rgba(148, 163, 184, 0.14))',
+  color: 'var(--da-meta-text, #cbd5e1)',
   fontWeight: 700,
   fontSize: '12px',
 };
