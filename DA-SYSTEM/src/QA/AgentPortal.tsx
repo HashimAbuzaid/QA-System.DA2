@@ -29,16 +29,6 @@ type ScoreDetail = {
 
 type AuditItem = {
 
-    
-        
-          
-    
-
-        
-        Expand All
-    
-    @@ -44,6 +42,9 @@ type AuditItem = {
-  
   id: string;
   agent_id: string;
   agent_name: string;
@@ -57,22 +47,6 @@ type AuditItem = {
 
 type CallsRecord = {
 
-    
-          
-            
-    
-
-          
-          Expand Down
-          
-            
-    
-
-          
-          Expand Up
-    
-    @@ -124,7 +125,6 @@ type AgentPortalCachePayload = {
-  
   id: string;
   agent_id: string;
   agent_name: string;
@@ -149,22 +123,6 @@ const HIDDEN_AGENT_METRICS = new Set(['Issue was resolved']);
 function AgentPortal({ currentUser }: AgentPortalProps) {
   const [audits, setAudits] = useState<AuditItem[]>([]);
 
-    
-          
-            
-    
-
-          
-          Expand Down
-          
-            
-    
-
-          
-          Expand Up
-    
-    @@ -152,6 +152,15 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
-  
   const [callsRecords, setCallsRecords] = useState<CallsRecord[]>([]);
   const [ticketsRecords, setTicketsRecords] = useState<TicketsRecord[]>([]);
   const [salesRecords, setSalesRecords] = useState<SalesRecord[]>([]);
@@ -191,22 +149,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
     setAudits(payload.audits);
     setCallsRecords(payload.callsRecords);
 
-    
-          
-            
-    
-
-          
-          Expand Down
-          
-            
-    
-
-          
-          Expand Up
-    
-    @@ -393,6 +402,10 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
-  
     setTicketsRecords(payload.ticketsRecords);
     setSalesRecords(payload.salesRecords);
     setFeedbackItems(payload.feedbackItems);
@@ -421,22 +363,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
     setAuditDateFrom('');
     setAuditDateTo('');
 
-    
-          
-            
-    
-
-          
-          Expand Down
-          
-            
-    
-
-          
-          Expand Up
-    
-    @@ -679,58 +692,90 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
-  
   }
   const hasVisibleData =
     audits.length > 0 ||
@@ -681,7 +607,7 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
                           {getCommentsPreview(audit.comments)}
                         </div>
                       </div>
-                      
+
                       <div style={auditCellActionsStyle}>
                         <button
                           type="button"
@@ -755,22 +681,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
                         </div>
                       </div>
 
-    
-          
-            
-    
-
-          
-          Expand Down
-          
-            
-    
-
-          
-          Expand Up
-    
-    @@ -1074,39 +1119,68 @@ const expandedPanelStyle = {
-  
                     ) : null}
                   </div>
                 );
@@ -1118,16 +1028,6 @@ const metricNoteTextStyle = {
 
 const miniSecondaryButton = {
 
-    
-          
-            
-    
-
-          
-          Expand Down
-    
-    
-  
   padding: '8px 10px',
   background: 'rgba(15,23,42,0.82)',
   color: '#e5eefb',
