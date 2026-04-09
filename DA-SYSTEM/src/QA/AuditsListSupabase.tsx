@@ -7,6 +7,8 @@ type ScoreDetail = {
   borderline: number;
   adjustedWeight: number;
   earned: number;
+  counts_toward_score?: boolean;
+  metric_comment?: string | null;
 };
 type AuditItem = {
   id: string;
@@ -37,7 +39,14 @@ type AgentProfile = {
   team: 'Calls' | 'Tickets' | 'Sales' | null;
 };
 type CurrentProfile = { id: string; role: 'admin' | 'qa' | 'agent' | null };
-type Metric = { name: string; pass: number; borderline: number };
+type Metric = {
+  name: string;
+  pass: number;
+  borderline: number;
+  countsTowardScore?: boolean;
+  options?: string[];
+  defaultValue?: string;
+};
 type EditFormState = {
   team: 'Calls' | 'Tickets' | 'Sales' | '';
   caseType: string;
@@ -49,6 +58,26 @@ type EditFormState = {
 };
 const LOCKED_NA_METRICS = new Set(['Active Listening']);
 const AUTO_FAIL_METRICS = new Set(['Hold (≤3 mins)', 'Procedure']);
+
+function countsTowardScore(metric: Metric) {
+  return metric.countsTowardScore !== false;
+}
+
+function shouldShowMetricComment(result: string) {
+  return (
+    result === 'Borderline' || result === 'Fail' || result === 'Auto-Fail'
+  );
+}
+
+const ISSUE_WAS_RESOLVED_QUESTION: Metric = {
+  name: 'Issue was resolved',
+  pass: 0,
+  borderline: 0,
+  countsTowardScore: false,
+  options: ['', 'Yes', 'No'],
+  defaultValue: '',
+};
+
 const callsMetrics: Metric[] = [
   { name: 'Greeting', pass: 2, borderline: 1 },
   { name: 'Friendliness', pass: 5, borderline: 3 },
@@ -63,6 +92,7 @@ const callsMetrics: Metric[] = [
   { name: 'Refund Form', pass: 11, borderline: 5 },
   { name: 'Providing RL', pass: 5, borderline: 3 },
   { name: 'Ending', pass: 2, borderline: 1 },
+  ISSUE_WAS_RESOLVED_QUESTION,
 ];
 const ticketsMetrics: Metric[] = [
   { name: 'Greeting', pass: 5, borderline: 3 },
@@ -124,6 +154,7 @@ function AuditsListSupabase() {
     comments: '',
   });
   const [editScores, setEditScores] = useState<Record<string, string>>({});
+  const [editMetricComments, setEditMetricComments] = useState<Record<string, string>>({});
   const agentPickerRef = useRef<HTMLDivElement | null>(null);
   const isAdmin = currentProfile?.role === 'admin';
   useEffect(() => {
@@ -194,18 +225,35 @@ function AuditsListSupabase() {
     if (team === 'Sales') return salesMetrics;
     return [];
   }
-  function getMetricOptions(metricName: string) {
-    if (LOCKED_NA_METRICS.has(metricName)) return ['N/A'];
+  function getMetricOptions(metric: Metric) {
+    if (metric.options?.length) return metric.options;
+    if (LOCKED_NA_METRICS.has(metric.name)) return ['N/A'];
     const options = ['N/A', 'Pass', 'Borderline', 'Fail'];
-    if (AUTO_FAIL_METRICS.has(metricName)) options.push('Auto-Fail');
+    if (AUTO_FAIL_METRICS.has(metric.name)) options.push('Auto-Fail');
     return options;
+  }
+  function getMetricStoredValue(
+    metric: Metric,
+    scores: Record<string, string>
+  ) {
+    if (LOCKED_NA_METRICS.has(metric.name)) return 'N/A';
+    return scores[metric.name] ?? metric.defaultValue ?? 'N/A';
   }
   function createDefaultScores(team: EditFormState['team']) {
     const defaults: Record<string, string> = {};
     getMetricsForTeam(team).forEach((metric) => {
-      defaults[metric.name] = 'N/A';
+      defaults[metric.name] = metric.defaultValue ?? 'N/A';
     });
     return defaults;
+  }
+  function getMissingRequiredMetricLabels(
+    team: EditFormState['team'],
+    scores: Record<string, string>
+  ) {
+    return getMetricsForTeam(team)
+      .filter((metric) => Array.isArray(metric.options) && metric.defaultValue === '')
+      .filter((metric) => !getMetricStoredValue(metric, scores))
+      .map((metric) => metric.name);
   }
   function buildScoreMapFromAudit(audit: AuditItem) {
     const defaults = createDefaultScores(audit.team);
@@ -219,34 +267,44 @@ function AuditsListSupabase() {
     });
     return defaults;
   }
+
+  function buildMetricCommentMapFromAudit(audit: AuditItem) {
+    const defaults: Record<string, string> = {};
+    (audit.score_details || []).forEach((item) => {
+      if (typeof item.metric_comment === 'string' && item.metric_comment.trim()) {
+        defaults[item.metric] = item.metric_comment.trim();
+      }
+    });
+    return defaults;
+  }
+
   function getAdjustedScoreData(
     team: EditFormState['team'],
-    scores: Record<string, string>
+    scores: Record<string, string>,
+    metricComments: Record<string, string>
   ) {
     const metrics = getMetricsForTeam(team);
-    const activeMetrics = metrics.filter((item) => {
-      const itemResult = LOCKED_NA_METRICS.has(item.name)
-        ? 'N/A'
-        : scores[item.name] || 'N/A';
-      return itemResult !== 'N/A';
+    const scoredMetrics = metrics.filter((item) => countsTowardScore(item));
+    const activeMetrics = scoredMetrics.filter((item) => {
+      const itemResult = getMetricStoredValue(item, scores);
+      return itemResult !== 'N/A' && itemResult !== '';
     });
     const activeTotalWeight = activeMetrics.reduce(
       (sum, item) => sum + item.pass,
       0
     );
-    const fullTotalWeight = metrics.reduce((sum, item) => sum + item.pass, 0);
+    const fullTotalWeight = scoredMetrics.reduce((sum, item) => sum + item.pass, 0);
     const scoreDetails = metrics.map((metric) => {
-      const result = LOCKED_NA_METRICS.has(metric.name)
-        ? 'N/A'
-        : scores[metric.name] || 'N/A';
+      const result = getMetricStoredValue(metric, scores);
+      const scored = countsTowardScore(metric);
       const adjustedWeight =
-        result === 'N/A' || activeTotalWeight === 0
+        !scored || result === 'N/A' || result === '' || activeTotalWeight === 0
           ? 0
           : (metric.pass / activeTotalWeight) * fullTotalWeight;
       let earned = 0;
-      if (result === 'Pass') {
+      if (scored && result === 'Pass') {
         earned = adjustedWeight;
-      } else if (result === 'Borderline') {
+      } else if (scored && result === 'Borderline') {
         earned =
           metric.pass > 0
             ? adjustedWeight * (metric.borderline / metric.pass)
@@ -259,15 +317,23 @@ function AuditsListSupabase() {
         borderline: metric.borderline,
         adjustedWeight,
         earned,
+        counts_toward_score: scored,
+        metric_comment: shouldShowMetricComment(result)
+          ? (metricComments[metric.name] || '').trim() || null
+          : null,
       };
     });
     const hasAutoFail = scoreDetails.some(
       (item) =>
+        item.counts_toward_score !== false &&
         AUTO_FAIL_METRICS.has(item.metric) && item.result === 'Auto-Fail'
     );
     const qualityScore = hasAutoFail
       ? '0.00'
-      : scoreDetails.reduce((sum, item) => sum + item.earned, 0).toFixed(2);
+      : scoreDetails
+          .filter((item) => item.counts_toward_score !== false)
+          .reduce((sum, item) => sum + item.earned, 0)
+          .toFixed(2);
     return { scoreDetails, qualityScore, hasAutoFail };
   }
   function getAgentLabel(profile: AgentProfile) {
@@ -312,6 +378,9 @@ function AuditsListSupabase() {
     if (!text) return '-';
     if (text.length <= 120) return text;
     return `${text.slice(0, 117)}...`;
+  }
+  function isNoScoreDetail(detail: ScoreDetail) {
+    return detail.counts_toward_score === false;
   }
   const editTeamAgents = useMemo(() => {
     return profiles.filter(
@@ -407,6 +476,7 @@ function AuditsListSupabase() {
       comments: audit.comments || '',
     });
     setEditScores(buildScoreMapFromAudit(audit));
+    setEditMetricComments(buildMetricCommentMapFromAudit(audit));
   }
   function cancelEdit() {
     setEditingAuditId(null);
@@ -423,6 +493,7 @@ function AuditsListSupabase() {
       comments: '',
     });
     setEditScores({});
+    setEditMetricComments({});
   }
   function handleTeamChange(nextTeam: EditFormState['team']) {
     setEditForm((prev) => ({
@@ -436,6 +507,7 @@ function AuditsListSupabase() {
     setAgentSearch('');
     setIsAgentPickerOpen(false);
     setEditScores(createDefaultScores(nextTeam));
+    setEditMetricComments({});
   }
   function handleSelectAgent(profile: AgentProfile) {
     setSelectedAgentProfileId(profile.id);
@@ -445,10 +517,23 @@ function AuditsListSupabase() {
   function handleScoreChange(metricName: string, value: string) {
     if (LOCKED_NA_METRICS.has(metricName)) {
       setEditScores((prev) => ({ ...prev, [metricName]: 'N/A' }));
+      setEditMetricComments((prev) => ({ ...prev, [metricName]: '' }));
       return;
     }
     setEditScores((prev) => ({ ...prev, [metricName]: value }));
+    if (!shouldShowMetricComment(value)) {
+      setEditMetricComments((prev) => {
+        const next = { ...prev };
+        delete next[metricName];
+        return next;
+      });
+    }
   }
+
+  function handleMetricCommentChange(metricName: string, value: string) {
+    setEditMetricComments((prev) => ({ ...prev, [metricName]: value }));
+  }
+
   async function handleUpdate(auditId: string) {
     setErrorMessage('');
     setSuccessMessage('');
@@ -479,11 +564,25 @@ function AuditsListSupabase() {
       setErrorMessage('Please fill Ticket ID for Tickets.');
       return;
     }
+    const missingRequiredMetricLabels = getMissingRequiredMetricLabels(
+      editForm.team,
+      editScores
+    );
+    if (missingRequiredMetricLabels.length > 0) {
+      setErrorMessage(
+        `Please answer: ${missingRequiredMetricLabels.join(', ')}.`
+      );
+      return;
+    }
     if (!selectedAgent.agent_id) {
       setErrorMessage('Selected agent does not have an Agent ID.');
       return;
     }
-    const adjustedData = getAdjustedScoreData(editForm.team, editScores);
+    const adjustedData = getAdjustedScoreData(
+      editForm.team,
+      editScores,
+      editMetricComments
+    );
     setSaving(true);
     const updatePayload = {
       agent_id: selectedAgent.agent_id,
@@ -693,10 +792,10 @@ function AuditsListSupabase() {
     return '#1f2937';
   }
   if (loading) {
-    return <div style={{ color: 'var(--da-muted-text, #cbd5e1)' }}>Loading audits...</div>;
+    return <div style={{ color: '#cbd5e1' }}>Loading audits...</div>;
   }
   return (
-    <div style={{ color: 'var(--da-page-text, #e5eefb)' }}>
+    <div style={{ color: '#e5eefb' }}>
       {' '}
       <div style={pageHeaderStyle}>
         {' '}
@@ -704,7 +803,7 @@ function AuditsListSupabase() {
           {' '}
           <div style={sectionEyebrow}>Audit Management</div>{' '}
           <h2 style={{ marginBottom: '8px' }}>Audits List</h2>{' '}
-          <p style={{ margin: 0, color: 'var(--da-subtle-text, #94a3b8)' }}>
+          <p style={{ margin: 0, color: '#94a3b8' }}>
             {' '}
             QA can view audits and score details. Only admin can edit, delete,
             or release audits.{' '}
@@ -798,11 +897,11 @@ function AuditsListSupabase() {
       {isAdmin ? (
         <div style={{ ...panelStyle, marginTop: '18px' }}>
           {' '}
-          <h3 style={{ marginTop: 0, color: 'var(--da-title, #f8fafc)' }}>
+          <h3 style={{ marginTop: 0, color: '#f8fafc' }}>
             {' '}
             Weekly Release Controls{' '}
           </h3>{' '}
-          <p style={{ color: 'var(--da-subtle-text, #94a3b8)' }}>
+          <p style={{ color: '#94a3b8' }}>
             {' '}
             Use the filters above to choose the week, team, or case type, then
             share or hide filtered audits, or hide all audits at once.{' '}
@@ -867,7 +966,7 @@ function AuditsListSupabase() {
         </div>
       )}{' '}
       {filteredAudits.length === 0 ? (
-        <p style={{ color: 'var(--da-subtle-text, #94a3b8)', marginTop: '18px' }}>No audits found.</p>
+        <p style={{ color: '#94a3b8', marginTop: '18px' }}>No audits found.</p>
       ) : (
         <div style={auditTableWrapStyle}>
           {' '}
@@ -889,7 +988,11 @@ function AuditsListSupabase() {
               const isEditing = editingAuditId === audit.id;
               const isExpanded = expandedId === audit.id || isEditing;
               const adjustedEditData = isEditing
-                ? getAdjustedScoreData(editForm.team, editScores)
+                ? getAdjustedScoreData(
+                    editForm.team,
+                    editScores,
+                    editMetricComments
+                  )
                 : null;
               return (
                 <div key={audit.id} style={auditEntryStyle}>
@@ -1077,8 +1180,8 @@ function AuditsListSupabase() {
                                   <span
                                     style={{
                                       color: selectedAgent
-                                        ? 'var(--da-title, #f8fafc)'
-                                        : 'var(--da-subtle-text, #94a3b8)',
+                                        ? '#f8fafc'
+                                        : '#94a3b8',
                                     }}
                                   >
                                     {' '}
@@ -1243,42 +1346,63 @@ function AuditsListSupabase() {
                             }}
                           >
                             {' '}
-                            {getMetricsForTeam(editForm.team).map((metric) => (
-                              <div key={metric.name} style={scoreRowStyle}>
-                                {' '}
-                                <div
-                                  style={{ color: 'var(--da-muted-text, #cbd5e1)', fontWeight: 700 }}
-                                >
-                                  {' '}
-                                  {metric.name} ({metric.pass} pts){' '}
-                                </div>{' '}
-                                <select
-                                  value={
-                                    LOCKED_NA_METRICS.has(metric.name)
-                                      ? 'N/A'
-                                      : editScores[metric.name] || 'N/A'
-                                  }
-                                  onChange={(e) =>
-                                    handleScoreChange(
-                                      metric.name,
-                                      e.target.value
-                                    )
-                                  }
-                                  disabled={LOCKED_NA_METRICS.has(metric.name)}
-                                  style={compactFieldStyle}
-                                >
-                                  {' '}
-                                  {getMetricOptions(metric.name).map(
-                                    (option) => (
-                                      <option key={option} value={option}>
-                                        {' '}
-                                        {option}{' '}
-                                      </option>
-                                    )
-                                  )}{' '}
-                                </select>{' '}
-                              </div>
-                            ))}{' '}
+                            {getMetricsForTeam(editForm.team).map((metric) => {
+                              const metricValue = getMetricStoredValue(
+                                metric,
+                                editScores
+                              );
+                              const showMetricComment =
+                                countsTowardScore(metric) &&
+                                shouldShowMetricComment(metricValue);
+
+                              return (
+                                <div key={metric.name} style={scoreRowStyle}>
+                                  <div
+                                    style={{ color: '#cbd5e1', fontWeight: 700 }}
+                                  >
+                                    {countsTowardScore(metric)
+                                      ? `${metric.name} (${metric.pass} pts)`
+                                      : metric.name}
+                                  </div>
+                                  <div style={{ display: 'grid', gap: '8px', width: '100%' }}>
+                                    <select
+                                      value={metricValue}
+                                      onChange={(e) =>
+                                        handleScoreChange(
+                                          metric.name,
+                                          e.target.value
+                                        )
+                                      }
+                                      disabled={LOCKED_NA_METRICS.has(metric.name)}
+                                      style={compactFieldStyle}
+                                    >
+                                      {getMetricOptions(metric).map((option) => (
+                                        <option
+                                          key={option || '__empty__'}
+                                          value={option}
+                                        >
+                                          {option || 'Select answer'}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    {showMetricComment ? (
+                                      <textarea
+                                        value={editMetricComments[metric.name] || ''}
+                                        onChange={(e) =>
+                                          handleMetricCommentChange(
+                                            metric.name,
+                                            e.target.value
+                                          )
+                                        }
+                                        rows={2}
+                                        placeholder="Leave a short note for the agent"
+                                        style={compactTextareaStyle}
+                                      />
+                                    ) : null}
+                                  </div>
+                                </div>
+                              );
+                            })}{' '}
                           </div>{' '}
                           {adjustedEditData ? (
                             <div style={editSummaryStyle}>
@@ -1386,49 +1510,55 @@ function AuditsListSupabase() {
                           </div>{' '}
                           <div style={{ display: 'grid', gap: '10px' }}>
                             {' '}
-                            {(audit.score_details || []).map((detail) => (
-                              <div
-                                key={`${audit.id}-${detail.metric}`}
-                                style={detailRowStyle}
-                              >
-                                {' '}
-                                <div>
-                                  {' '}
-                                  <div
-                                    style={{
-                                      color: 'var(--da-title, #f8fafc)',
-                                      fontWeight: 700,
-                                    }}
-                                  >
-                                    {' '}
-                                    {detail.metric}{' '}
-                                  </div>{' '}
-                                  <div
-                                    style={{
-                                      color: 'var(--da-subtle-text, #94a3b8)',
-                                      fontSize: '12px',
-                                      marginTop: '4px',
-                                    }}
-                                  >
-                                    {' '}
-                                    Pass {detail.pass} • Borderline{' '}
-                                    {detail.borderline} • Adjusted{' '}
-                                    {detail.adjustedWeight.toFixed(2)}{' '}
-                                  </div>{' '}
-                                </div>{' '}
-                                <span
-                                  style={{
-                                    ...pillStyle,
-                                    backgroundColor: getResultBadgeColor(
-                                      detail.result
-                                    ),
-                                  }}
+                            {(audit.score_details || []).map((detail) => {
+                              const metricComment =
+                                typeof detail.metric_comment === 'string' &&
+                                detail.metric_comment.trim()
+                                  ? detail.metric_comment.trim()
+                                  : null;
+
+                              return (
+                                <div
+                                  key={`${audit.id}-${detail.metric}`}
+                                  style={detailCardStyle}
                                 >
-                                  {' '}
-                                  {detail.result}{' '}
-                                </span>{' '}
-                              </div>
-                            ))}{' '}
+                                  <div style={detailTopRowStyle}>
+                                    <div>
+                                      <div style={detailMetricTitleStyle}>
+                                        {detail.metric}
+                                      </div>
+                                      <div style={detailMetricMetaStyle}>
+                                        {isNoScoreDetail(detail)
+                                          ? 'Yes / No question'
+                                          : `Pass ${detail.pass} • Borderline ${detail.borderline} • Adjusted ${detail.adjustedWeight.toFixed(
+                                              2
+                                            )}`}
+                                      </div>
+                                    </div>
+                                    <span
+                                      style={{
+                                        ...pillStyle,
+                                        backgroundColor: getResultBadgeColor(
+                                          detail.result
+                                        ),
+                                      }}
+                                    >
+                                      {detail.result}
+                                    </span>
+                                  </div>
+                                  {metricComment ? (
+                                    <div style={metricNoteCardStyle}>
+                                      <div style={metricNoteLabelStyle}>
+                                        QA Note
+                                      </div>
+                                      <div style={metricNoteTextStyle}>
+                                        {metricComment}
+                                      </div>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              );
+                            })}{' '}
                           </div>{' '}
                         </div>
                       )}{' '}
@@ -1452,7 +1582,7 @@ const pageHeaderStyle = {
   marginBottom: '18px',
 };
 const sectionEyebrow = {
-  color: 'var(--da-accent-text, #60a5fa)',
+  color: '#60a5fa',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -1461,7 +1591,7 @@ const sectionEyebrow = {
 };
 const panelStyle = {
   background:
-    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
+    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
   border: '1px solid rgba(148,163,184,0.14)',
   borderRadius: '24px',
   padding: '22px',
@@ -1477,7 +1607,7 @@ const labelStyle = {
   display: 'block',
   marginBottom: '8px',
   fontSize: '13px',
-  color: 'var(--da-muted-text, #cbd5e1)',
+  color: '#cbd5e1',
   fontWeight: 700,
 };
 const fieldStyle = {
@@ -1485,21 +1615,31 @@ const fieldStyle = {
   padding: '14px 16px',
   borderRadius: '16px',
   border: '1px solid rgba(148,163,184,0.16)',
-  background: 'var(--da-surface-bg, rgba(15,23,42,0.7))',
-  color: 'var(--da-page-text, #e5eefb)',
+  background: 'rgba(15,23,42,0.7)',
+  color: '#e5eefb',
 };
 const compactFieldStyle = {
+  width: '100%',
   padding: '10px 12px',
   borderRadius: '12px',
   border: '1px solid rgba(148,163,184,0.16)',
-  background: 'var(--da-surface-bg, rgba(15,23,42,0.7))',
-  color: 'var(--da-page-text, #e5eefb)',
+  background: 'rgba(15,23,42,0.7)',
+  color: '#e5eefb',
   minWidth: '170px',
+};
+const compactTextareaStyle = {
+  width: '100%',
+  padding: '10px 12px',
+  borderRadius: '12px',
+  border: '1px solid rgba(148,163,184,0.16)',
+  background: 'rgba(15,23,42,0.7)',
+  color: '#e5eefb',
+  resize: 'vertical' as const,
 };
 const secondaryButton = {
   padding: '12px 16px',
-  background: 'var(--da-field-bg, rgba(15,23,42,0.74))',
-  color: 'var(--da-page-text, #e5eefb)',
+  background: 'rgba(15,23,42,0.74)',
+  color: '#e5eefb',
   border: '1px solid rgba(148,163,184,0.18)',
   borderRadius: '14px',
   cursor: 'pointer',
@@ -1525,8 +1665,8 @@ const dangerButton = {
 };
 const miniSecondaryButton = {
   padding: '8px 10px',
-  background: 'var(--da-field-bg, rgba(15,23,42,0.82))',
-  color: 'var(--da-page-text, #e5eefb)',
+  background: 'rgba(15,23,42,0.82)',
+  color: '#e5eefb',
   border: '1px solid rgba(148,163,184,0.18)',
   borderRadius: '10px',
   cursor: 'pointer',
@@ -1559,7 +1699,7 @@ const errorBanner = {
   borderRadius: '16px',
   backgroundColor: 'rgba(127,29,29,0.24)',
   border: '1px solid rgba(252,165,165,0.24)',
-  color: 'var(--da-error-text, #fecaca)',
+  color: '#fecaca',
 };
 const successBanner = {
   marginBottom: '16px',
@@ -1567,7 +1707,7 @@ const successBanner = {
   borderRadius: '16px',
   backgroundColor: 'rgba(22,101,52,0.24)',
   border: '1px solid rgba(134,239,172,0.22)',
-  color: 'var(--da-success-text, #bbf7d0)',
+  color: '#bbf7d0',
 };
 const infoBanner = {
   backgroundColor: 'rgba(30,64,175,0.18)',
@@ -1584,7 +1724,7 @@ const auditTableWrapStyle = {
   borderRadius: '20px',
   border: '1px solid rgba(148,163,184,0.12)',
   background:
-    'linear-gradient(180deg, var(--da-field-bg, rgba(15,23,42,0.76)) 0%, var(--da-card-bg, rgba(15,23,42,0.58)) 100%)',
+    'linear-gradient(180deg, rgba(15,23,42,0.76) 0%, rgba(15,23,42,0.58) 100%)',
 };
 const auditTableStyle = { minWidth: '1800px' };
 const auditEntryStyle = { borderBottom: '1px solid rgba(148,163,184,0.08)' };
@@ -1601,7 +1741,7 @@ const auditHeaderRowStyle = {
   top: 0,
   zIndex: 1,
   background: 'rgba(2,6,23,0.94)',
-  color: 'var(--da-accent-text, #93c5fd)',
+  color: '#93c5fd',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -1621,7 +1761,7 @@ const auditCellActionsStyle = {
   flexWrap: 'wrap' as const,
 };
 const primaryCellTextStyle = {
-  color: 'var(--da-title, #f8fafc)',
+  color: '#f8fafc',
   fontSize: '14px',
   fontWeight: 600,
   lineHeight: 1.4,
@@ -1640,7 +1780,7 @@ const scorePillStyle = {
   minWidth: '84px',
   padding: '8px 10px',
   borderRadius: '999px',
-  background: 'var(--da-active-option-bg, rgba(37, 99, 235, 0.18))',
+  background: 'rgba(37,99,235,0.18)',
   border: '1px solid rgba(96,165,250,0.26)',
   color: '#dbeafe',
   fontSize: '13px',
@@ -1661,7 +1801,7 @@ const expandedPanelStyle = {
   borderRadius: '18px',
   border: '1px solid rgba(148,163,184,0.12)',
   background:
-    'linear-gradient(180deg, var(--da-field-bg, rgba(15,23,42,0.78)) 0%, var(--da-surface-bg, rgba(15,23,42,0.6)) 100%)',
+    'linear-gradient(180deg, rgba(15,23,42,0.78) 0%, rgba(15,23,42,0.6) 100%)',
   padding: '18px',
 };
 const editGridStyle = {
@@ -1678,11 +1818,11 @@ const detailInfoGridStyle = {
 const detailInfoCardStyle = {
   borderRadius: '14px',
   border: '1px solid rgba(148,163,184,0.12)',
-  background: 'var(--da-card-bg, rgba(15,23,42,0.52))',
+  background: 'rgba(15,23,42,0.52)',
   padding: '14px 16px',
 };
 const detailLabelStyle = {
-  color: 'var(--da-subtle-text, #94a3b8)',
+  color: '#94a3b8',
   fontSize: '12px',
   fontWeight: 700,
   textTransform: 'uppercase' as const,
@@ -1690,7 +1830,7 @@ const detailLabelStyle = {
   marginBottom: '8px',
 };
 const detailValueStyle = {
-  color: 'var(--da-title, #f8fafc)',
+  color: '#f8fafc',
   fontSize: '14px',
   fontWeight: 700,
   lineHeight: 1.5,
@@ -1704,11 +1844,11 @@ const detailSubValueStyle = {
 const fullCommentCardStyle = {
   borderRadius: '14px',
   border: '1px solid rgba(148,163,184,0.12)',
-  background: 'var(--da-card-bg, rgba(15,23,42,0.52))',
+  background: 'rgba(15,23,42,0.52)',
   padding: '14px 16px',
 };
 const fullCommentTextStyle = {
-  color: 'var(--da-title, #f8fafc)',
+  color: '#f8fafc',
   fontSize: '14px',
   lineHeight: 1.7,
   whiteSpace: 'pre-wrap' as const,
@@ -1719,8 +1859,8 @@ const pickerButtonStyle = {
   padding: '14px 16px',
   borderRadius: '16px',
   border: '1px solid rgba(148,163,184,0.16)',
-  background: 'var(--da-surface-bg, rgba(15,23,42,0.7))',
-  color: 'var(--da-page-text, #e5eefb)',
+  background: 'rgba(15,23,42,0.7)',
+  color: '#e5eefb',
   textAlign: 'left' as const,
   cursor: 'pointer',
   display: 'flex',
@@ -1732,7 +1872,7 @@ const pickerMenuStyle = {
   top: 'calc(100% + 8px)',
   left: 0,
   right: 0,
-  background: 'var(--da-menu-bg, rgba(15,23,42,0.96))',
+  background: 'rgba(15,23,42,0.96)',
   border: '1px solid rgba(148,163,184,0.16)',
   borderRadius: '18px',
   boxShadow: '0 18px 44px rgba(2,6,23,0.45)',
@@ -1754,22 +1894,22 @@ const pickerListStyle = {
 const pickerInfoStyle = {
   padding: '12px',
   borderRadius: '12px',
-  backgroundColor: 'var(--da-surface-bg, rgba(15,23,42,0.68))',
-  color: 'var(--da-subtle-text, #94a3b8)',
+  backgroundColor: 'rgba(15,23,42,0.68)',
+  color: '#94a3b8',
 };
 const pickerOptionStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
   border: '1px solid rgba(148,163,184,0.12)',
-  backgroundColor: 'var(--da-surface-bg, rgba(15,23,42,0.6))',
+  backgroundColor: 'rgba(15,23,42,0.6)',
   textAlign: 'left' as const,
   cursor: 'pointer',
-  color: 'var(--da-page-text, #e5eefb)',
+  color: '#e5eefb',
   fontWeight: 600,
 };
 const pickerOptionActiveStyle = {
   border: '1px solid rgba(96,165,250,0.36)',
-  backgroundColor: 'var(--da-active-option-bg, rgba(30, 64, 175, 0.32))',
+  backgroundColor: 'rgba(30,64,175,0.32)',
 };
 const scoreRowStyle = {
   display: 'flex',
@@ -1780,7 +1920,7 @@ const scoreRowStyle = {
   padding: '12px 14px',
   borderRadius: '14px',
   border: '1px solid rgba(148,163,184,0.12)',
-  background: 'var(--da-card-bg, rgba(15,23,42,0.52))',
+  background: 'rgba(15,23,42,0.52)',
 };
 const editSummaryStyle = {
   marginTop: '18px',
@@ -1788,10 +1928,10 @@ const editSummaryStyle = {
   padding: '18px',
   border: '1px solid rgba(96,165,250,0.2)',
   background:
-    'linear-gradient(135deg, rgba(30,64,175,0.22) 0%, var(--da-card-bg, rgba(15,23,42,0.5)) 100%)',
+    'linear-gradient(135deg, rgba(30,64,175,0.22) 0%, rgba(15,23,42,0.5) 100%)',
 };
 const summaryEyebrowStyle = {
-  color: 'var(--da-accent-text, #93c5fd)',
+  color: '#93c5fd',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
   fontSize: '12px',
@@ -1800,17 +1940,51 @@ const summaryEyebrowStyle = {
 const summaryScoreStyle = {
   fontSize: '32px',
   fontWeight: 800,
-  color: 'var(--da-title, #f8fafc)',
+  color: '#f8fafc',
   marginTop: '8px',
 };
-const detailRowStyle = {
+const detailCardStyle = {
+  padding: '14px',
+  borderRadius: '16px',
+  border: '1px solid rgba(148,163,184,0.1)',
+  background: 'rgba(10, 23, 56, 0.76)',
+};
+const detailTopRowStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   gap: '12px',
-  alignItems: 'center',
-  padding: '12px 14px',
+  alignItems: 'flex-start',
+  flexWrap: 'wrap' as const,
+};
+const detailMetricTitleStyle = {
+  color: '#f8fafc',
+  fontWeight: 800,
+  fontSize: '16px',
+};
+const detailMetricMetaStyle = {
+  color: '#94a3b8',
+  fontSize: '12px',
+  marginTop: '6px',
+};
+const metricNoteCardStyle = {
+  marginTop: '12px',
   borderRadius: '14px',
+  padding: '12px 14px',
   border: '1px solid rgba(148,163,184,0.12)',
-  background: 'var(--da-card-bg, rgba(15,23,42,0.52))',
+  background: 'rgba(15,23,42,0.52)',
+};
+const metricNoteLabelStyle = {
+  color: '#93c5fd',
+  fontSize: '11px',
+  fontWeight: 800,
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase' as const,
+  marginBottom: '8px',
+};
+const metricNoteTextStyle = {
+  color: '#e5eefb',
+  fontSize: '14px',
+  lineHeight: 1.55,
+  whiteSpace: 'pre-wrap' as const,
 };
 export default AuditsListSupabase;
