@@ -25,6 +25,7 @@ type ScoreDetail = {
   borderline: number;
   adjustedWeight: number;
   earned: number;
+  counts_toward_score?: boolean;
   metric_comment?: string | null;
 };
 
@@ -123,6 +124,7 @@ type AgentPortalCachePayload = {
 };
 
 const AGENT_PORTAL_CACHE_TTL_MS = 1000 * 60 * 3;
+const HIDDEN_AGENT_METRICS = new Set(['Issue was resolved']);
 
 function AgentPortal({ currentUser }: AgentPortalProps) {
   const [audits, setAudits] = useState<AuditItem[]>([]);
@@ -148,15 +150,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
 
   useEffect(() => {
     void loadAgentData();
-  }, [cacheKey]);
-
-  useEffect(() => {
-    function handleWindowFocus() {
-      void loadAgentData({ force: true, background: true });
-    }
-
-    window.addEventListener('focus', handleWindowFocus);
-    return () => window.removeEventListener('focus', handleWindowFocus);
   }, [cacheKey]);
 
   function applyAgentData(payload: AgentPortalCachePayload) {
@@ -315,7 +308,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
       setRefreshing(false);
     }
   }
-
   const filteredAudits = useMemo(() => {
     return audits.filter((audit) => {
       const matchesFrom = auditDateFrom
@@ -364,9 +356,9 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
 
   function getResultBadgeColor(result: string) {
     if (result === 'Pass') return '#166534';
-    if (result === 'Borderline') return '#b45309';
+    if (result === 'Borderline') return '#92400e';
     if (result === 'Fail' || result === 'Auto-Fail') return '#991b1b';
-    if (result === 'N/A') return '#475569';
+    if (result === 'N/A') return '#374151';
     return '#1f2937';
   }
 
@@ -668,7 +660,7 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
                           {getCommentsPreview(audit.comments)}
                         </div>
                       </div>
-
+                      
                       <div style={auditCellActionsStyle}>
                         <button
                           type="button"
@@ -687,67 +679,58 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
                     {isExpanded ? (
                       <div style={auditExpandedRowStyle}>
                         <div style={expandedPanelStyle}>
-                          <div style={scoreDetailsHeaderStyle}>
-                            <div>
-                              <div style={sectionEyebrow}>Score Details</div>
-                              <div style={scoreDetailsSubtextStyle}>
-                                Full metric breakdown plus QA notes for any
-                                Borderline / Fail results.
-                              </div>
-                            </div>
-                            <div style={scoreDetailsSummaryPillStyle}>
-                              Final Score {Number(audit.quality_score).toFixed(2)}%
-                            </div>
-                          </div>
-
-                          <div style={scoreDetailsGridStyle}>
-                            {(audit.score_details || []).map((detail) => {
-                              const hasMetricComment =
-                                typeof detail.metric_comment === 'string' &&
-                                detail.metric_comment.trim().length > 0;
-
-                              return (
+                          <div style={sectionEyebrow}>Score Details</div>
+                          <div style={{ display: 'grid', gap: '10px' }}>
+                            {(audit.score_details || [])
+                              .filter(
+                                (detail) => !HIDDEN_AGENT_METRICS.has(detail.metric)
+                              )
+                              .map((detail) => (
                                 <div
                                   key={`${audit.id}-${detail.metric}`}
-                                  style={detailCardStyle}
+                                  style={detailRowStyle}
                                 >
-                                  <div style={detailTopRowStyle}>
-                                    <div>
-                                      <div style={detailMetricTitleStyle}>
-                                        {detail.metric}
-                                      </div>
-                                      <div style={detailMetricMetaStyle}>
-                                        Pass {detail.pass} • Borderline{' '}
-                                        {detail.borderline} • Adjusted{' '}
-                                        {detail.adjustedWeight.toFixed(2)}
-                                      </div>
-                                    </div>
-
-                                    <span
+                                  <div>
+                                    <div
                                       style={{
-                                        ...detailResultPillStyle,
-                                        backgroundColor: getResultBadgeColor(
-                                          detail.result
-                                        ),
+                                        color: '#f8fafc',
+                                        fontWeight: 700,
                                       }}
                                     >
-                                      {detail.result}
-                                    </span>
-                                  </div>
-
-                                  {hasMetricComment ? (
-                                    <div style={metricNoteCardStyle}>
-                                      <div style={metricNoteLabelStyle}>
-                                        QA Note
-                                      </div>
-                                      <div style={metricNoteTextStyle}>
-                                        {detail.metric_comment}
-                                      </div>
+                                      {detail.metric}
                                     </div>
-                                  ) : null}
+                                    <div
+                                      style={{
+                                        color: '#94a3b8',
+                                        fontSize: '12px',
+                                        marginTop: '4px',
+                                      }}
+                                    >
+                                      {detail.counts_toward_score === false
+                                        ? 'Administrative question'
+                                        : `Pass ${detail.pass} • Borderline ${detail.borderline} • Adjusted ${detail.adjustedWeight.toFixed(2)}`}
+                                    </div>
+                                    {detail.metric_comment ? (
+                                      <div style={metricNoteCardStyle}>
+                                        <div style={metricNoteLabelStyle}>QA Note</div>
+                                        <div style={metricNoteTextStyle}>
+                                          {detail.metric_comment}
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                  <span
+                                    style={{
+                                      ...pillStyle,
+                                      backgroundColor: getResultBadgeColor(
+                                        detail.result
+                                      ),
+                                    }}
+                                  >
+                                    {detail.result}
+                                  </span>
                                 </div>
-                              );
-                            })}
+                              ))}
                           </div>
                         </div>
                       </div>
@@ -1087,97 +1070,41 @@ const expandedPanelStyle = {
   borderRadius: '18px',
   border: '1px solid rgba(148,163,184,0.12)',
   background:
-    'linear-gradient(180deg, rgba(7,17,31,0.92) 0%, rgba(10,22,45,0.84) 100%)',
+    'linear-gradient(180deg, rgba(15,23,42,0.78) 0%, rgba(15,23,42,0.6) 100%)',
   padding: '18px',
 };
 
-const scoreDetailsHeaderStyle = {
-  display: 'flex',
-  alignItems: 'flex-start',
-  justifyContent: 'space-between',
-  gap: '16px',
-  flexWrap: 'wrap' as const,
-  marginBottom: '18px',
-};
-
-const scoreDetailsSubtextStyle = {
-  color: '#94a3b8',
-  fontSize: '13px',
-  lineHeight: 1.5,
-};
-
-const scoreDetailsSummaryPillStyle = {
-  padding: '10px 14px',
-  borderRadius: '999px',
-  border: '1px solid rgba(96,165,250,0.24)',
-  background: 'rgba(30,64,175,0.18)',
-  color: '#dbeafe',
-  fontSize: '13px',
-  fontWeight: 800,
-};
-
-const scoreDetailsGridStyle = {
-  display: 'grid',
-  gap: '10px',
-};
-
-const detailCardStyle = {
-  padding: '14px',
-  borderRadius: '16px',
-  border: '1px solid rgba(148,163,184,0.1)',
-  background: 'rgba(10, 23, 56, 0.76)',
-};
-
-const detailTopRowStyle = {
+const detailRowStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   gap: '12px',
-  alignItems: 'flex-start',
-  flexWrap: 'wrap' as const,
-};
-
-const detailMetricTitleStyle = {
-  color: '#f8fafc',
-  fontWeight: 800,
-  fontSize: '16px',
-};
-
-const detailMetricMetaStyle = {
-  color: '#94a3b8',
-  fontSize: '12px',
-  marginTop: '6px',
-};
-
-const detailResultPillStyle = {
-  color: '#ffffff',
-  padding: '8px 12px',
-  borderRadius: '999px',
-  fontSize: '12px',
-  fontWeight: 800,
-  minWidth: '92px',
-  textAlign: 'center' as const,
+  alignItems: 'center',
+  padding: '12px 14px',
+  borderRadius: '14px',
+  border: '1px solid rgba(148,163,184,0.12)',
+  background: 'rgba(15,23,42,0.52)',
 };
 
 const metricNoteCardStyle = {
-  marginTop: '12px',
-  borderRadius: '14px',
-  padding: '12px 14px',
+  marginTop: '10px',
+  borderRadius: '12px',
   border: '1px solid rgba(148,163,184,0.12)',
   background: 'rgba(15,23,42,0.52)',
+  padding: '10px 12px',
 };
 
 const metricNoteLabelStyle = {
   color: '#93c5fd',
   fontSize: '11px',
   fontWeight: 800,
-  letterSpacing: '0.14em',
+  letterSpacing: '0.1em',
   textTransform: 'uppercase' as const,
-  marginBottom: '8px',
+  marginBottom: '6px',
 };
 
 const metricNoteTextStyle = {
   color: '#e5eefb',
-  fontSize: '14px',
+  fontSize: '13px',
   lineHeight: 1.55,
   whiteSpace: 'pre-wrap' as const,
 };
