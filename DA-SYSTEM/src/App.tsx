@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
 import Login from './QA/Login';
 import ResetPassword from './QA/ResetPassword';
@@ -59,7 +60,7 @@ function clearRecoveryUrlState() {
 }
 
 function App() {
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState<StaffPage>('dashboard');
@@ -67,7 +68,7 @@ function App() {
   const [profileErrorMessage, setProfileErrorMessage] = useState('');
   const [recoveryMode, setRecoveryMode] = useState(false);
 
-  const recoveryModeRef = useRef(false);
+  const recoveryModeRef = useRef<boolean>(false);
 
   useEffect(() => {
     recoveryModeRef.current = recoveryMode;
