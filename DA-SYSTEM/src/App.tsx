@@ -505,15 +505,19 @@ function createStyles(theme: ThemePalette) {
 }
 
 
+
 function applyThemeCssVariables(mode: ThemeMode) {
   if (typeof document === 'undefined') return;
 
   const lightVars: Record<string, string> = {
     '--da-page-text': '#334155',
     '--da-title': '#0f172a',
-    '--da-subtitle': '#64748b',
+    '--da-muted-text': '#475569',
+    '--da-subtle-text': '#64748b',
     '--da-eyebrow': '#3b82f6',
     '--da-section-eyebrow': '#2563eb',
+    '--da-accent-text': '#2563eb',
+    '--da-option-bg': '#ffffff',
     '--da-meta-bg': 'rgba(255,255,255,0.92)',
     '--da-meta-border': '1px solid rgba(148,163,184,0.22)',
     '--da-meta-text': '#475569',
@@ -523,6 +527,9 @@ function applyThemeCssVariables(mode: ThemeMode) {
     '--da-secondary-bg': 'rgba(255,255,255,0.96)',
     '--da-secondary-border': '1px solid rgba(148,163,184,0.24)',
     '--da-secondary-text': '#334155',
+    '--da-surface-bg': 'rgba(255,255,255,0.94)',
+    '--da-card-bg': 'rgba(248,250,252,0.94)',
+    '--da-menu-bg': 'rgba(255,255,255,0.98)',
     '--da-panel-bg': 'linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(244,247,255,0.92) 100%)',
     '--da-panel-border': '1px solid rgba(148,163,184,0.18)',
     '--da-panel-shadow': '0 18px 40px rgba(148,163,184,0.18)',
@@ -546,17 +553,31 @@ function applyThemeCssVariables(mode: ThemeMode) {
     '--da-status-pill-bg': 'rgba(255,255,255,0.94)',
     '--da-status-pill-border': '1px solid rgba(148,163,184,0.22)',
     '--da-status-pill-text': '#475569',
-    '--da-error-bg': 'rgba(254,242,242,0.95)',
+    '--da-active-option-bg': 'rgba(191,219,254,0.92)',
+    '--da-success-bg': 'rgba(240,253,244,0.98)',
+    '--da-success-border': '1px solid rgba(74,222,128,0.28)',
+    '--da-success-text': '#166534',
+    '--da-warning-bg': 'rgba(255,247,237,0.98)',
+    '--da-warning-border': '1px solid rgba(251,191,36,0.28)',
+    '--da-warning-text': '#9a3412',
+    '--da-error-bg': 'rgba(254,242,242,0.98)',
     '--da-error-border': '1px solid rgba(248,113,113,0.24)',
     '--da-error-text': '#b91c1c',
+    '--da-widget-bg': 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(244,247,255,0.94) 100%)',
+    '--da-widget-border': '1px solid rgba(148,163,184,0.2)',
+    '--da-widget-title': '#0f172a',
+    '--da-widget-subtitle': '#64748b',
   };
 
   const darkVars: Record<string, string> = {
     '--da-page-text': '#e5eefb',
     '--da-title': '#f8fafc',
-    '--da-subtitle': '#94a3b8',
+    '--da-muted-text': '#cbd5e1',
+    '--da-subtle-text': '#94a3b8',
     '--da-eyebrow': '#60a5fa',
     '--da-section-eyebrow': '#93c5fd',
+    '--da-accent-text': '#93c5fd',
+    '--da-option-bg': '#0f172a',
     '--da-meta-bg': 'rgba(15, 23, 42, 0.62)',
     '--da-meta-border': '1px solid rgba(148, 163, 184, 0.14)',
     '--da-meta-text': '#cbd5e1',
@@ -566,6 +587,9 @@ function applyThemeCssVariables(mode: ThemeMode) {
     '--da-secondary-bg': 'rgba(15, 23, 42, 0.74)',
     '--da-secondary-border': '1px solid rgba(148, 163, 184, 0.18)',
     '--da-secondary-text': '#e5eefb',
+    '--da-surface-bg': 'rgba(15, 23, 42, 0.68)',
+    '--da-card-bg': 'rgba(15, 23, 42, 0.52)',
+    '--da-menu-bg': 'rgba(15, 23, 42, 0.96)',
     '--da-panel-bg': 'linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%)',
     '--da-panel-border': '1px solid rgba(148, 163, 184, 0.14)',
     '--da-panel-shadow': '0 18px 40px rgba(2, 6, 23, 0.35)',
@@ -589,9 +613,20 @@ function applyThemeCssVariables(mode: ThemeMode) {
     '--da-status-pill-bg': 'rgba(15, 23, 42, 0.62)',
     '--da-status-pill-border': '1px solid rgba(148, 163, 184, 0.14)',
     '--da-status-pill-text': '#cbd5e1',
+    '--da-active-option-bg': 'rgba(30, 64, 175, 0.32)',
+    '--da-success-bg': 'rgba(22, 101, 52, 0.16)',
+    '--da-success-border': '1px solid rgba(74, 222, 128, 0.2)',
+    '--da-success-text': '#bbf7d0',
+    '--da-warning-bg': 'rgba(127, 29, 29, 0.22)',
+    '--da-warning-border': '1px solid rgba(252, 165, 165, 0.24)',
+    '--da-warning-text': '#fecaca',
     '--da-error-bg': 'rgba(127, 29, 29, 0.24)',
     '--da-error-border': '1px solid rgba(248, 113, 113, 0.22)',
     '--da-error-text': '#fecaca',
+    '--da-widget-bg': 'linear-gradient(180deg, rgba(15,23,42,0.94) 0%, rgba(15,23,42,0.82) 100%)',
+    '--da-widget-border': '1px solid rgba(96,165,250,0.22)',
+    '--da-widget-title': '#f8fafc',
+    '--da-widget-subtitle': '#94a3b8',
   };
 
   const vars = mode === 'light' ? lightVars : darkVars;
