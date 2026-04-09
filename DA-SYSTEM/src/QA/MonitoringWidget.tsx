@@ -29,10 +29,10 @@ const launcherStyle = {
   minWidth: '210px',
   padding: '14px 16px',
   borderRadius: '18px',
-  border: '1px solid rgba(96,165,250,0.22)',
+  border: 'var(--da-widget-border, 1px solid rgba(96,165,250,0.22))',
   background:
-    'linear-gradient(180deg, rgba(15,23,42,0.94) 0%, rgba(15,23,42,0.82) 100%)',
-  color: '#f8fafc',
+    'var(--da-widget-bg, linear-gradient(180deg, var(--da-menu-bg, rgba(15,23,42,0.94)) 0%, var(--da-field-bg, rgba(15,23,42,0.82)) 100%))',
+  color: 'var(--da-widget-title, var(--da-title, #f8fafc))',
   boxShadow: '0 18px 48px rgba(2,6,23,0.42)',
   backdropFilter: 'blur(18px)',
   cursor: 'pointer',
@@ -61,12 +61,12 @@ const textWrapStyle = {
 const titleStyle = {
   fontWeight: 800,
   fontSize: '15px',
-  color: '#f8fafc',
+  color: 'var(--da-title, #f8fafc)',
 };
 
 const subtitleStyle = {
   fontSize: '12px',
-  color: '#94a3b8',
+  color: 'var(--da-widget-subtitle, var(--da-subtle-text, #94a3b8))',
 };
 
 const badgeStyle = {
