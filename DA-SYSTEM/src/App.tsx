@@ -311,7 +311,7 @@ function createStyles(theme: ThemePalette) {
       background: theme.headerBackground,
       boxShadow: theme.headerShadow,
       backdropFilter: 'blur(18px)',
-      marginBottom: '18px',
+      marginBottom: '26px',
     } as CSSProperties,
     headerLeft: { display: 'grid', gap: '16px', minWidth: 0 } as CSSProperties,
     headerActions: {
@@ -380,6 +380,7 @@ function createStyles(theme: ThemePalette) {
     navShell: {
       position: 'relative',
       zIndex: 1,
+      marginTop: '2px',
       marginBottom: '18px',
     } as CSSProperties,
     navScroller: {
@@ -503,6 +504,102 @@ function createStyles(theme: ThemePalette) {
   };
 }
 
+
+function applyThemeCssVariables(mode: ThemeMode) {
+  if (typeof document === 'undefined') return;
+
+  const lightVars: Record<string, string> = {
+    '--da-page-text': '#334155',
+    '--da-title': '#0f172a',
+    '--da-subtitle': '#64748b',
+    '--da-eyebrow': '#3b82f6',
+    '--da-section-eyebrow': '#2563eb',
+    '--da-meta-bg': 'rgba(255,255,255,0.92)',
+    '--da-meta-border': '1px solid rgba(148,163,184,0.22)',
+    '--da-meta-text': '#475569',
+    '--da-field-bg': 'rgba(255,255,255,0.96)',
+    '--da-field-border': '1px solid rgba(148,163,184,0.22)',
+    '--da-field-text': '#0f172a',
+    '--da-secondary-bg': 'rgba(255,255,255,0.96)',
+    '--da-secondary-border': '1px solid rgba(148,163,184,0.24)',
+    '--da-secondary-text': '#334155',
+    '--da-panel-bg': 'linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(244,247,255,0.92) 100%)',
+    '--da-panel-border': '1px solid rgba(148,163,184,0.18)',
+    '--da-panel-shadow': '0 18px 40px rgba(148,163,184,0.18)',
+    '--da-card-label': '#64748b',
+    '--da-card-value': '#0f172a',
+    '--da-card-subtitle': '#94a3b8',
+    '--da-row-bg': 'rgba(248,250,252,0.92)',
+    '--da-row-border': '1px solid rgba(148,163,184,0.18)',
+    '--da-row-title': '#0f172a',
+    '--da-row-subtitle': '#64748b',
+    '--da-rank-badge-bg': 'rgba(37,99,235,0.12)',
+    '--da-rank-badge-text': '#2563eb',
+    '--da-pill-bg': 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
+    '--da-pill-text': '#1d4ed8',
+    '--da-team-meta': '#475569',
+    '--da-insight-title': '#2563eb',
+    '--da-insight-body': '#475569',
+    '--da-empty-bg': 'rgba(248,250,252,0.88)',
+    '--da-empty-border': '1px dashed rgba(148,163,184,0.28)',
+    '--da-empty-text': '#64748b',
+    '--da-status-pill-bg': 'rgba(255,255,255,0.94)',
+    '--da-status-pill-border': '1px solid rgba(148,163,184,0.22)',
+    '--da-status-pill-text': '#475569',
+    '--da-error-bg': 'rgba(254,242,242,0.95)',
+    '--da-error-border': '1px solid rgba(248,113,113,0.24)',
+    '--da-error-text': '#b91c1c',
+  };
+
+  const darkVars: Record<string, string> = {
+    '--da-page-text': '#e5eefb',
+    '--da-title': '#f8fafc',
+    '--da-subtitle': '#94a3b8',
+    '--da-eyebrow': '#60a5fa',
+    '--da-section-eyebrow': '#93c5fd',
+    '--da-meta-bg': 'rgba(15, 23, 42, 0.62)',
+    '--da-meta-border': '1px solid rgba(148, 163, 184, 0.14)',
+    '--da-meta-text': '#cbd5e1',
+    '--da-field-bg': 'rgba(15, 23, 42, 0.74)',
+    '--da-field-border': '1px solid rgba(148, 163, 184, 0.18)',
+    '--da-field-text': '#e5eefb',
+    '--da-secondary-bg': 'rgba(15, 23, 42, 0.74)',
+    '--da-secondary-border': '1px solid rgba(148, 163, 184, 0.18)',
+    '--da-secondary-text': '#e5eefb',
+    '--da-panel-bg': 'linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%)',
+    '--da-panel-border': '1px solid rgba(148, 163, 184, 0.14)',
+    '--da-panel-shadow': '0 18px 40px rgba(2, 6, 23, 0.35)',
+    '--da-card-label': '#94a3b8',
+    '--da-card-value': '#f8fafc',
+    '--da-card-subtitle': '#64748b',
+    '--da-row-bg': 'rgba(15, 23, 42, 0.52)',
+    '--da-row-border': '1px solid rgba(148, 163, 184, 0.12)',
+    '--da-row-title': '#f8fafc',
+    '--da-row-subtitle': '#94a3b8',
+    '--da-rank-badge-bg': 'rgba(37, 99, 235, 0.22)',
+    '--da-rank-badge-text': '#bfdbfe',
+    '--da-pill-bg': 'linear-gradient(135deg, #0f4c81 0%, #2563eb 100%)',
+    '--da-pill-text': '#ffffff',
+    '--da-team-meta': '#cbd5e1',
+    '--da-insight-title': '#93c5fd',
+    '--da-insight-body': '#cbd5e1',
+    '--da-empty-bg': 'rgba(15, 23, 42, 0.52)',
+    '--da-empty-border': '1px dashed rgba(148, 163, 184, 0.24)',
+    '--da-empty-text': '#94a3b8',
+    '--da-status-pill-bg': 'rgba(15, 23, 42, 0.62)',
+    '--da-status-pill-border': '1px solid rgba(148, 163, 184, 0.14)',
+    '--da-status-pill-text': '#cbd5e1',
+    '--da-error-bg': 'rgba(127, 29, 29, 0.24)',
+    '--da-error-border': '1px solid rgba(248, 113, 113, 0.22)',
+    '--da-error-text': '#fecaca',
+  };
+
+  const vars = mode === 'light' ? lightVars : darkVars;
+  Object.entries(vars).forEach(([key, value]) => {
+    document.documentElement.style.setProperty(key, value);
+  });
+}
+
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -530,6 +627,7 @@ function App() {
     document.documentElement.style.colorScheme = themeMode === 'light' ? 'light' : 'dark';
     document.body.style.background = theme.bodyBackground;
     document.body.style.color = theme.bodyColor;
+    applyThemeCssVariables(themeMode);
   }, [themeMode, theme.bodyBackground, theme.bodyColor]);
 
   useEffect(() => {
