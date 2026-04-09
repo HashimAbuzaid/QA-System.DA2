@@ -18,6 +18,16 @@ type UserProfile = {
   email: string;
 };
 
+type ScoreDetail = {
+  metric: string;
+  result: string;
+  pass: number;
+  borderline: number;
+  adjustedWeight: number;
+  earned: number;
+  metric_comment?: string | null;
+};
+
 type AuditItem = {
   id: string;
   agent_id: string;
@@ -30,6 +40,7 @@ type AuditItem = {
   ticket_id?: string | null;
   quality_score: number;
   comments: string | null;
+  score_details: ScoreDetail[];
   shared_with_agent?: boolean;
   shared_at?: string | null;
 };
@@ -127,6 +138,7 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
   const [auditDateFrom, setAuditDateFrom] = useState('');
   const [auditDateTo, setAuditDateTo] = useState('');
   const [lastLoadedAt, setLastLoadedAt] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const cacheKey = useMemo(() => {
     return `agent-portal:${currentUser.id}:${
@@ -303,6 +315,7 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
       setRefreshing(false);
     }
   }
+
   const filteredAudits = useMemo(() => {
     return audits.filter((audit) => {
       const matchesFrom = auditDateFrom
@@ -347,6 +360,14 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
     if (typeValue === 'Audit Feedback') return '#7c3aed';
     if (typeValue === 'Follow-up') return '#b45309';
     return '#166534';
+  }
+
+  function getResultBadgeColor(result: string) {
+    if (result === 'Pass') return '#166534';
+    if (result === 'Borderline') return '#b45309';
+    if (result === 'Fail' || result === 'Auto-Fail') return '#991b1b';
+    if (result === 'N/A') return '#475569';
+    return '#1f2937';
   }
 
   function formatDate(dateValue?: string | null) {
@@ -605,46 +626,135 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
                 <div style={auditCellScoreStyle}>Quality</div>
                 <div style={auditCellReleasedStyle}>Released</div>
                 <div style={auditCellCommentsStyle}>Comments</div>
+                <div style={auditCellActionsStyle}>Actions</div>
               </div>
 
-              {filteredAudits.map((audit) => (
-                <div key={audit.id} style={auditRowStyle}>
-                  <div style={auditCellDateStyle}>
-                    <div style={primaryCellTextStyle}>
-                      {formatDateOnly(audit.audit_date)}
+              {filteredAudits.map((audit) => {
+                const isExpanded = expandedId === audit.id;
+                return (
+                  <div key={audit.id} style={auditEntryStyle}>
+                    <div style={auditRowStyle}>
+                      <div style={auditCellDateStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {formatDateOnly(audit.audit_date)}
+                        </div>
+                        <div style={secondaryCellTextStyle}>{audit.team}</div>
+                      </div>
+
+                      <div style={auditCellCaseStyle}>
+                        <div style={primaryCellTextStyle}>{audit.case_type}</div>
+                      </div>
+
+                      <div style={auditCellReferenceStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {getAuditReference(audit)}
+                        </div>
+                      </div>
+
+                      <div style={auditCellScoreStyle}>
+                        <span style={scorePillStyle}>
+                          {Number(audit.quality_score).toFixed(2)}%
+                        </span>
+                      </div>
+
+                      <div style={auditCellReleasedStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {formatDate(audit.shared_at)}
+                        </div>
+                      </div>
+
+                      <div style={auditCellCommentsStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {getCommentsPreview(audit.comments)}
+                        </div>
+                      </div>
+
+                      <div style={auditCellActionsStyle}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedId(
+                              expandedId === audit.id ? null : audit.id
+                            )
+                          }
+                          style={miniSecondaryButton}
+                        >
+                          {isExpanded ? 'Hide' : 'Details'}
+                        </button>
+                      </div>
                     </div>
-                    <div style={secondaryCellTextStyle}>{audit.team}</div>
-                  </div>
 
-                  <div style={auditCellCaseStyle}>
-                    <div style={primaryCellTextStyle}>{audit.case_type}</div>
-                  </div>
+                    {isExpanded ? (
+                      <div style={auditExpandedRowStyle}>
+                        <div style={expandedPanelStyle}>
+                          <div style={scoreDetailsHeaderStyle}>
+                            <div>
+                              <div style={sectionEyebrow}>Score Details</div>
+                              <div style={scoreDetailsSubtextStyle}>
+                                Full metric breakdown plus QA notes for any
+                                Borderline / Fail results.
+                              </div>
+                            </div>
+                            <div style={scoreDetailsSummaryPillStyle}>
+                              Final Score {Number(audit.quality_score).toFixed(2)}%
+                            </div>
+                          </div>
 
-                  <div style={auditCellReferenceStyle}>
-                    <div style={primaryCellTextStyle}>
-                      {getAuditReference(audit)}
-                    </div>
-                  </div>
+                          <div style={scoreDetailsGridStyle}>
+                            {(audit.score_details || []).map((detail) => {
+                              const hasMetricComment =
+                                typeof detail.metric_comment === 'string' &&
+                                detail.metric_comment.trim().length > 0;
 
-                  <div style={auditCellScoreStyle}>
-                    <span style={scorePillStyle}>
-                      {Number(audit.quality_score).toFixed(2)}%
-                    </span>
-                  </div>
+                              return (
+                                <div
+                                  key={`${audit.id}-${detail.metric}`}
+                                  style={detailCardStyle}
+                                >
+                                  <div style={detailTopRowStyle}>
+                                    <div>
+                                      <div style={detailMetricTitleStyle}>
+                                        {detail.metric}
+                                      </div>
+                                      <div style={detailMetricMetaStyle}>
+                                        Pass {detail.pass} • Borderline{' '}
+                                        {detail.borderline} • Adjusted{' '}
+                                        {detail.adjustedWeight.toFixed(2)}
+                                      </div>
+                                    </div>
 
-                  <div style={auditCellReleasedStyle}>
-                    <div style={primaryCellTextStyle}>
-                      {formatDate(audit.shared_at)}
-                    </div>
-                  </div>
+                                    <span
+                                      style={{
+                                        ...detailResultPillStyle,
+                                        backgroundColor: getResultBadgeColor(
+                                          detail.result
+                                        ),
+                                      }}
+                                    >
+                                      {detail.result}
+                                    </span>
+                                  </div>
 
-                  <div style={auditCellCommentsStyle}>
-                    <div style={primaryCellTextStyle}>
-                      {getCommentsPreview(audit.comments)}
-                    </div>
+                                  {hasMetricComment ? (
+                                    <div style={metricNoteCardStyle}>
+                                      <div style={metricNoteLabelStyle}>
+                                        QA Note
+                                      </div>
+                                      <div style={metricNoteTextStyle}>
+                                        {detail.metric_comment}
+                                      </div>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -863,14 +973,15 @@ const auditTableStyle = {
   minWidth: '1040px',
 };
 
+const auditEntryStyle = { borderBottom: '1px solid rgba(148,163,184,0.08)' };
+
 const auditRowStyle = {
   display: 'grid',
   gridTemplateColumns:
-    '140px 170px minmax(260px, 1.5fr) 120px 190px minmax(240px, 2fr)',
+    '140px 170px minmax(260px, 1.5fr) 120px 190px minmax(240px, 2fr) 100px',
   gap: '14px',
   alignItems: 'center',
   padding: '14px 16px',
-  borderBottom: '1px solid rgba(148,163,184,0.1)',
 };
 
 const auditHeaderRowStyle = {
@@ -891,6 +1002,11 @@ const auditCellReferenceStyle = {};
 const auditCellScoreStyle = {};
 const auditCellReleasedStyle = {};
 const auditCellCommentsStyle = {};
+const auditCellActionsStyle = {
+  display: 'flex',
+  gap: '8px',
+  flexWrap: 'wrap' as const,
+};
 
 const primaryCellTextStyle = {
   color: '#f8fafc',
@@ -963,6 +1079,118 @@ const pillStyle = {
   borderRadius: '999px',
   fontSize: '12px',
   fontWeight: 'bold',
+};
+
+const auditExpandedRowStyle = { padding: '0 16px 16px 16px' };
+
+const expandedPanelStyle = {
+  borderRadius: '18px',
+  border: '1px solid rgba(148,163,184,0.12)',
+  background:
+    'linear-gradient(180deg, rgba(7,17,31,0.92) 0%, rgba(10,22,45,0.84) 100%)',
+  padding: '18px',
+};
+
+const scoreDetailsHeaderStyle = {
+  display: 'flex',
+  alignItems: 'flex-start',
+  justifyContent: 'space-between',
+  gap: '16px',
+  flexWrap: 'wrap' as const,
+  marginBottom: '18px',
+};
+
+const scoreDetailsSubtextStyle = {
+  color: '#94a3b8',
+  fontSize: '13px',
+  lineHeight: 1.5,
+};
+
+const scoreDetailsSummaryPillStyle = {
+  padding: '10px 14px',
+  borderRadius: '999px',
+  border: '1px solid rgba(96,165,250,0.24)',
+  background: 'rgba(30,64,175,0.18)',
+  color: '#dbeafe',
+  fontSize: '13px',
+  fontWeight: 800,
+};
+
+const scoreDetailsGridStyle = {
+  display: 'grid',
+  gap: '10px',
+};
+
+const detailCardStyle = {
+  padding: '14px',
+  borderRadius: '16px',
+  border: '1px solid rgba(148,163,184,0.1)',
+  background: 'rgba(10, 23, 56, 0.76)',
+};
+
+const detailTopRowStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: '12px',
+  alignItems: 'flex-start',
+  flexWrap: 'wrap' as const,
+};
+
+const detailMetricTitleStyle = {
+  color: '#f8fafc',
+  fontWeight: 800,
+  fontSize: '16px',
+};
+
+const detailMetricMetaStyle = {
+  color: '#94a3b8',
+  fontSize: '12px',
+  marginTop: '6px',
+};
+
+const detailResultPillStyle = {
+  color: '#ffffff',
+  padding: '8px 12px',
+  borderRadius: '999px',
+  fontSize: '12px',
+  fontWeight: 800,
+  minWidth: '92px',
+  textAlign: 'center' as const,
+};
+
+const metricNoteCardStyle = {
+  marginTop: '12px',
+  borderRadius: '14px',
+  padding: '12px 14px',
+  border: '1px solid rgba(148,163,184,0.12)',
+  background: 'rgba(15,23,42,0.52)',
+};
+
+const metricNoteLabelStyle = {
+  color: '#93c5fd',
+  fontSize: '11px',
+  fontWeight: 800,
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase' as const,
+  marginBottom: '8px',
+};
+
+const metricNoteTextStyle = {
+  color: '#e5eefb',
+  fontSize: '14px',
+  lineHeight: 1.55,
+  whiteSpace: 'pre-wrap' as const,
+};
+
+const miniSecondaryButton = {
+  padding: '8px 10px',
+  background: 'rgba(15,23,42,0.82)',
+  color: '#e5eefb',
+  border: '1px solid rgba(148,163,184,0.18)',
+  borderRadius: '10px',
+  cursor: 'pointer',
+  fontWeight: 700,
+  fontSize: '12px',
 };
 
 export default AgentPortal;
