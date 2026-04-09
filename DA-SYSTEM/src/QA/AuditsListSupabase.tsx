@@ -8,7 +8,6 @@ type ScoreDetail = {
   adjustedWeight: number;
   earned: number;
   counts_toward_score?: boolean;
-  metric_comment?: string | null;
 };
 type AuditItem = {
   id: string;
@@ -44,8 +43,6 @@ type Metric = {
   pass: number;
   borderline: number;
   countsTowardScore?: boolean;
-  options?: string[];
-  defaultValue?: string;
 };
 type EditFormState = {
   team: 'Calls' | 'Tickets' | 'Sales' | '';
@@ -63,28 +60,12 @@ function countsTowardScore(metric: Metric) {
   return metric.countsTowardScore !== false;
 }
 
-function shouldShowMetricComment(result: string) {
-  return (
-    result === 'Borderline' || result === 'Fail' || result === 'Auto-Fail'
-  );
-}
-
-function openNativeDatePicker(target: HTMLInputElement) {
-  const input = target as HTMLInputElement & { showPicker?: () => void };
-  input.showPicker?.();
-}
-
-const ISSUE_WAS_RESOLVED_METRIC = 'Issue was resolved';
-
-const ISSUE_WAS_RESOLVED_QUESTION: Metric = {
-  name: ISSUE_WAS_RESOLVED_METRIC,
+const NO_SCORE_CALLS_QUESTION: Metric = {
+  name: 'Additional QA Question',
   pass: 0,
   borderline: 0,
   countsTowardScore: false,
-  options: ['', 'Yes', 'No'],
-  defaultValue: '',
 };
-
 const callsMetrics: Metric[] = [
   { name: 'Greeting', pass: 2, borderline: 1 },
   { name: 'Friendliness', pass: 5, borderline: 3 },
@@ -99,7 +80,7 @@ const callsMetrics: Metric[] = [
   { name: 'Refund Form', pass: 11, borderline: 5 },
   { name: 'Providing RL', pass: 5, borderline: 3 },
   { name: 'Ending', pass: 2, borderline: 1 },
-  ISSUE_WAS_RESOLVED_QUESTION,
+  NO_SCORE_CALLS_QUESTION,
 ];
 const ticketsMetrics: Metric[] = [
   { name: 'Greeting', pass: 5, borderline: 3 },
@@ -161,9 +142,6 @@ function AuditsListSupabase() {
     comments: '',
   });
   const [editScores, setEditScores] = useState<Record<string, string>>({});
-  const [editMetricComments, setEditMetricComments] = useState<
-    Record<string, string>
-  >({});
   const agentPickerRef = useRef<HTMLDivElement | null>(null);
   const isAdmin = currentProfile?.role === 'admin';
   useEffect(() => {
@@ -235,34 +213,17 @@ function AuditsListSupabase() {
     return [];
   }
   function getMetricOptions(metric: Metric) {
-    if (metric.options?.length) return metric.options;
     if (LOCKED_NA_METRICS.has(metric.name)) return ['N/A'];
     const options = ['N/A', 'Pass', 'Borderline', 'Fail'];
     if (AUTO_FAIL_METRICS.has(metric.name)) options.push('Auto-Fail');
     return options;
   }
-  function getMetricStoredValue(
-    metric: Metric,
-    scores: Record<string, string>
-  ) {
-    if (LOCKED_NA_METRICS.has(metric.name)) return 'N/A';
-    return scores[metric.name] ?? metric.defaultValue ?? 'N/A';
-  }
   function createDefaultScores(team: EditFormState['team']) {
     const defaults: Record<string, string> = {};
     getMetricsForTeam(team).forEach((metric) => {
-      defaults[metric.name] = metric.defaultValue ?? 'N/A';
+      defaults[metric.name] = 'N/A';
     });
     return defaults;
-  }
-  function getMissingRequiredMetricLabels(
-    team: EditFormState['team'],
-    scores: Record<string, string>
-  ) {
-    return getMetricsForTeam(team)
-      .filter((metric) => Array.isArray(metric.options) && metric.defaultValue === '')
-      .filter((metric) => !getMetricStoredValue(metric, scores))
-      .map((metric) => metric.name);
   }
   function buildScoreMapFromAudit(audit: AuditItem) {
     const defaults = createDefaultScores(audit.team);
@@ -276,25 +237,17 @@ function AuditsListSupabase() {
     });
     return defaults;
   }
-
-  function buildMetricCommentsFromAudit(audit: AuditItem) {
-    const defaults: Record<string, string> = {};
-    (audit.score_details || []).forEach((item) => {
-      defaults[item.metric] = item.metric_comment || '';
-    });
-    return defaults;
-  }
-
   function getAdjustedScoreData(
     team: EditFormState['team'],
-    scores: Record<string, string>,
-    metricComments: Record<string, string>
+    scores: Record<string, string>
   ) {
     const metrics = getMetricsForTeam(team);
     const scoredMetrics = metrics.filter((item) => countsTowardScore(item));
     const activeMetrics = scoredMetrics.filter((item) => {
-      const itemResult = getMetricStoredValue(item, scores);
-      return itemResult !== 'N/A' && itemResult !== '';
+      const itemResult = LOCKED_NA_METRICS.has(item.name)
+        ? 'N/A'
+        : scores[item.name] || 'N/A';
+      return itemResult !== 'N/A';
     });
     const activeTotalWeight = activeMetrics.reduce(
       (sum, item) => sum + item.pass,
@@ -302,10 +255,12 @@ function AuditsListSupabase() {
     );
     const fullTotalWeight = scoredMetrics.reduce((sum, item) => sum + item.pass, 0);
     const scoreDetails = metrics.map((metric) => {
-      const result = getMetricStoredValue(metric, scores);
+      const result = LOCKED_NA_METRICS.has(metric.name)
+        ? 'N/A'
+        : scores[metric.name] || 'N/A';
       const scored = countsTowardScore(metric);
       const adjustedWeight =
-        !scored || result === 'N/A' || result === '' || activeTotalWeight === 0
+        !scored || result === 'N/A' || activeTotalWeight === 0
           ? 0
           : (metric.pass / activeTotalWeight) * fullTotalWeight;
       let earned = 0;
@@ -325,16 +280,13 @@ function AuditsListSupabase() {
         adjustedWeight,
         earned,
         counts_toward_score: scored,
-        metric_comment:
-          scored && shouldShowMetricComment(result)
-            ? (metricComments[metric.name] || '').trim() || null
-            : null,
       };
     });
     const hasAutoFail = scoreDetails.some(
       (item) =>
         item.counts_toward_score !== false &&
-        AUTO_FAIL_METRICS.has(item.metric) && item.result === 'Auto-Fail'
+        AUTO_FAIL_METRICS.has(item.metric) &&
+        item.result === 'Auto-Fail'
     );
     const qualityScore = hasAutoFail
       ? '0.00'
@@ -386,9 +338,6 @@ function AuditsListSupabase() {
     if (!text) return '-';
     if (text.length <= 120) return text;
     return `${text.slice(0, 117)}...`;
-  }
-  function isNoScoreDetail(detail: ScoreDetail) {
-    return detail.counts_toward_score === false;
   }
   const editTeamAgents = useMemo(() => {
     return profiles.filter(
@@ -484,7 +433,6 @@ function AuditsListSupabase() {
       comments: audit.comments || '',
     });
     setEditScores(buildScoreMapFromAudit(audit));
-    setEditMetricComments(buildMetricCommentsFromAudit(audit));
   }
   function cancelEdit() {
     setEditingAuditId(null);
@@ -501,7 +449,6 @@ function AuditsListSupabase() {
       comments: '',
     });
     setEditScores({});
-    setEditMetricComments({});
   }
   function handleTeamChange(nextTeam: EditFormState['team']) {
     setEditForm((prev) => ({
@@ -515,7 +462,6 @@ function AuditsListSupabase() {
     setAgentSearch('');
     setIsAgentPickerOpen(false);
     setEditScores(createDefaultScores(nextTeam));
-    setEditMetricComments({});
   }
   function handleSelectAgent(profile: AgentProfile) {
     setSelectedAgentProfileId(profile.id);
@@ -525,23 +471,9 @@ function AuditsListSupabase() {
   function handleScoreChange(metricName: string, value: string) {
     if (LOCKED_NA_METRICS.has(metricName)) {
       setEditScores((prev) => ({ ...prev, [metricName]: 'N/A' }));
-      setEditMetricComments((prev) => ({ ...prev, [metricName]: '' }));
       return;
     }
-
     setEditScores((prev) => ({ ...prev, [metricName]: value }));
-
-    if (!shouldShowMetricComment(value)) {
-      setEditMetricComments((prev) => {
-        const next = { ...prev };
-        delete next[metricName];
-        return next;
-      });
-    }
-  }
-
-  function handleMetricCommentChange(metricName: string, value: string) {
-    setEditMetricComments((prev) => ({ ...prev, [metricName]: value }));
   }
   async function handleUpdate(auditId: string) {
     setErrorMessage('');
@@ -573,38 +505,11 @@ function AuditsListSupabase() {
       setErrorMessage('Please fill Ticket ID for Tickets.');
       return;
     }
-    const missingRequiredMetricLabels = getMissingRequiredMetricLabels(
-      editForm.team,
-      editScores
-    );
-    if (missingRequiredMetricLabels.length > 0) {
-      setErrorMessage(
-        `Please answer: ${missingRequiredMetricLabels.join(', ')}.`
-      );
-      return;
-    }
     if (!selectedAgent.agent_id) {
       setErrorMessage('Selected agent does not have an Agent ID.');
       return;
     }
-    const missingMetricCommentLabels = getMetricsForTeam(editForm.team)
-      .filter((metric) => countsTowardScore(metric))
-      .filter((metric) =>
-        shouldShowMetricComment(getMetricStoredValue(metric, editScores))
-      )
-      .filter((metric) => !(editMetricComments[metric.name] || '').trim())
-      .map((metric) => metric.name);
-    if (missingMetricCommentLabels.length > 0) {
-      setErrorMessage(
-        `Please add a short QA note for: ${missingMetricCommentLabels.join(', ')}.`
-      );
-      return;
-    }
-    const adjustedData = getAdjustedScoreData(
-      editForm.team,
-      editScores,
-      editMetricComments
-    );
+    const adjustedData = getAdjustedScoreData(editForm.team, editScores);
     setSaving(true);
     const updatePayload = {
       agent_id: selectedAgent.agent_id,
@@ -867,7 +772,7 @@ function AuditsListSupabase() {
             <select
               value={teamFilter}
               onChange={(e) => setTeamFilter(e.target.value)}
-              style={selectFieldStyle}
+              style={fieldStyle}
             >
               {' '}
               <option value="">All Teams</option>{' '}
@@ -882,7 +787,7 @@ function AuditsListSupabase() {
             <select
               value={caseTypeFilter}
               onChange={(e) => setCaseTypeFilter(e.target.value)}
-              style={selectFieldStyle}
+              style={fieldStyle}
             >
               {' '}
               <option value="">All Case Types</option>{' '}
@@ -901,8 +806,6 @@ function AuditsListSupabase() {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              onClick={(e) => openNativeDatePicker(e.currentTarget)}
-              onFocus={(e) => openNativeDatePicker(e.currentTarget)}
               style={fieldStyle}
             />{' '}
           </div>{' '}
@@ -913,8 +816,6 @@ function AuditsListSupabase() {
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              onClick={(e) => openNativeDatePicker(e.currentTarget)}
-              onFocus={(e) => openNativeDatePicker(e.currentTarget)}
               style={fieldStyle}
             />{' '}
           </div>{' '}
@@ -1014,11 +915,7 @@ function AuditsListSupabase() {
               const isEditing = editingAuditId === audit.id;
               const isExpanded = expandedId === audit.id || isEditing;
               const adjustedEditData = isEditing
-                ? getAdjustedScoreData(
-                    editForm.team,
-                    editScores,
-                    editMetricComments
-                  )
+                ? getAdjustedScoreData(editForm.team, editScores)
                 : null;
               return (
                 <div key={audit.id} style={auditEntryStyle}>
@@ -1178,7 +1075,7 @@ function AuditsListSupabase() {
                                     e.target.value as EditFormState['team']
                                   )
                                 }
-                                style={selectFieldStyle}
+                                style={fieldStyle}
                               >
                                 {' '}
                                 <option value="">Select Team</option>{' '}
@@ -1291,8 +1188,6 @@ function AuditsListSupabase() {
                                     auditDate: e.target.value,
                                   }))
                                 }
-                                onClick={(e) => openNativeDatePicker(e.currentTarget)}
-                                onFocus={(e) => openNativeDatePicker(e.currentTarget)}
                                 style={fieldStyle}
                               />{' '}
                             </div>{' '}
@@ -1381,52 +1276,34 @@ function AuditsListSupabase() {
                                   style={{ color: '#cbd5e1', fontWeight: 700 }}
                                 >
                                   {' '}
-                                  {countsTowardScore(metric)
-                                    ? `${metric.name} (${metric.pass} pts)`
-                                    : metric.name}{' '}
+                                  {metric.name}{' '}
+                                {countsTowardScore(metric) ? `(${metric.pass} pts)` : '(No score)'}{' '}
                                 </div>{' '}
-                                <div style={{ display: 'grid', gap: '8px', minWidth: '230px' }}>
-                                  <select
-                                    value={getMetricStoredValue(metric, editScores)}
-                                    onChange={(e) =>
-                                      handleScoreChange(
-                                        metric.name,
-                                        e.target.value
-                                      )
-                                    }
-                                    disabled={LOCKED_NA_METRICS.has(metric.name)}
-                                    style={compactSelectFieldStyle}
-                                  >
-                                    {' '}
-                                    {getMetricOptions(metric).map((option) => (
-                                      <option
-                                        key={option || '__empty__'}
-                                        value={option}
-                                        style={selectOptionStyle}
-                                      >
+                                <select
+                                  value={
+                                    LOCKED_NA_METRICS.has(metric.name)
+                                      ? 'N/A'
+                                      : editScores[metric.name] || 'N/A'
+                                  }
+                                  onChange={(e) =>
+                                    handleScoreChange(
+                                      metric.name,
+                                      e.target.value
+                                    )
+                                  }
+                                  disabled={LOCKED_NA_METRICS.has(metric.name)}
+                                  style={compactFieldStyle}
+                                >
+                                  {' '}
+                                  {getMetricOptions(metric).map(
+                                    (option) => (
+                                      <option key={option} value={option}>
                                         {' '}
-                                        {option || 'Select answer'}{' '}
+                                        {option}{' '}
                                       </option>
-                                    ))}{' '}
-                                  </select>{' '}
-                                  {countsTowardScore(metric) &&
-                                  shouldShowMetricComment(
-                                    getMetricStoredValue(metric, editScores)
-                                  ) ? (
-                                    <textarea
-                                      value={editMetricComments[metric.name] || ''}
-                                      onChange={(e) =>
-                                        handleMetricCommentChange(
-                                          metric.name,
-                                          e.target.value
-                                        )
-                                      }
-                                      rows={2}
-                                      placeholder="Leave a short note explaining the result"
-                                      style={metricCommentFieldStyle}
-                                    />
-                                  ) : null}
-                                </div>
+                                    )
+                                  )}{' '}
+                                </select>{' '}
                               </div>
                             ))}{' '}
                           </div>{' '}
@@ -1561,18 +1438,11 @@ function AuditsListSupabase() {
                                     }}
                                   >
                                     {' '}
-                                    {isNoScoreDetail(detail)
-                                      ? 'Administrative question'
+                                    {detail.counts_toward_score === false ||
+                                    (detail.pass === 0 && detail.borderline === 0)
+                                      ? 'No score question'
                                       : `Pass ${detail.pass} • Borderline ${detail.borderline} • Adjusted ${detail.adjustedWeight.toFixed(2)}`}{' '}
                                   </div>{' '}
-                                  {detail.metric_comment ? (
-                                    <div style={metricNoteCardStyle}>
-                                      <div style={metricNoteLabelStyle}>QA Note</div>
-                                      <div style={metricNoteTextStyle}>
-                                        {detail.metric_comment}
-                                      </div>
-                                    </div>
-                                  ) : null}
                                 </div>{' '}
                                 <span
                                   style={{
@@ -1646,19 +1516,6 @@ const fieldStyle = {
   background: 'rgba(15,23,42,0.7)',
   color: '#e5eefb',
 };
-const selectFieldStyle = {
-  ...fieldStyle,
-  appearance: 'none' as const,
-  WebkitAppearance: 'none' as const,
-  MozAppearance: 'none' as const,
-  paddingRight: '44px',
-  backgroundImage:
-    'linear-gradient(45deg, transparent 50%, #cbd5e1 50%), linear-gradient(135deg, #cbd5e1 50%, transparent 50%)',
-  backgroundPosition: 'calc(100% - 22px) calc(50% - 3px), calc(100% - 16px) calc(50% - 3px)',
-  backgroundSize: '6px 6px, 6px 6px',
-  backgroundRepeat: 'no-repeat',
-  colorScheme: 'dark' as const,
-};
 const compactFieldStyle = {
   padding: '10px 12px',
   borderRadius: '12px',
@@ -1666,53 +1523,6 @@ const compactFieldStyle = {
   background: 'rgba(15,23,42,0.7)',
   color: '#e5eefb',
   minWidth: '170px',
-};
-const compactSelectFieldStyle = {
-  ...compactFieldStyle,
-  appearance: 'none' as const,
-  WebkitAppearance: 'none' as const,
-  MozAppearance: 'none' as const,
-  paddingRight: '40px',
-  backgroundImage:
-    'linear-gradient(45deg, transparent 50%, #cbd5e1 50%), linear-gradient(135deg, #cbd5e1 50%, transparent 50%)',
-  backgroundPosition: 'calc(100% - 18px) calc(50% - 3px), calc(100% - 12px) calc(50% - 3px)',
-  backgroundSize: '6px 6px, 6px 6px',
-  backgroundRepeat: 'no-repeat',
-  colorScheme: 'dark' as const,
-};
-const selectOptionStyle = {
-  backgroundColor: '#0f172a',
-  color: '#e5eefb',
-};
-const metricCommentFieldStyle = {
-  width: '100%',
-  padding: '10px 12px',
-  borderRadius: '12px',
-  border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.78)',
-  color: '#e5eefb',
-  resize: 'vertical' as const,
-};
-const metricNoteCardStyle = {
-  marginTop: '10px',
-  borderRadius: '12px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(15,23,42,0.52)',
-  padding: '10px 12px',
-};
-const metricNoteLabelStyle = {
-  color: '#93c5fd',
-  fontSize: '11px',
-  fontWeight: 800,
-  letterSpacing: '0.1em',
-  textTransform: 'uppercase' as const,
-  marginBottom: '6px',
-};
-const metricNoteTextStyle = {
-  color: '#e5eefb',
-  fontSize: '13px',
-  lineHeight: 1.55,
-  whiteSpace: 'pre-wrap' as const,
 };
 const secondaryButton = {
   padding: '12px 16px',
