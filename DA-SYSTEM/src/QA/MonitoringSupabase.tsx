@@ -274,16 +274,16 @@ function MonitoringSupabase() {
   }, [items, statusFilter, teamFilter, searchText]);
 
   if (loading) {
-    return <div style={{ color: '#cbd5e1' }}>Loading monitoring...</div>;
+    return <div style={{ color: 'var(--da-muted-text, #cbd5e1)' }}>Loading monitoring...</div>;
   }
 
   return (
-    <div style={{ color: '#e5eefb' }}>
+    <div style={{ color: 'var(--da-page-text, #e5eefb)' }}>
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Operational Alerts</div>
           <h2 style={{ marginBottom: '8px' }}>Monitoring</h2>
-          <p style={{ margin: 0, color: '#94a3b8' }}>
+          <p style={{ margin: 0, color: 'var(--da-subtle-text, #94a3b8)' }}>
             Create manual order watch items linked to an agent through profiles.
           </p>
         </div>
@@ -308,7 +308,7 @@ function MonitoringSupabase() {
                 onClick={() => setIsAgentPickerOpen((prev) => !prev)}
                 style={pickerButtonStyle}
               >
-                <span style={{ color: selectedAgent ? '#f8fafc' : '#94a3b8' }}>
+                <span style={{ color: selectedAgent ? 'var(--da-title, #f8fafc)' : 'var(--da-subtle-text, #94a3b8)' }}>
                   {selectedAgent
                     ? getAgentLabel(selectedAgent)
                     : 'Select agent'}
@@ -528,7 +528,7 @@ const pageHeaderStyle = {
   marginBottom: '18px',
 };
 const sectionEyebrow = {
-  color: '#60a5fa',
+  color: 'var(--da-accent-text, #60a5fa)',
   fontSize: '12px',
   fontWeight: 800,
   letterSpacing: '0.16em',
@@ -537,7 +537,7 @@ const sectionEyebrow = {
 };
 const panelStyle = {
   background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
   border: '1px solid rgba(148,163,184,0.14)',
   borderRadius: '22px',
   padding: '22px',
@@ -551,7 +551,7 @@ const filterGridStyle = {
 const labelStyle = {
   display: 'block',
   marginBottom: '8px',
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
   fontWeight: 700,
   fontSize: '13px',
 };
@@ -560,28 +560,28 @@ const fieldStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
   border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.7)',
-  color: '#e5eefb',
+  background: 'var(--da-surface-bg, rgba(15,23,42,0.7))',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 const pickerButtonStyle = {
   width: '100%',
   padding: '12px 14px',
   borderRadius: '12px',
   border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.7)',
+  background: 'var(--da-surface-bg, rgba(15,23,42,0.7))',
   textAlign: 'left' as const,
   cursor: 'pointer',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  color: '#e5eefb',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 const pickerMenuStyle = {
   position: 'absolute' as const,
   top: 'calc(100% + 8px)',
   left: 0,
   right: 0,
-  background: 'rgba(15,23,42,0.96)',
+  background: 'var(--da-menu-bg, rgba(15,23,42,0.96))',
   border: '1px solid rgba(148,163,184,0.16)',
   borderRadius: '16px',
   boxShadow: '0 10px 30px rgba(0,0,0,0.22)',
@@ -602,22 +602,22 @@ const pickerListStyle = {
 const pickerInfoStyle = {
   padding: '12px',
   borderRadius: '8px',
-  backgroundColor: 'rgba(15,23,42,0.68)',
-  color: '#94a3b8',
+  backgroundColor: 'var(--da-surface-bg, rgba(15,23,42,0.68))',
+  color: 'var(--da-subtle-text, #94a3b8)',
 };
 const pickerOptionStyle = {
   padding: '12px',
   borderRadius: '8px',
   border: '1px solid rgba(148,163,184,0.12)',
-  backgroundColor: 'rgba(15,23,42,0.6)',
+  backgroundColor: 'var(--da-surface-bg, rgba(15,23,42,0.6))',
   textAlign: 'left' as const,
   cursor: 'pointer',
   fontWeight: 500,
-  color: '#e5eefb',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 const pickerOptionActiveStyle = {
   border: '1px solid #2563eb',
-  backgroundColor: 'rgba(37,99,235,0.18)',
+  backgroundColor: 'var(--da-active-option-bg, rgba(37, 99, 235, 0.18))',
 };
 const actionRowStyle = {
   display: 'flex',
@@ -636,8 +636,8 @@ const primaryButton = {
 };
 const secondaryButton = {
   padding: '12px 16px',
-  background: 'rgba(15,23,42,0.74)',
-  color: '#e5eefb',
+  background: 'var(--da-field-bg, rgba(15,23,42,0.74))',
+  color: 'var(--da-page-text, #e5eefb)',
   border: '1px solid rgba(148,163,184,0.18)',
   borderRadius: '14px',
   cursor: 'pointer',
@@ -649,14 +649,14 @@ const errorBanner = {
   borderRadius: '10px',
   backgroundColor: 'rgba(127,29,29,0.24)',
   border: '1px solid rgba(248,113,113,0.22)',
-  color: '#fecaca',
+  color: 'var(--da-error-text, #fecaca)',
 };
 const emptyStateStyle = {
   padding: '18px',
   borderRadius: '16px',
   border: '1px dashed rgba(148,163,184,0.24)',
-  backgroundColor: 'rgba(15,23,42,0.52)',
-  color: '#94a3b8',
+  backgroundColor: 'var(--da-card-bg, rgba(15,23,42,0.52))',
+  color: 'var(--da-subtle-text, #94a3b8)',
   textAlign: 'center' as const,
 };
 const itemCardStyle = {
@@ -664,7 +664,7 @@ const itemCardStyle = {
   borderRadius: '18px',
   border: '1px solid rgba(148,163,184,0.14)',
   background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.66) 100%)',
+    'linear-gradient(180deg, var(--da-field-bg, rgba(15,23,42,0.82)) 0%, var(--da-surface-bg, rgba(15,23,42,0.66)) 100%)',
 };
 const itemTopRowStyle = {
   display: 'flex',
@@ -674,8 +674,8 @@ const itemTopRowStyle = {
   flexWrap: 'wrap' as const,
   marginBottom: '12px',
 };
-const orderStyle = { fontSize: '18px', fontWeight: 800, color: '#f8fafc' };
-const itemMetaStyle = { color: '#94a3b8', fontSize: '13px', marginTop: '6px' };
+const orderStyle = { fontSize: '18px', fontWeight: 800, color: 'var(--da-title, #f8fafc)' };
+const itemMetaStyle = { color: 'var(--da-subtle-text, #94a3b8)', fontSize: '13px', marginTop: '6px' };
 const commentStyle = {
   color: '#e2e8f0',
   lineHeight: 1.55,
@@ -684,7 +684,7 @@ const commentStyle = {
 const detailGridStyle = {
   display: 'grid',
   gap: '8px',
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
   fontSize: '13px',
 };
 const statusPillStyle = (backgroundColor: string) => ({
