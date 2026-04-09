@@ -12,6 +12,9 @@ type Metric = {
   name: string;
   pass: number;
   borderline: number;
+  countsTowardScore?: boolean;
+  options?: string[];
+  defaultValue?: string;
 };
 
 type TeamType = TeamName | '';
@@ -50,10 +53,30 @@ type AuditDraft = {
   ticketId: string;
   comments: string;
   scores: Record<string, string>;
+  metricComments: Record<string, string>;
 };
 
 const LOCKED_NA_METRICS = new Set(['Active Listening']);
 const AUTO_FAIL_METRICS = new Set(['Hold (≤3 mins)', 'Procedure']);
+
+function countsTowardScore(metric: Metric) {
+  return metric.countsTowardScore !== false;
+}
+
+function shouldShowMetricComment(result: string) {
+  return (
+    result === 'Borderline' || result === 'Fail' || result === 'Auto-Fail'
+  );
+}
+
+const ISSUE_WAS_RESOLVED_QUESTION: Metric = {
+  name: 'Issue was resolved',
+  pass: 0,
+  borderline: 0,
+  countsTowardScore: false,
+  options: ['', 'Yes', 'No'],
+  defaultValue: '',
+};
 
 const callsMetrics: Metric[] = [
   { name: 'Greeting', pass: 2, borderline: 1 },
@@ -69,6 +92,7 @@ const callsMetrics: Metric[] = [
   { name: 'Refund Form', pass: 11, borderline: 5 },
   { name: 'Providing RL', pass: 5, borderline: 3 },
   { name: 'Ending', pass: 2, borderline: 1 },
+  ISSUE_WAS_RESOLVED_QUESTION,
 ];
 
 const ticketsMetrics: Metric[] = [
@@ -126,19 +150,35 @@ function canAutoFail(metricName: string) {
   return AUTO_FAIL_METRICS.has(metricName);
 }
 
-function getMetricOptions(metricName: string) {
-  if (isLockedToNA(metricName)) return ['N/A'];
+function getMetricOptions(metric: Metric) {
+  if (metric.options?.length) return metric.options;
+  if (isLockedToNA(metric.name)) return ['N/A'];
 
   const options = ['N/A', 'Pass', 'Borderline', 'Fail'];
-  if (canAutoFail(metricName)) options.push('Auto-Fail');
+  if (canAutoFail(metric.name)) options.push('Auto-Fail');
   return options;
+}
+
+function getMetricStoredValue(metric: Metric, scores: Record<string, string>) {
+  if (isLockedToNA(metric.name)) return 'N/A';
+  return scores[metric.name] ?? metric.defaultValue ?? 'N/A';
+}
+
+function getMissingRequiredMetricLabels(
+  teamValue: TeamType,
+  scores: Record<string, string>
+) {
+  return getMetricsForTeam(teamValue)
+    .filter((metric) => Array.isArray(metric.options) && metric.defaultValue === '')
+    .filter((metric) => !getMetricStoredValue(metric, scores))
+    .map((metric) => metric.name);
 }
 
 function createDefaultScores(teamValue: TeamType) {
   const defaults: Record<string, string> = {};
 
   getMetricsForTeam(teamValue).forEach((metric) => {
-    defaults[metric.name] = 'N/A';
+    defaults[metric.name] = metric.defaultValue ?? 'N/A';
   });
 
   return defaults;
@@ -156,40 +196,43 @@ function createEmptyDraft(teamValue: TeamType = ''): AuditDraft {
     ticketId: '',
     comments: '',
     scores: createDefaultScores(teamValue),
+    metricComments: {},
   };
 }
 
-function getAdjustedScoreData(team: TeamType, scores: Record<string, string>) {
+function getAdjustedScoreData(
+  team: TeamType,
+  scores: Record<string, string>,
+  metricComments: Record<string, string>
+) {
   const metrics = getMetricsForTeam(team);
+  const scoredMetrics = metrics.filter((item) => countsTowardScore(item));
 
-  const activeMetrics = metrics.filter((item) => {
-    const itemResult = isLockedToNA(item.name)
-      ? 'N/A'
-      : scores[item.name] || 'N/A';
-    return itemResult !== 'N/A';
+  const activeMetrics = scoredMetrics.filter((item) => {
+    const itemResult = getMetricStoredValue(item, scores);
+    return itemResult !== 'N/A' && itemResult !== '';
   });
 
   const activeTotalWeight = activeMetrics.reduce(
     (sum, item) => sum + item.pass,
     0
   );
-  const fullTotalWeight = metrics.reduce((sum, item) => sum + item.pass, 0);
+  const fullTotalWeight = scoredMetrics.reduce((sum, item) => sum + item.pass, 0);
 
   const scoreDetails = metrics.map((metric) => {
-    const result = isLockedToNA(metric.name)
-      ? 'N/A'
-      : scores[metric.name] || 'N/A';
+    const result = getMetricStoredValue(metric, scores);
+    const scored = countsTowardScore(metric);
 
     const adjustedWeight =
-      result === 'N/A' || activeTotalWeight === 0
+      !scored || result === 'N/A' || result === '' || activeTotalWeight === 0
         ? 0
         : (metric.pass / activeTotalWeight) * fullTotalWeight;
 
     let earned = 0;
 
-    if (result === 'Pass') {
+    if (scored && result === 'Pass') {
       earned = adjustedWeight;
-    } else if (result === 'Borderline') {
+    } else if (scored && result === 'Borderline') {
       earned =
         metric.pass > 0
           ? adjustedWeight * (metric.borderline / metric.pass)
@@ -203,16 +246,26 @@ function getAdjustedScoreData(team: TeamType, scores: Record<string, string>) {
       borderline: metric.borderline,
       adjustedWeight,
       earned,
+      counts_toward_score: scored,
+      metric_comment: shouldShowMetricComment(result)
+        ? (metricComments[metric.name] || '').trim() || null
+        : null,
     };
   });
 
   const hasAutoFail = scoreDetails.some(
-    (item) => canAutoFail(item.metric) && item.result === 'Auto-Fail'
+    (item) =>
+      item.counts_toward_score !== false &&
+      canAutoFail(item.metric) &&
+      item.result === 'Auto-Fail'
   );
 
   const qualityScore = hasAutoFail
     ? '0.00'
-    : scoreDetails.reduce((sum, item) => sum + item.earned, 0).toFixed(2);
+    : scoreDetails
+        .filter((item) => item.counts_toward_score !== false)
+        .reduce((sum, item) => sum + item.earned, 0)
+        .toFixed(2);
 
   return { scoreDetails, qualityScore, hasAutoFail };
 }
@@ -366,8 +419,8 @@ function NewAuditSupabase() {
     null;
 
   const adjustedData = useMemo(() => {
-    return getAdjustedScoreData(draft.team, draft.scores);
-  }, [draft.team, draft.scores]);
+    return getAdjustedScoreData(draft.team, draft.scores, draft.metricComments);
+  }, [draft.team, draft.scores, draft.metricComments]);
 
   function setDraftField<K extends keyof AuditDraft>(
     key: K,
@@ -394,14 +447,37 @@ function NewAuditSupabase() {
           ...prev.scores,
           [metricName]: 'N/A',
         },
+        metricComments: {
+          ...prev.metricComments,
+          [metricName]: '',
+        },
       }));
       return;
     }
 
+    setDraft((prev) => {
+      const nextMetricComments = { ...prev.metricComments };
+
+      if (!shouldShowMetricComment(value)) {
+        delete nextMetricComments[metricName];
+      }
+
+      return {
+        ...prev,
+        scores: {
+          ...prev.scores,
+          [metricName]: value,
+        },
+        metricComments: nextMetricComments,
+      };
+    });
+  }
+
+  function handleMetricCommentChange(metricName: string, value: string) {
     setDraft((prev) => ({
       ...prev,
-      scores: {
-        ...prev.scores,
+      metricComments: {
+        ...prev.metricComments,
         [metricName]: value,
       },
     }));
@@ -445,6 +521,18 @@ function NewAuditSupabase() {
 
     if (draft.team === 'Tickets' && !draft.ticketId) {
       setErrorMessage('Please fill Ticket ID for Tickets.');
+      return;
+    }
+
+    const missingRequiredMetricLabels = getMissingRequiredMetricLabels(
+      draft.team,
+      draft.scores
+    );
+
+    if (missingRequiredMetricLabels.length > 0) {
+      setErrorMessage(
+        `Please answer: ${missingRequiredMetricLabels.join(', ')}.`
+      );
       return;
     }
 
@@ -550,15 +638,17 @@ function NewAuditSupabase() {
 
         <div style={{ display: 'grid', gap: '15px' }}>
           {metrics.map((metric) => {
-            const metricOptions = getMetricOptions(metric.name);
-            const metricValue = isLockedToNA(metric.name)
-              ? 'N/A'
-              : draft.scores[metric.name] || 'N/A';
+            const metricOptions = getMetricOptions(metric);
+            const metricValue = getMetricStoredValue(metric, draft.scores);
+            const showMetricComment =
+              countsTowardScore(metric) && shouldShowMetricComment(metricValue);
 
             return (
               <div key={metric.name} style={glassFieldCardStyle}>
                 <label style={labelStyle}>
-                  {metric.name} ({metric.pass} pts)
+                  {countsTowardScore(metric)
+                    ? `${metric.name} (${metric.pass} pts)`
+                    : metric.name}
                 </label>
                 <select
                   value={metricValue}
@@ -569,8 +659,8 @@ function NewAuditSupabase() {
                   style={fieldStyle}
                 >
                   {metricOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+                    <option key={option || '__empty__'} value={option}>
+                      {option || 'Select answer'}
                     </option>
                   ))}
                 </select>
@@ -578,6 +668,21 @@ function NewAuditSupabase() {
                 {isLockedToNA(metric.name) && (
                   <div style={helpTextStyle}>Locked to N/A</div>
                 )}
+
+                {showMetricComment ? (
+                  <div style={metricCommentWrapStyle}>
+                    <label style={metricCommentLabelStyle}>QA Note for Agent</label>
+                    <textarea
+                      value={draft.metricComments[metric.name] || ''}
+                      onChange={(event) =>
+                        handleMetricCommentChange(metric.name, event.target.value)
+                      }
+                      rows={2}
+                      placeholder="Leave a short note for the agent"
+                      style={metricCommentFieldStyle}
+                    />
+                  </div>
+                ) : null}
               </div>
             );
           })}
@@ -598,12 +703,12 @@ function NewAuditSupabase() {
   }
 
   return (
-    <div style={{ color: 'var(--da-page-text, #e5eefb)' }}>
+    <div style={{ color: '#e5eefb' }}>
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Audit Workspace</div>
           <h2 style={{ margin: 0, fontSize: '30px' }}>New Audit</h2>
-          <p style={{ margin: '10px 0 0 0', color: 'var(--da-subtle-text, #94a3b8)' }}>
+          <p style={{ margin: '10px 0 0 0', color: '#94a3b8' }}>
             Create Detroit Axle audits using the live agent directory from
             profiles.
           </p>
@@ -653,7 +758,7 @@ function NewAuditSupabase() {
                   style={pickerButtonStyle}
                 >
                   <span
-                    style={{ color: selectedAgent ? 'var(--da-title, #f8fafc)' : 'var(--da-subtle-text, #94a3b8)' }}
+                    style={{ color: selectedAgent ? '#f8fafc' : '#94a3b8' }}
                   >
                     {selectedAgent
                       ? getAgentLabel(selectedAgent)
@@ -880,7 +985,7 @@ const pageHeaderStyle = {
 
 const panelStyle = {
   background:
-    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
+    'linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%)',
   border: '1px solid rgba(148, 163, 184, 0.14)',
   borderRadius: '24px',
   padding: '22px',
@@ -889,7 +994,7 @@ const panelStyle = {
 };
 
 const sectionEyebrow = {
-  color: 'var(--da-accent-text, #60a5fa)',
+  color: '#60a5fa',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -908,8 +1013,8 @@ const teamButtonStyle = {
   padding: '12px 16px',
   borderRadius: '14px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'var(--da-surface-bg, rgba(15, 23, 42, 0.62))',
-  color: 'var(--da-muted-text, #cbd5e1)',
+  background: 'rgba(15, 23, 42, 0.62)',
+  color: '#cbd5e1',
   cursor: 'pointer',
   fontWeight: 700,
 };
@@ -934,7 +1039,7 @@ const labelStyle = {
   display: 'block',
   marginBottom: '8px',
   fontSize: '13px',
-  color: 'var(--da-muted-text, #cbd5e1)',
+  color: '#cbd5e1',
   fontWeight: 700,
 };
 
@@ -943,14 +1048,14 @@ const fieldStyle = {
   padding: '14px 16px',
   borderRadius: '16px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'var(--da-surface-bg, rgba(15, 23, 42, 0.7))',
-  color: 'var(--da-page-text, #e5eefb)',
+  background: 'rgba(15, 23, 42, 0.7)',
+  color: '#e5eefb',
 };
 
 const secondaryButton = {
   padding: '12px 16px',
-  background: 'var(--da-field-bg, rgba(15, 23, 42, 0.74))',
-  color: 'var(--da-page-text, #e5eefb)',
+  background: 'rgba(15, 23, 42, 0.74)',
+  color: '#e5eefb',
   border: '1px solid rgba(148, 163, 184, 0.18)',
   borderRadius: '14px',
   cursor: 'pointer',
@@ -973,8 +1078,8 @@ const pickerButtonStyle = {
   padding: '14px 16px',
   borderRadius: '16px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'var(--da-surface-bg, rgba(15, 23, 42, 0.7))',
-  color: 'var(--da-page-text, #e5eefb)',
+  background: 'rgba(15, 23, 42, 0.7)',
+  color: '#e5eefb',
   textAlign: 'left' as const,
   cursor: 'pointer',
   display: 'flex',
@@ -987,7 +1092,7 @@ const pickerMenuStyle = {
   top: 'calc(100% + 8px)',
   left: 0,
   right: 0,
-  background: 'var(--da-menu-bg, rgba(15, 23, 42, 0.96))',
+  background: 'rgba(15, 23, 42, 0.96)',
   border: '1px solid rgba(148, 163, 184, 0.16)',
   borderRadius: '18px',
   boxShadow: '0 18px 44px rgba(2, 6, 23, 0.45)',
@@ -1012,32 +1117,32 @@ const pickerListStyle = {
 const pickerInfoStyle = {
   padding: '12px',
   borderRadius: '12px',
-  backgroundColor: 'var(--da-surface-bg, rgba(15, 23, 42, 0.68))',
-  color: 'var(--da-subtle-text, #94a3b8)',
+  backgroundColor: 'rgba(15, 23, 42, 0.68)',
+  color: '#94a3b8',
 };
 
 const pickerErrorStyle = {
   padding: '12px',
   borderRadius: '12px',
-  backgroundColor: 'var(--da-error-bg, rgba(127, 29, 29, 0.24))',
-  color: 'var(--da-warning-text, #fca5a5)',
-  border: 'var(--da-warning-border, 1px solid rgba(252, 165, 165, 0.24))',
+  backgroundColor: 'rgba(127, 29, 29, 0.24)',
+  color: '#fca5a5',
+  border: '1px solid rgba(252, 165, 165, 0.24)',
 };
 
 const pickerOptionStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
   border: '1px solid rgba(148, 163, 184, 0.12)',
-  backgroundColor: 'var(--da-surface-bg, rgba(15, 23, 42, 0.6))',
+  backgroundColor: 'rgba(15, 23, 42, 0.6)',
   textAlign: 'left' as const,
   cursor: 'pointer',
-  color: 'var(--da-page-text, #e5eefb)',
+  color: '#e5eefb',
   fontWeight: 600,
 };
 
 const pickerOptionActiveStyle = {
   border: '1px solid rgba(96, 165, 250, 0.36)',
-  backgroundColor: 'var(--da-active-option-bg, rgba(30, 64, 175, 0.32))',
+  backgroundColor: 'rgba(30, 64, 175, 0.32)',
 };
 
 const infoCardStyle = {
@@ -1045,34 +1150,62 @@ const infoCardStyle = {
   borderRadius: '18px',
   padding: '18px',
   border: '1px solid rgba(148, 163, 184, 0.12)',
-  background: 'var(--da-card-bg, rgba(15, 23, 42, 0.5))',
+  background: 'rgba(15, 23, 42, 0.5)',
 };
 
 const infoLineStyle = {
   margin: '0 0 8px 0',
-  color: 'var(--da-muted-text, #cbd5e1)',
+  color: '#cbd5e1',
 };
 
 const glassFieldCardStyle = {
   borderRadius: '18px',
   padding: '16px',
   border: '1px solid rgba(148, 163, 184, 0.12)',
-  background: 'var(--da-card-bg, rgba(15, 23, 42, 0.5))',
+  background: 'rgba(15, 23, 42, 0.5)',
 };
 
 const helpTextStyle = {
   marginTop: '8px',
   fontSize: '12px',
-  color: 'var(--da-subtle-text, #94a3b8)',
+  color: '#94a3b8',
+};
+
+const metricCommentWrapStyle = {
+  marginTop: '12px',
+  padding: '12px',
+  borderRadius: '14px',
+  border: '1px solid rgba(248, 113, 113, 0.16)',
+  background: 'rgba(2, 6, 23, 0.28)',
+};
+
+const metricCommentLabelStyle = {
+  display: 'block',
+  marginBottom: '8px',
+  color: '#f8fafc',
+  fontSize: '12px',
+  fontWeight: 800,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase' as const,
+};
+
+const metricCommentFieldStyle = {
+  width: '100%',
+  padding: '12px 14px',
+  borderRadius: '14px',
+  border: '1px solid rgba(148, 163, 184, 0.16)',
+  background: 'rgba(15, 23, 42, 0.78)',
+  color: '#e5eefb',
+  resize: 'vertical' as const,
 };
 
 const warningBannerStyle = {
   marginTop: '18px',
   padding: '14px 16px',
   borderRadius: '16px',
-  backgroundColor: 'var(--da-warning-bg, rgba(127, 29, 29, 0.22))',
-  border: 'var(--da-warning-border, 1px solid rgba(252, 165, 165, 0.24))',
-  color: 'var(--da-error-text, #fecaca)',
+  backgroundColor: 'rgba(127, 29, 29, 0.22)',
+  border: '1px solid rgba(252, 165, 165, 0.24)',
+  color: '#fecaca',
   fontWeight: 700,
 };
 
@@ -1082,11 +1215,11 @@ const scoreCardStyle = {
   padding: '18px',
   border: '1px solid rgba(96, 165, 250, 0.2)',
   background:
-    'linear-gradient(135deg, rgba(30,64,175,0.22) 0%, var(--da-card-bg, rgba(15,23,42,0.5)) 100%)',
+    'linear-gradient(135deg, rgba(30,64,175,0.22) 0%, rgba(15,23,42,0.5) 100%)',
 };
 
 const scoreLabelStyle = {
-  color: 'var(--da-accent-text, #93c5fd)',
+  color: '#93c5fd',
   fontSize: '13px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -1097,7 +1230,7 @@ const scoreLabelStyle = {
 const scoreValueStyle = {
   fontSize: '36px',
   fontWeight: 800,
-  color: 'var(--da-title, #f8fafc)',
+  color: '#f8fafc',
 };
 
 const actionRowStyle = {
@@ -1111,9 +1244,9 @@ const errorBannerStyle = {
   marginBottom: '16px',
   padding: '14px 16px',
   borderRadius: '16px',
-  backgroundColor: 'var(--da-error-bg, rgba(127, 29, 29, 0.24))',
-  border: 'var(--da-warning-border, 1px solid rgba(252, 165, 165, 0.24))',
-  color: 'var(--da-error-text, #fecaca)',
+  backgroundColor: 'rgba(127, 29, 29, 0.24)',
+  border: '1px solid rgba(252, 165, 165, 0.24)',
+  color: '#fecaca',
   fontWeight: 700,
 };
 
@@ -1123,7 +1256,7 @@ const successBannerStyle = {
   borderRadius: '16px',
   backgroundColor: 'rgba(22, 101, 52, 0.24)',
   border: '1px solid rgba(134, 239, 172, 0.22)',
-  color: 'var(--da-success-text, #bbf7d0)',
+  color: '#bbf7d0',
   fontWeight: 700,
 };
 
