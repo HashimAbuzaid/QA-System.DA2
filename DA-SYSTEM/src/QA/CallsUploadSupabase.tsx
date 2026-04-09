@@ -175,12 +175,12 @@ function CallsUploadSupabase() {
   }
 
   return (
-    <div style={{ color: '#e5eefb' }}>
+    <div style={{ color: 'var(--da-page-text, #e5eefb)' }}>
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Operations Upload</div>
           <h2 style={{ margin: 0, fontSize: '30px' }}>Calls Upload</h2>
-          <p style={{ margin: '10px 0 0 0', color: '#94a3b8' }}>
+          <p style={{ margin: '10px 0 0 0', color: 'var(--da-subtle-text, #94a3b8)' }}>
             Upload calls production using the live Calls agent directory from
             profiles.
           </p>
@@ -213,7 +213,7 @@ function CallsUploadSupabase() {
                 onClick={() => setIsAgentPickerOpen((prev) => !prev)}
                 style={pickerButtonStyle}
               >
-                <span style={{ color: selectedAgent ? '#f8fafc' : '#94a3b8' }}>
+                <span style={{ color: selectedAgent ? 'var(--da-title, #f8fafc)' : 'var(--da-subtle-text, #94a3b8)' }}>
                   {selectedAgent
                     ? getAgentLabel(selectedAgent)
                     : 'Select agent'}
@@ -385,7 +385,7 @@ const pageHeaderStyle = {
 };
 
 const sectionEyebrow = {
-  color: '#60a5fa',
+  color: 'var(--da-accent-text, #60a5fa)',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -397,14 +397,14 @@ const teamBadgeStyle = {
   padding: '12px 14px',
   borderRadius: '14px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'rgba(15, 23, 42, 0.62)',
-  color: '#cbd5e1',
+  background: 'var(--da-surface-bg, rgba(15, 23, 42, 0.62))',
+  color: 'var(--da-muted-text, #cbd5e1)',
   fontWeight: 700,
 };
 
 const panelStyle = {
   background:
-    'linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%)',
+    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
   border: '1px solid rgba(148, 163, 184, 0.14)',
   borderRadius: '24px',
   padding: '22px',
@@ -426,7 +426,7 @@ const labelStyle = {
   display: 'block',
   marginBottom: '8px',
   fontSize: '13px',
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
   fontWeight: 700,
 };
 
@@ -435,8 +435,8 @@ const fieldStyle = {
   padding: '14px 16px',
   borderRadius: '16px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'rgba(15, 23, 42, 0.7)',
-  color: '#e5eefb',
+  background: 'var(--da-surface-bg, rgba(15, 23, 42, 0.7))',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 
 const pickerButtonStyle = {
@@ -444,8 +444,8 @@ const pickerButtonStyle = {
   padding: '14px 16px',
   borderRadius: '16px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'rgba(15, 23, 42, 0.7)',
-  color: '#e5eefb',
+  background: 'var(--da-surface-bg, rgba(15, 23, 42, 0.7))',
+  color: 'var(--da-page-text, #e5eefb)',
   textAlign: 'left' as const,
   cursor: 'pointer',
   display: 'flex',
@@ -458,7 +458,7 @@ const pickerMenuStyle = {
   top: 'calc(100% + 8px)',
   left: 0,
   right: 0,
-  background: 'rgba(15, 23, 42, 0.96)',
+  background: 'var(--da-menu-bg, rgba(15, 23, 42, 0.96))',
   border: '1px solid rgba(148, 163, 184, 0.16)',
   borderRadius: '18px',
   boxShadow: '0 18px 44px rgba(2, 6, 23, 0.45)',
@@ -483,32 +483,32 @@ const pickerListStyle = {
 const pickerInfoStyle = {
   padding: '12px',
   borderRadius: '12px',
-  backgroundColor: 'rgba(15, 23, 42, 0.68)',
-  color: '#94a3b8',
+  backgroundColor: 'var(--da-surface-bg, rgba(15, 23, 42, 0.68))',
+  color: 'var(--da-subtle-text, #94a3b8)',
 };
 
 const pickerErrorStyle = {
   padding: '12px',
   borderRadius: '12px',
-  backgroundColor: 'rgba(127, 29, 29, 0.24)',
-  color: '#fecaca',
-  border: '1px solid rgba(248, 113, 113, 0.22)',
+  backgroundColor: 'var(--da-error-bg, rgba(127, 29, 29, 0.24))',
+  color: 'var(--da-error-text, #fecaca)',
+  border: 'var(--da-error-border, 1px solid rgba(248, 113, 113, 0.22))',
 };
 
 const pickerOptionStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
   border: '1px solid rgba(148, 163, 184, 0.12)',
-  backgroundColor: 'rgba(15, 23, 42, 0.6)',
+  backgroundColor: 'var(--da-surface-bg, rgba(15, 23, 42, 0.6))',
   textAlign: 'left' as const,
   cursor: 'pointer',
   fontWeight: 600,
-  color: '#e5eefb',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 
 const pickerOptionActiveStyle = {
   border: '1px solid rgba(96, 165, 250, 0.36)',
-  backgroundColor: 'rgba(30, 64, 175, 0.32)',
+  backgroundColor: 'var(--da-active-option-bg, rgba(30, 64, 175, 0.32))',
 };
 
 const infoCardStyle = {
@@ -516,11 +516,11 @@ const infoCardStyle = {
   borderRadius: '18px',
   padding: '18px',
   border: '1px solid rgba(148, 163, 184, 0.12)',
-  background: 'rgba(15, 23, 42, 0.5)',
+  background: 'var(--da-card-bg, rgba(15, 23, 42, 0.5))',
 };
 
 const infoCardTitleStyle = {
-  color: '#93c5fd',
+  color: 'var(--da-accent-text, #93c5fd)',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -530,7 +530,7 @@ const infoCardTitleStyle = {
 
 const infoLineStyle = {
   margin: '0 0 8px 0',
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
 };
 
 const actionRowStyle = {
@@ -555,8 +555,8 @@ const secondaryButton = {
   padding: '14px 18px',
   borderRadius: '16px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'rgba(15, 23, 42, 0.74)',
-  color: '#e5eefb',
+  background: 'var(--da-field-bg, rgba(15, 23, 42, 0.74))',
+  color: 'var(--da-page-text, #e5eefb)',
   fontWeight: 700,
   cursor: 'pointer',
 };
@@ -565,9 +565,9 @@ const errorBannerStyle = {
   marginBottom: '16px',
   padding: '14px 16px',
   borderRadius: '16px',
-  backgroundColor: 'rgba(127, 29, 29, 0.24)',
-  border: '1px solid rgba(252, 165, 165, 0.24)',
-  color: '#fecaca',
+  backgroundColor: 'var(--da-error-bg, rgba(127, 29, 29, 0.24))',
+  border: 'var(--da-warning-border, 1px solid rgba(252, 165, 165, 0.24))',
+  color: 'var(--da-error-text, #fecaca)',
   fontWeight: 700,
 };
 
@@ -577,7 +577,7 @@ const successBannerStyle = {
   borderRadius: '16px',
   backgroundColor: 'rgba(22, 101, 52, 0.24)',
   border: '1px solid rgba(134, 239, 172, 0.22)',
-  color: '#bbf7d0',
+  color: 'var(--da-success-text, #bbf7d0)',
   fontWeight: 700,
 };
 
