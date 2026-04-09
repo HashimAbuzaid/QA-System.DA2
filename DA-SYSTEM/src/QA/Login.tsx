@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 function Login() {
@@ -8,27 +8,6 @@ function Login() {
   const [sendingRecovery, setSendingRecovery] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    try {
-      const storedEmail = window.localStorage.getItem('detroit-axle-login-email');
-      if (storedEmail) setEmail(storedEmail);
-    } catch {
-      // ignore storage failures
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    try {
-      window.localStorage.setItem('detroit-axle-login-email', email);
-    } catch {
-      // ignore storage failures
-    }
-  }, [email]);
 
   async function handleLogin() {
     setErrorMessage('');
@@ -81,6 +60,12 @@ function Login() {
     );
   }
 
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (loading) return;
+    await handleLogin();
+  }
+
   return (
     <div style={shellStyle}>
       <div style={glowTopStyle} />
@@ -95,13 +80,7 @@ function Login() {
           <div style={successBannerStyle}>{successMessage}</div>
         ) : null}
 
-        <form
-          style={formStyle}
-          onSubmit={(event) => {
-            event.preventDefault();
-            void handleLogin();
-          }}
-        >
+        <form onSubmit={handleSubmit} style={formStyle}>
           <div>
             <label style={labelStyle}>Email</label>
             <input
@@ -110,6 +89,7 @@ function Login() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@detroitaxle.com"
               style={inputStyle}
+              autoComplete="username"
             />
           </div>
 
@@ -121,6 +101,7 @@ function Login() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               style={inputStyle}
+              autoComplete="current-password"
             />
           </div>
 
