@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { supabase } from '../lib/supabase';
 type ScoreDetail = {
   metric: string;
@@ -69,8 +69,15 @@ function shouldShowMetricComment(result: string) {
   );
 }
 
+function openNativeDatePicker(target: HTMLInputElement) {
+  const input = target as HTMLInputElement & { showPicker?: () => void };
+  input.showPicker?.();
+}
+
+const ISSUE_WAS_RESOLVED_METRIC = 'Issue was resolved';
+
 const ISSUE_WAS_RESOLVED_QUESTION: Metric = {
-  name: 'Issue was resolved',
+  name: ISSUE_WAS_RESOLVED_METRIC,
   pass: 0,
   borderline: 0,
   countsTowardScore: false,
@@ -107,6 +114,7 @@ const ticketsMetrics: Metric[] = [
   { name: 'Refund Form', pass: 6, borderline: 3 },
   { name: 'Providing RL', pass: 5, borderline: 3 },
   { name: 'Ending', pass: 5, borderline: 3 },
+  ISSUE_WAS_RESOLVED_QUESTION,
 ];
 const salesMetrics: Metric[] = [
   { name: 'Greeting', pass: 2, borderline: 1 },
@@ -121,7 +129,37 @@ const salesMetrics: Metric[] = [
   { name: 'Refund Form', pass: 5, borderline: 3 },
   { name: 'Up-selling', pass: 8, borderline: 4 },
   { name: 'Ending', pass: 5, borderline: 3 },
+  ISSUE_WAS_RESOLVED_QUESTION,
 ];
+
+function getThemeVars(): Record<string, string> {
+  const isLight =
+    typeof document !== 'undefined' && document.body.dataset.theme === 'light';
+
+  return {
+    '--screen-text': isLight ? '#0f172a' : '#e5eefb',
+    '--screen-heading': isLight ? '#0f172a' : '#f8fafc',
+    '--screen-muted': isLight ? '#64748b' : '#94a3b8',
+    '--screen-subtle': isLight ? '#475569' : '#64748b',
+    '--screen-accent': isLight ? '#2563eb' : '#60a5fa',
+    '--screen-panel-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(241,245,249,0.96) 100%)'
+      : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    '--screen-card-soft-bg': isLight ? 'rgba(248,250,252,0.9)' : 'rgba(15,23,42,0.52)',
+    '--screen-field-bg': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.7)',
+    '--screen-border': isLight ? 'rgba(148,163,184,0.28)' : 'rgba(148,163,184,0.12)',
+    '--screen-border-strong': isLight ? 'rgba(148,163,184,0.34)' : 'rgba(148,163,184,0.16)',
+    '--screen-table-head-bg': isLight ? 'rgba(226,232,240,0.95)' : 'rgba(2,6,23,0.94)',
+    '--screen-secondary-btn-bg': isLight ? 'rgba(248,250,252,0.98)' : 'rgba(15,23,42,0.74)',
+    '--screen-secondary-btn-text': isLight ? '#0f172a' : '#e5eefb',
+    '--screen-select-option-bg': isLight ? '#ffffff' : '#0f172a',
+    '--screen-select-option-text': isLight ? '#0f172a' : '#e5eefb',
+    '--screen-shadow': isLight ? '0 18px 40px rgba(15,23,42,0.08)' : '0 18px 40px rgba(2,6,23,0.35)',
+    '--screen-score-pill-bg': isLight ? 'rgba(219,234,254,0.95)' : 'rgba(37,99,235,0.18)',
+    '--screen-score-pill-border': isLight ? 'rgba(96,165,250,0.38)' : 'rgba(96,165,250,0.26)',
+  };
+}
+
 function AuditsListSupabase() {
   const [audits, setAudits] = useState<AuditItem[]>([]);
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
@@ -154,7 +192,10 @@ function AuditsListSupabase() {
     comments: '',
   });
   const [editScores, setEditScores] = useState<Record<string, string>>({});
-  const [editMetricComments, setEditMetricComments] = useState<Record<string, string>>({});
+  const [editMetricComments, setEditMetricComments] = useState<
+    Record<string, string>
+  >({});
+  const themeVars = getThemeVars();
   const agentPickerRef = useRef<HTMLDivElement | null>(null);
   const isAdmin = currentProfile?.role === 'admin';
   useEffect(() => {
@@ -268,12 +309,10 @@ function AuditsListSupabase() {
     return defaults;
   }
 
-  function buildMetricCommentMapFromAudit(audit: AuditItem) {
+  function buildMetricCommentsFromAudit(audit: AuditItem) {
     const defaults: Record<string, string> = {};
     (audit.score_details || []).forEach((item) => {
-      if (typeof item.metric_comment === 'string' && item.metric_comment.trim()) {
-        defaults[item.metric] = item.metric_comment.trim();
-      }
+      defaults[item.metric] = item.metric_comment || '';
     });
     return defaults;
   }
@@ -318,9 +357,10 @@ function AuditsListSupabase() {
         adjustedWeight,
         earned,
         counts_toward_score: scored,
-        metric_comment: shouldShowMetricComment(result)
-          ? (metricComments[metric.name] || '').trim() || null
-          : null,
+        metric_comment:
+          scored && shouldShowMetricComment(result)
+            ? (metricComments[metric.name] || '').trim() || null
+            : null,
       };
     });
     const hasAutoFail = scoreDetails.some(
@@ -476,7 +516,7 @@ function AuditsListSupabase() {
       comments: audit.comments || '',
     });
     setEditScores(buildScoreMapFromAudit(audit));
-    setEditMetricComments(buildMetricCommentMapFromAudit(audit));
+    setEditMetricComments(buildMetricCommentsFromAudit(audit));
   }
   function cancelEdit() {
     setEditingAuditId(null);
@@ -520,7 +560,9 @@ function AuditsListSupabase() {
       setEditMetricComments((prev) => ({ ...prev, [metricName]: '' }));
       return;
     }
+
     setEditScores((prev) => ({ ...prev, [metricName]: value }));
+
     if (!shouldShowMetricComment(value)) {
       setEditMetricComments((prev) => {
         const next = { ...prev };
@@ -533,7 +575,6 @@ function AuditsListSupabase() {
   function handleMetricCommentChange(metricName: string, value: string) {
     setEditMetricComments((prev) => ({ ...prev, [metricName]: value }));
   }
-
   async function handleUpdate(auditId: string) {
     setErrorMessage('');
     setSuccessMessage('');
@@ -576,6 +617,19 @@ function AuditsListSupabase() {
     }
     if (!selectedAgent.agent_id) {
       setErrorMessage('Selected agent does not have an Agent ID.');
+      return;
+    }
+    const missingMetricCommentLabels = getMetricsForTeam(editForm.team)
+      .filter((metric) => countsTowardScore(metric))
+      .filter((metric) =>
+        shouldShowMetricComment(getMetricStoredValue(metric, editScores))
+      )
+      .filter((metric) => !(editMetricComments[metric.name] || '').trim())
+      .map((metric) => metric.name);
+    if (missingMetricCommentLabels.length > 0) {
+      setErrorMessage(
+        `Please add a short QA note for: ${missingMetricCommentLabels.join(', ')}.`
+      );
       return;
     }
     const adjustedData = getAdjustedScoreData(
@@ -792,10 +846,13 @@ function AuditsListSupabase() {
     return '#1f2937';
   }
   if (loading) {
-    return <div style={{ color: '#cbd5e1' }}>Loading audits...</div>;
+    return <div style={{ color: 'var(--screen-text)' }}>Loading audits...</div>;
   }
   return (
-    <div style={{ color: '#e5eefb' }}>
+    <div
+      data-no-theme-invert="true"
+      style={{ color: 'var(--screen-text)', ...(themeVars as CSSProperties) }}
+    >
       {' '}
       <div style={pageHeaderStyle}>
         {' '}
@@ -803,7 +860,7 @@ function AuditsListSupabase() {
           {' '}
           <div style={sectionEyebrow}>Audit Management</div>{' '}
           <h2 style={{ marginBottom: '8px' }}>Audits List</h2>{' '}
-          <p style={{ margin: 0, color: '#94a3b8' }}>
+          <p style={{ margin: 0, color: 'var(--screen-muted)' }}>
             {' '}
             QA can view audits and score details. Only admin can edit, delete,
             or release audits.{' '}
@@ -845,7 +902,7 @@ function AuditsListSupabase() {
             <select
               value={teamFilter}
               onChange={(e) => setTeamFilter(e.target.value)}
-              style={fieldStyle}
+              style={selectFieldStyle}
             >
               {' '}
               <option value="">All Teams</option>{' '}
@@ -860,7 +917,7 @@ function AuditsListSupabase() {
             <select
               value={caseTypeFilter}
               onChange={(e) => setCaseTypeFilter(e.target.value)}
-              style={fieldStyle}
+              style={selectFieldStyle}
             >
               {' '}
               <option value="">All Case Types</option>{' '}
@@ -879,6 +936,8 @@ function AuditsListSupabase() {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
+              onClick={(e) => openNativeDatePicker(e.currentTarget)}
+              onFocus={(e) => openNativeDatePicker(e.currentTarget)}
               style={fieldStyle}
             />{' '}
           </div>{' '}
@@ -889,6 +948,8 @@ function AuditsListSupabase() {
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
+              onClick={(e) => openNativeDatePicker(e.currentTarget)}
+              onFocus={(e) => openNativeDatePicker(e.currentTarget)}
               style={fieldStyle}
             />{' '}
           </div>{' '}
@@ -897,11 +958,11 @@ function AuditsListSupabase() {
       {isAdmin ? (
         <div style={{ ...panelStyle, marginTop: '18px' }}>
           {' '}
-          <h3 style={{ marginTop: 0, color: '#f8fafc' }}>
+          <h3 style={{ marginTop: 0, color: 'var(--screen-heading)' }}>
             {' '}
             Weekly Release Controls{' '}
           </h3>{' '}
-          <p style={{ color: '#94a3b8' }}>
+          <p style={{ color: 'var(--screen-muted)' }}>
             {' '}
             Use the filters above to choose the week, team, or case type, then
             share or hide filtered audits, or hide all audits at once.{' '}
@@ -966,7 +1027,7 @@ function AuditsListSupabase() {
         </div>
       )}{' '}
       {filteredAudits.length === 0 ? (
-        <p style={{ color: '#94a3b8', marginTop: '18px' }}>No audits found.</p>
+        <p style={{ color: 'var(--screen-muted)', marginTop: '18px' }}>No audits found.</p>
       ) : (
         <div style={auditTableWrapStyle}>
           {' '}
@@ -1152,7 +1213,7 @@ function AuditsListSupabase() {
                                     e.target.value as EditFormState['team']
                                   )
                                 }
-                                style={fieldStyle}
+                                style={selectFieldStyle}
                               >
                                 {' '}
                                 <option value="">Select Team</option>{' '}
@@ -1265,6 +1326,8 @@ function AuditsListSupabase() {
                                     auditDate: e.target.value,
                                   }))
                                 }
+                                onClick={(e) => openNativeDatePicker(e.currentTarget)}
+                                onFocus={(e) => openNativeDatePicker(e.currentTarget)}
                                 style={fieldStyle}
                               />{' '}
                             </div>{' '}
@@ -1346,63 +1409,61 @@ function AuditsListSupabase() {
                             }}
                           >
                             {' '}
-                            {getMetricsForTeam(editForm.team).map((metric) => {
-                              const metricValue = getMetricStoredValue(
-                                metric,
-                                editScores
-                              );
-                              const showMetricComment =
-                                countsTowardScore(metric) &&
-                                shouldShowMetricComment(metricValue);
-
-                              return (
-                                <div key={metric.name} style={scoreRowStyle}>
-                                  <div
-                                    style={{ color: '#cbd5e1', fontWeight: 700 }}
+                            {getMetricsForTeam(editForm.team).map((metric) => (
+                              <div key={metric.name} style={scoreRowStyle}>
+                                {' '}
+                                <div
+                                  style={{ color: 'var(--screen-text)', fontWeight: 700 }}
+                                >
+                                  {' '}
+                                  {countsTowardScore(metric)
+                                    ? `${metric.name} (${metric.pass} pts)`
+                                    : metric.name}{' '}
+                                </div>{' '}
+                                <div style={{ display: 'grid', gap: '8px', minWidth: '230px' }}>
+                                  <select
+                                    value={getMetricStoredValue(metric, editScores)}
+                                    onChange={(e) =>
+                                      handleScoreChange(
+                                        metric.name,
+                                        e.target.value
+                                      )
+                                    }
+                                    disabled={LOCKED_NA_METRICS.has(metric.name)}
+                                    style={compactSelectFieldStyle}
                                   >
-                                    {countsTowardScore(metric)
-                                      ? `${metric.name} (${metric.pass} pts)`
-                                      : metric.name}
-                                  </div>
-                                  <div style={{ display: 'grid', gap: '8px', width: '100%' }}>
-                                    <select
-                                      value={metricValue}
+                                    {' '}
+                                    {getMetricOptions(metric).map((option) => (
+                                      <option
+                                        key={option || '__empty__'}
+                                        value={option}
+                                        style={selectOptionStyle}
+                                      >
+                                        {' '}
+                                        {option || 'Select answer'}{' '}
+                                      </option>
+                                    ))}{' '}
+                                  </select>{' '}
+                                  {countsTowardScore(metric) &&
+                                  shouldShowMetricComment(
+                                    getMetricStoredValue(metric, editScores)
+                                  ) ? (
+                                    <textarea
+                                      value={editMetricComments[metric.name] || ''}
                                       onChange={(e) =>
-                                        handleScoreChange(
+                                        handleMetricCommentChange(
                                           metric.name,
                                           e.target.value
                                         )
                                       }
-                                      disabled={LOCKED_NA_METRICS.has(metric.name)}
-                                      style={compactFieldStyle}
-                                    >
-                                      {getMetricOptions(metric).map((option) => (
-                                        <option
-                                          key={option || '__empty__'}
-                                          value={option}
-                                        >
-                                          {option || 'Select answer'}
-                                        </option>
-                                      ))}
-                                    </select>
-                                    {showMetricComment ? (
-                                      <textarea
-                                        value={editMetricComments[metric.name] || ''}
-                                        onChange={(e) =>
-                                          handleMetricCommentChange(
-                                            metric.name,
-                                            e.target.value
-                                          )
-                                        }
-                                        rows={2}
-                                        placeholder="Leave a short note for the agent"
-                                        style={compactTextareaStyle}
-                                      />
-                                    ) : null}
-                                  </div>
+                                      rows={2}
+                                      placeholder="Leave a short note explaining the result"
+                                      style={metricCommentFieldStyle}
+                                    />
+                                  ) : null}
                                 </div>
-                              );
-                            })}{' '}
+                              </div>
+                            ))}{' '}
                           </div>{' '}
                           {adjustedEditData ? (
                             <div style={editSummaryStyle}>
@@ -1510,55 +1571,57 @@ function AuditsListSupabase() {
                           </div>{' '}
                           <div style={{ display: 'grid', gap: '10px' }}>
                             {' '}
-                            {(audit.score_details || []).map((detail) => {
-                              const metricComment =
-                                typeof detail.metric_comment === 'string' &&
-                                detail.metric_comment.trim()
-                                  ? detail.metric_comment.trim()
-                                  : null;
-
-                              return (
-                                <div
-                                  key={`${audit.id}-${detail.metric}`}
-                                  style={detailCardStyle}
-                                >
-                                  <div style={detailTopRowStyle}>
-                                    <div>
-                                      <div style={detailMetricTitleStyle}>
-                                        {detail.metric}
-                                      </div>
-                                      <div style={detailMetricMetaStyle}>
-                                        {isNoScoreDetail(detail)
-                                          ? 'Yes / No question'
-                                          : `Pass ${detail.pass} • Borderline ${detail.borderline} • Adjusted ${detail.adjustedWeight.toFixed(
-                                              2
-                                            )}`}
-                                      </div>
-                                    </div>
-                                    <span
-                                      style={{
-                                        ...pillStyle,
-                                        backgroundColor: getResultBadgeColor(
-                                          detail.result
-                                        ),
-                                      }}
-                                    >
-                                      {detail.result}
-                                    </span>
-                                  </div>
-                                  {metricComment ? (
+                            {(audit.score_details || []).map((detail) => (
+                              <div
+                                key={`${audit.id}-${detail.metric}`}
+                                style={detailRowStyle}
+                              >
+                                {' '}
+                                <div>
+                                  {' '}
+                                  <div
+                                    style={{
+                                      color: 'var(--screen-heading)',
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    {' '}
+                                    {detail.metric}{' '}
+                                  </div>{' '}
+                                  <div
+                                    style={{
+                                      color: 'var(--screen-muted)',
+                                      fontSize: '12px',
+                                      marginTop: '4px',
+                                    }}
+                                  >
+                                    {' '}
+                                    {isNoScoreDetail(detail)
+                                      ? 'Administrative question'
+                                      : `Pass ${detail.pass} • Borderline ${detail.borderline} • Adjusted ${detail.adjustedWeight.toFixed(2)}`}{' '}
+                                  </div>{' '}
+                                  {detail.metric_comment ? (
                                     <div style={metricNoteCardStyle}>
-                                      <div style={metricNoteLabelStyle}>
-                                        QA Note
-                                      </div>
+                                      <div style={metricNoteLabelStyle}>QA Note</div>
                                       <div style={metricNoteTextStyle}>
-                                        {metricComment}
+                                        {detail.metric_comment}
                                       </div>
                                     </div>
                                   ) : null}
-                                </div>
-                              );
-                            })}{' '}
+                                </div>{' '}
+                                <span
+                                  style={{
+                                    ...pillStyle,
+                                    backgroundColor: getResultBadgeColor(
+                                      detail.result
+                                    ),
+                                  }}
+                                >
+                                  {' '}
+                                  {detail.result}{' '}
+                                </span>{' '}
+                              </div>
+                            ))}{' '}
                           </div>{' '}
                         </div>
                       )}{' '}
@@ -1582,7 +1645,7 @@ const pageHeaderStyle = {
   marginBottom: '18px',
 };
 const sectionEyebrow = {
-  color: '#60a5fa',
+  color: 'var(--screen-accent)',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -1590,12 +1653,11 @@ const sectionEyebrow = {
   marginBottom: '12px',
 };
 const panelStyle = {
-  background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
-  border: '1px solid rgba(148,163,184,0.14)',
+  background: 'var(--screen-panel-bg)',
+  border: '1px solid var(--screen-border)',
   borderRadius: '24px',
   padding: '22px',
-  boxShadow: '0 18px 40px rgba(2,6,23,0.35)',
+  boxShadow: 'var(--screen-shadow)',
   backdropFilter: 'blur(14px)',
 };
 const filterGridStyle = {
@@ -1607,40 +1669,90 @@ const labelStyle = {
   display: 'block',
   marginBottom: '8px',
   fontSize: '13px',
-  color: '#cbd5e1',
+  color: 'var(--screen-text)',
   fontWeight: 700,
 };
 const fieldStyle = {
   width: '100%',
   padding: '14px 16px',
   borderRadius: '16px',
-  border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.7)',
-  color: '#e5eefb',
+  border: '1px solid var(--screen-border-strong)',
+  background: 'var(--screen-field-bg)',
+  color: 'var(--screen-text)',
+};
+const selectFieldStyle = {
+  ...fieldStyle,
+  appearance: 'none' as const,
+  WebkitAppearance: 'none' as const,
+  MozAppearance: 'none' as const,
+  paddingRight: '44px',
+  backgroundImage:
+    'linear-gradient(45deg, transparent 50%, #cbd5e1 50%), linear-gradient(135deg, #cbd5e1 50%, transparent 50%)',
+  backgroundPosition: 'calc(100% - 22px) calc(50% - 3px), calc(100% - 16px) calc(50% - 3px)',
+  backgroundSize: '6px 6px, 6px 6px',
+  backgroundRepeat: 'no-repeat',
+  colorScheme: 'normal' as const,
 };
 const compactFieldStyle = {
-  width: '100%',
   padding: '10px 12px',
   borderRadius: '12px',
-  border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.7)',
-  color: '#e5eefb',
+  border: '1px solid var(--screen-border-strong)',
+  background: 'var(--screen-field-bg)',
+  color: 'var(--screen-text)',
   minWidth: '170px',
 };
-const compactTextareaStyle = {
+const compactSelectFieldStyle = {
+  ...compactFieldStyle,
+  appearance: 'none' as const,
+  WebkitAppearance: 'none' as const,
+  MozAppearance: 'none' as const,
+  paddingRight: '40px',
+  backgroundImage:
+    'linear-gradient(45deg, transparent 50%, #cbd5e1 50%), linear-gradient(135deg, #cbd5e1 50%, transparent 50%)',
+  backgroundPosition: 'calc(100% - 18px) calc(50% - 3px), calc(100% - 12px) calc(50% - 3px)',
+  backgroundSize: '6px 6px, 6px 6px',
+  backgroundRepeat: 'no-repeat',
+  colorScheme: 'normal' as const,
+};
+const selectOptionStyle = {
+  backgroundColor: 'var(--screen-select-option-bg)',
+  color: 'var(--screen-select-option-text)',
+};
+const metricCommentFieldStyle = {
   width: '100%',
   padding: '10px 12px',
   borderRadius: '12px',
-  border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.7)',
-  color: '#e5eefb',
+  border: '1px solid var(--screen-border-strong)',
+  background: 'rgba(15,23,42,0.78)',
+  color: 'var(--screen-text)',
   resize: 'vertical' as const,
+};
+const metricNoteCardStyle = {
+  marginTop: '10px',
+  borderRadius: '12px',
+  border: '1px solid var(--screen-border)',
+  background: 'var(--screen-card-soft-bg)',
+  padding: '10px 12px',
+};
+const metricNoteLabelStyle = {
+  color: '#93c5fd',
+  fontSize: '11px',
+  fontWeight: 800,
+  letterSpacing: '0.1em',
+  textTransform: 'uppercase' as const,
+  marginBottom: '6px',
+};
+const metricNoteTextStyle = {
+  color: 'var(--screen-text)',
+  fontSize: '13px',
+  lineHeight: 1.55,
+  whiteSpace: 'pre-wrap' as const,
 };
 const secondaryButton = {
   padding: '12px 16px',
-  background: 'rgba(15,23,42,0.74)',
-  color: '#e5eefb',
-  border: '1px solid rgba(148,163,184,0.18)',
+  background: 'var(--screen-secondary-btn-bg)',
+  color: 'var(--screen-secondary-btn-text)',
+  border: '1px solid var(--screen-border-strong)',
   borderRadius: '14px',
   cursor: 'pointer',
   fontWeight: 700,
@@ -1665,9 +1777,9 @@ const dangerButton = {
 };
 const miniSecondaryButton = {
   padding: '8px 10px',
-  background: 'rgba(15,23,42,0.82)',
-  color: '#e5eefb',
-  border: '1px solid rgba(148,163,184,0.18)',
+  background: 'var(--screen-secondary-btn-bg)',
+  color: 'var(--screen-secondary-btn-text)',
+  border: '1px solid var(--screen-border-strong)',
   borderRadius: '10px',
   cursor: 'pointer',
   fontWeight: 700,
@@ -1722,9 +1834,8 @@ const auditTableWrapStyle = {
   marginTop: '18px',
   overflowX: 'auto' as const,
   borderRadius: '20px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background:
-    'linear-gradient(180deg, rgba(15,23,42,0.76) 0%, rgba(15,23,42,0.58) 100%)',
+  border: '1px solid var(--screen-border)',
+  background: 'var(--screen-panel-bg)',
 };
 const auditTableStyle = { minWidth: '1800px' };
 const auditEntryStyle = { borderBottom: '1px solid rgba(148,163,184,0.08)' };
@@ -1740,7 +1851,7 @@ const auditHeaderRowStyle = {
   position: 'sticky' as const,
   top: 0,
   zIndex: 1,
-  background: 'rgba(2,6,23,0.94)',
+  background: 'var(--screen-table-head-bg)',
   color: '#93c5fd',
   fontSize: '12px',
   fontWeight: 800,
@@ -1761,14 +1872,14 @@ const auditCellActionsStyle = {
   flexWrap: 'wrap' as const,
 };
 const primaryCellTextStyle = {
-  color: '#f8fafc',
+  color: 'var(--screen-heading)',
   fontSize: '14px',
   fontWeight: 600,
   lineHeight: 1.4,
 };
 const secondaryCellTextStyle = {
   marginTop: '4px',
-  color: '#64748b',
+  color: 'var(--screen-subtle)',
   fontSize: '12px',
   fontWeight: 600,
   lineHeight: 1.4,
@@ -1780,8 +1891,8 @@ const scorePillStyle = {
   minWidth: '84px',
   padding: '8px 10px',
   borderRadius: '999px',
-  background: 'rgba(37,99,235,0.18)',
-  border: '1px solid rgba(96,165,250,0.26)',
+  background: 'var(--screen-score-pill-bg)',
+  border: '1px solid var(--screen-score-pill-border)',
   color: '#dbeafe',
   fontSize: '13px',
   fontWeight: 800,
@@ -1799,7 +1910,7 @@ const pillStyle = {
 const auditExpandedRowStyle = { padding: '0 16px 16px 16px' };
 const expandedPanelStyle = {
   borderRadius: '18px',
-  border: '1px solid rgba(148,163,184,0.12)',
+  border: '1px solid var(--screen-border)',
   background:
     'linear-gradient(180deg, rgba(15,23,42,0.78) 0%, rgba(15,23,42,0.6) 100%)',
   padding: '18px',
@@ -1817,12 +1928,12 @@ const detailInfoGridStyle = {
 };
 const detailInfoCardStyle = {
   borderRadius: '14px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(15,23,42,0.52)',
+  border: '1px solid var(--screen-border)',
+  background: 'var(--screen-card-soft-bg)',
   padding: '14px 16px',
 };
 const detailLabelStyle = {
-  color: '#94a3b8',
+  color: 'var(--screen-muted)',
   fontSize: '12px',
   fontWeight: 700,
   textTransform: 'uppercase' as const,
@@ -1830,25 +1941,25 @@ const detailLabelStyle = {
   marginBottom: '8px',
 };
 const detailValueStyle = {
-  color: '#f8fafc',
+  color: 'var(--screen-heading)',
   fontSize: '14px',
   fontWeight: 700,
   lineHeight: 1.5,
 };
 const detailSubValueStyle = {
-  color: '#64748b',
+  color: 'var(--screen-subtle)',
   fontSize: '12px',
   fontWeight: 600,
   marginTop: '6px',
 };
 const fullCommentCardStyle = {
   borderRadius: '14px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(15,23,42,0.52)',
+  border: '1px solid var(--screen-border)',
+  background: 'var(--screen-card-soft-bg)',
   padding: '14px 16px',
 };
 const fullCommentTextStyle = {
-  color: '#f8fafc',
+  color: 'var(--screen-heading)',
   fontSize: '14px',
   lineHeight: 1.7,
   whiteSpace: 'pre-wrap' as const,
@@ -1858,9 +1969,9 @@ const pickerButtonStyle = {
   width: '100%',
   padding: '14px 16px',
   borderRadius: '16px',
-  border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.7)',
-  color: '#e5eefb',
+  border: '1px solid var(--screen-border-strong)',
+  background: 'var(--screen-field-bg)',
+  color: 'var(--screen-text)',
   textAlign: 'left' as const,
   cursor: 'pointer',
   display: 'flex',
@@ -1873,7 +1984,7 @@ const pickerMenuStyle = {
   left: 0,
   right: 0,
   background: 'rgba(15,23,42,0.96)',
-  border: '1px solid rgba(148,163,184,0.16)',
+  border: '1px solid var(--screen-border-strong)',
   borderRadius: '18px',
   boxShadow: '0 18px 44px rgba(2,6,23,0.45)',
   zIndex: 20,
@@ -1895,16 +2006,16 @@ const pickerInfoStyle = {
   padding: '12px',
   borderRadius: '12px',
   backgroundColor: 'rgba(15,23,42,0.68)',
-  color: '#94a3b8',
+  color: 'var(--screen-muted)',
 };
 const pickerOptionStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
-  border: '1px solid rgba(148,163,184,0.12)',
+  border: '1px solid var(--screen-border)',
   backgroundColor: 'rgba(15,23,42,0.6)',
   textAlign: 'left' as const,
   cursor: 'pointer',
-  color: '#e5eefb',
+  color: 'var(--screen-text)',
   fontWeight: 600,
 };
 const pickerOptionActiveStyle = {
@@ -1919,8 +2030,8 @@ const scoreRowStyle = {
   flexWrap: 'wrap' as const,
   padding: '12px 14px',
   borderRadius: '14px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(15,23,42,0.52)',
+  border: '1px solid var(--screen-border)',
+  background: 'var(--screen-card-soft-bg)',
 };
 const editSummaryStyle = {
   marginTop: '18px',
@@ -1940,51 +2051,17 @@ const summaryEyebrowStyle = {
 const summaryScoreStyle = {
   fontSize: '32px',
   fontWeight: 800,
-  color: '#f8fafc',
+  color: 'var(--screen-heading)',
   marginTop: '8px',
 };
-const detailCardStyle = {
-  padding: '14px',
-  borderRadius: '16px',
-  border: '1px solid rgba(148,163,184,0.1)',
-  background: 'rgba(10, 23, 56, 0.76)',
-};
-const detailTopRowStyle = {
+const detailRowStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   gap: '12px',
-  alignItems: 'flex-start',
-  flexWrap: 'wrap' as const,
-};
-const detailMetricTitleStyle = {
-  color: '#f8fafc',
-  fontWeight: 800,
-  fontSize: '16px',
-};
-const detailMetricMetaStyle = {
-  color: '#94a3b8',
-  fontSize: '12px',
-  marginTop: '6px',
-};
-const metricNoteCardStyle = {
-  marginTop: '12px',
-  borderRadius: '14px',
+  alignItems: 'center',
   padding: '12px 14px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(15,23,42,0.52)',
-};
-const metricNoteLabelStyle = {
-  color: '#93c5fd',
-  fontSize: '11px',
-  fontWeight: 800,
-  letterSpacing: '0.14em',
-  textTransform: 'uppercase' as const,
-  marginBottom: '8px',
-};
-const metricNoteTextStyle = {
-  color: '#e5eefb',
-  fontSize: '14px',
-  lineHeight: 1.55,
-  whiteSpace: 'pre-wrap' as const,
+  borderRadius: '14px',
+  border: '1px solid var(--screen-border)',
+  background: 'var(--screen-card-soft-bg)',
 };
 export default AuditsListSupabase;
