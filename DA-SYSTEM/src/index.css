@@ -62,10 +62,7 @@ textarea {
 
 input,
 select,
-textarea {
-  outline: none;
-}
-
+textarea,
 button {
   outline: none;
 }
@@ -155,22 +152,6 @@ body[data-theme='light'] .global-theme-toggle__value {
 
 .global-theme-app-shell {
   min-height: 100vh;
-}
-
-body[data-theme='light'] .global-theme-app-shell {
-  filter: invert(1) hue-rotate(180deg) saturate(0.96) brightness(1.02);
-}
-
-body[data-theme='light'] .global-theme-app-shell img,
-body[data-theme='light'] .global-theme-app-shell svg,
-body[data-theme='light'] .global-theme-app-shell video,
-body[data-theme='light'] .global-theme-app-shell canvas,
-body[data-theme='light'] .global-theme-app-shell iframe {
-  filter: invert(1) hue-rotate(180deg) saturate(1.04);
-}
-
-body[data-theme='light'] .global-theme-app-shell [data-no-theme-invert='true'] {
-  filter: invert(1) hue-rotate(180deg) saturate(1.04);
 }
 
 @media (max-width: 640px) {
