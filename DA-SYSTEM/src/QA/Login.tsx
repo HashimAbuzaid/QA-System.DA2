@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 function Login() {
@@ -8,6 +8,27 @@ function Login() {
   const [sendingRecovery, setSendingRecovery] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const storedEmail = window.localStorage.getItem('detroit-axle-login-email');
+      if (storedEmail) setEmail(storedEmail);
+    } catch {
+      // ignore storage failures
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      window.localStorage.setItem('detroit-axle-login-email', email);
+    } catch {
+      // ignore storage failures
+    }
+  }, [email]);
 
   async function handleLogin() {
     setErrorMessage('');
@@ -74,7 +95,13 @@ function Login() {
           <div style={successBannerStyle}>{successMessage}</div>
         ) : null}
 
-        <div style={formStyle}>
+        <form
+          style={formStyle}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleLogin();
+          }}
+        >
           <div>
             <label style={labelStyle}>Email</label>
             <input
@@ -97,7 +124,7 @@ function Login() {
             />
           </div>
 
-          <button onClick={handleLogin} disabled={loading} style={buttonStyle}>
+          <button type="submit" disabled={loading} style={buttonStyle}>
             {loading ? 'Logging in...' : 'Login'}
           </button>
 
@@ -109,7 +136,7 @@ function Login() {
           >
             {sendingRecovery ? 'Sending recovery...' : 'Forgot password?'}
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );
