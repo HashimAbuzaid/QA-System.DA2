@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
 import Login from './QA/Login';
 import ResetPassword from './QA/ResetPassword';
@@ -212,6 +212,7 @@ function App() {
       ? `${profile.agent_name} - ${profile.display_name}`
       : profile.agent_name;
   }, [profile]);
+
   const navItems = useMemo(() => {
     if (!profile || !isStaff) return [];
     const baseItems: Array<{ key: StaffPage; label: string }> = [
@@ -485,6 +486,7 @@ const brandEyebrowStyle = {
   letterSpacing: '0.16em',
   marginBottom: '8px',
 };
+
 const brandTitleStyle = {
   margin: 0,
   fontSize: '38px',
@@ -498,6 +500,7 @@ const metaStripStyle = {
   gap: '10px',
   flexWrap: 'wrap' as const,
 };
+
 const metaPillStyle = {
   padding: '10px 14px',
   borderRadius: '999px',
@@ -524,6 +527,7 @@ const navShellStyle = {
   zIndex: 1,
   marginBottom: '18px',
 };
+
 const navScrollerStyle = {
   display: 'flex',
   gap: '10px',
@@ -581,11 +585,13 @@ const sectionEyebrow = {
   textTransform: 'uppercase' as const,
   marginBottom: '12px',
 };
+
 const profileGridStyle = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
   gap: '16px',
 };
+
 const profileInfoCardStyle = {
   borderRadius: '18px',
   padding: '18px',
@@ -639,6 +645,7 @@ const loadingDotStyle = {
     'radial-gradient(circle at 30% 30%, #93c5fd 0%, #2563eb 55%, #1e3a8a 100%)',
   boxShadow: '0 0 40px rgba(37,99,235,0.35)',
 };
+
 const errorCardStyle = {
   width: '100%',
   maxWidth: '620px',
