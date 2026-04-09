@@ -1,9 +1,7 @@
 import { StrictMode, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
-import App from './App.tsx';
-
-type ThemeMode = 'dark' | 'light';
+import App, { type ThemeMode } from './App.tsx';
 
 const THEME_STORAGE_KEY = 'detroit-axle-theme-mode';
 
@@ -12,7 +10,7 @@ function readStoredTheme(): ThemeMode {
 
   try {
     const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
-    return stored === 'light' ? 'light' : 'dark';
+    return stored === 'light' || stored === 'white' ? 'light' : 'dark';
   } catch {
     return 'dark';
   }
@@ -32,7 +30,7 @@ function ThemeBoot() {
   }, [theme]);
 
   const themeLabel = useMemo(() => {
-    return theme === 'dark' ? 'Switch to white theme' : 'Switch to dark theme';
+    return theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
   }, [theme]);
 
   return (
@@ -55,7 +53,7 @@ function ThemeBoot() {
       </div>
 
       <div className="global-theme-app-shell">
-        <App />
+        <App theme={theme} />
       </div>
     </>
   );
