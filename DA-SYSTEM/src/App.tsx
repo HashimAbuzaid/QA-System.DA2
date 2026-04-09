@@ -1,9 +1,11 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { supabase } from './lib/supabase';
 import { usePersistentState } from './hooks/usePersistentState';
+import './App.css';
 import Login from './QA/Login';
 import AgentPortal from './QA/AgentPortal';
 import SupervisorPortal from './QA/SupervisorPortal';
+import SupervisorRequestsSupabase from './QA/SupervisorRequestsSupabase';
 
 const Dashboard = lazy(() => import('./QA/Dashboard'));
 const NewAuditSupabase = lazy(() => import('./QA/NewAuditSupabase'));
@@ -12,9 +14,6 @@ const TicketsUploadSupabase = lazy(() => import('./QA/TicketsUploadSupabase'));
 const SalesUploadSupabase = lazy(() => import('./QA/SalesUploadSupabase'));
 const AuditsListSupabase = lazy(() => import('./QA/AuditsListSupabase'));
 const AccountsSupabase = lazy(() => import('./QA/AccountsSupabase'));
-const SupervisorRequestsSupabase = lazy(() =>
-  import('./QA/SupervisorRequestsSupabase')
-);
 const AgentFeedbackSupabase = lazy(() => import('./QA/AgentFeedbackSupabase'));
 const ReportsSupabase = lazy(() => import('./QA/ReportsSupabase'));
 const MonitoringSupabase = lazy(() => import('./QA/MonitoringSupabase'));
@@ -28,6 +27,8 @@ export type UserProfile = {
   team: 'Calls' | 'Tickets' | 'Sales' | null;
   email: string;
 };
+
+export type ThemeMode = 'dark' | 'light';
 
 type StaffPage =
   | 'dashboard'
@@ -44,7 +45,6 @@ type StaffPage =
   | 'profile';
 
 type MountedPagesState = Partial<Record<StaffPage, boolean>>;
-type ThemeMode = 'dark' | 'white';
 
 type ThemeTokens = {
   pageBackground: string;
@@ -67,14 +67,6 @@ type ThemeTokens = {
   contentBackground: string;
   contentBorder: string;
   contentShadow: string;
-  toggleShellBackground: string;
-  toggleShellBorder: string;
-  toggleLabel: string;
-  toggleTrackBackground: string;
-  toggleTrackBorder: string;
-  toggleActiveBackground: string;
-  toggleActiveText: string;
-  toggleInactiveText: string;
   buttonBorder: string;
   buttonShadow: string;
   buttonBackground: string;
@@ -82,7 +74,7 @@ type ThemeTokens = {
 };
 
 function getThemeTokens(mode: ThemeMode): ThemeTokens {
-  if (mode === 'white') {
+  if (mode === 'light') {
     return {
       pageBackground:
         'radial-gradient(circle at top left, rgba(59,130,246,0.08), transparent 28%), radial-gradient(circle at bottom right, rgba(99,102,241,0.08), transparent 30%), linear-gradient(180deg, #f7fbff 0%, #eef5ff 45%, #f8fbff 100%)',
@@ -110,16 +102,6 @@ function getThemeTokens(mode: ThemeMode): ThemeTokens {
         'linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(248,250,252,0.9) 100%)',
       contentBorder: 'rgba(148,163,184,0.20)',
       contentShadow: '0 20px 55px rgba(15,23,42,0.08)',
-      toggleShellBackground:
-        'linear-gradient(180deg, rgba(239,246,255,0.96) 0%, rgba(219,234,254,0.94) 100%)',
-      toggleShellBorder: 'rgba(96,165,250,0.36)',
-      toggleLabel: '#334155',
-      toggleTrackBackground: 'rgba(255,255,255,0.86)',
-      toggleTrackBorder: 'rgba(148,163,184,0.26)',
-      toggleActiveBackground:
-        'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-      toggleActiveText: '#ffffff',
-      toggleInactiveText: '#475569',
       buttonBorder: 'rgba(96,165,250,0.34)',
       buttonShadow: '0 12px 28px rgba(37,99,235,0.18)',
       buttonBackground: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
@@ -154,16 +136,6 @@ function getThemeTokens(mode: ThemeMode): ThemeTokens {
       'linear-gradient(180deg, rgba(15,23,42,0.78) 0%, rgba(15,23,42,0.56) 100%)',
     contentBorder: 'rgba(148,163,184,0.14)',
     contentShadow: '0 20px 55px rgba(2,6,23,0.42)',
-    toggleShellBackground:
-      'linear-gradient(180deg, rgba(10,30,72,0.96) 0%, rgba(10,26,62,0.94) 100%)',
-    toggleShellBorder: 'rgba(37,99,235,0.36)',
-    toggleLabel: '#cbd5e1',
-    toggleTrackBackground: 'rgba(15,23,42,0.72)',
-    toggleTrackBorder: 'rgba(96,165,250,0.22)',
-    toggleActiveBackground:
-      'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-    toggleActiveText: '#ffffff',
-    toggleInactiveText: '#cbd5e1',
     buttonBorder: 'rgba(96,165,250,0.34)',
     buttonShadow: '0 12px 28px rgba(37,99,235,0.28)',
     buttonBackground: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
@@ -171,17 +143,13 @@ function getThemeTokens(mode: ThemeMode): ThemeTokens {
   };
 }
 
-function App() {
+function App({ theme }: { theme: ThemeMode }) {
   const [session, setSession] = useState<any>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = usePersistentState<StaffPage>(
     'detroit-axle-active-staff-page',
     'dashboard'
-  );
-  const [theme, setTheme] = usePersistentState<ThemeMode>(
-    'detroit-axle-theme-mode',
-    'dark'
   );
   const [mountedPages, setMountedPages] = useState<MountedPagesState>({
     dashboard: true,
@@ -220,7 +188,8 @@ function App() {
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    document.documentElement.style.backgroundColor = themeTokens.pageBackgroundFlat;
+    document.documentElement.style.backgroundColor =
+      themeTokens.pageBackgroundFlat;
     document.body.style.backgroundColor = themeTokens.pageBackgroundFlat;
   }, [themeTokens]);
 
@@ -385,19 +354,54 @@ function App() {
               background: themeTokens.panelBackground,
             }}
           >
-            <div style={{ ...sectionEyebrow, color: theme === 'white' ? '#2563eb' : '#60a5fa' }}>
+            <div
+              style={{
+                ...sectionEyebrow,
+                color: theme === 'light' ? '#2563eb' : '#60a5fa',
+              }}
+            >
               Profile
             </div>
-            <h2 style={{ marginTop: 0, marginBottom: '18px', color: themeTokens.text }}>
+            <h2
+              style={{
+                marginTop: 0,
+                marginBottom: '18px',
+                color: themeTokens.text,
+              }}
+            >
               {isAdmin ? 'My Admin Profile' : 'My QA Profile'}
             </h2>
             <div style={profileGridStyle}>
-              <ProfileInfoCard label="Name" value={profile?.agent_name || '-'} theme={themeTokens} />
-              <ProfileInfoCard label="Display Name" value={profile?.display_name || '-'} theme={themeTokens} />
-              <ProfileInfoCard label="Email" value={profile?.email || '-'} theme={themeTokens} />
-              <ProfileInfoCard label="Role" value={profile?.role || '-'} theme={themeTokens} />
-              <ProfileInfoCard label="Agent ID" value={profile?.agent_id || '-'} theme={themeTokens} />
-              <ProfileInfoCard label="Team" value={profile?.team || '-'} theme={themeTokens} />
+              <ProfileInfoCard
+                label="Name"
+                value={profile?.agent_name || '-'}
+                theme={themeTokens}
+              />
+              <ProfileInfoCard
+                label="Display Name"
+                value={profile?.display_name || '-'}
+                theme={themeTokens}
+              />
+              <ProfileInfoCard
+                label="Email"
+                value={profile?.email || '-'}
+                theme={themeTokens}
+              />
+              <ProfileInfoCard
+                label="Role"
+                value={profile?.role || '-'}
+                theme={themeTokens}
+              />
+              <ProfileInfoCard
+                label="Agent ID"
+                value={profile?.agent_id || '-'}
+                theme={themeTokens}
+              />
+              <ProfileInfoCard
+                label="Team"
+                value={profile?.team || '-'}
+                theme={themeTokens}
+              />
             </div>
           </div>
         );
@@ -454,7 +458,9 @@ function App() {
             color: themeTokens.text,
           }}
         >
-          <div style={{ ...sectionEyebrow, color: '#ef4444' }}>Profile Error</div>
+          <div style={{ ...sectionEyebrow, color: '#ef4444' }}>
+            Profile Error
+          </div>
           <h1 style={{ marginTop: 0 }}>Profile not found</h1>
           <p style={{ color: themeTokens.secondaryText }}>
             {profileLoadError ||
@@ -513,7 +519,7 @@ function App() {
               <div
                 style={{
                   ...brandEyebrowStyle,
-                  color: theme === 'white' ? '#2563eb' : '#93c5fd',
+                  color: theme === 'light' ? '#2563eb' : '#93c5fd',
                 }}
               >
                 Detroit Axle Workspace
@@ -521,7 +527,7 @@ function App() {
               <h1
                 style={{
                   ...brandTitleStyle,
-                  color: theme === 'white' ? '#0f172a' : '#f8fbff',
+                  color: theme === 'light' ? '#0f172a' : '#f8fbff',
                 }}
               >
                 Detroit Axle QA System
@@ -563,70 +569,6 @@ function App() {
         </div>
 
         <div style={headerActionsStyle}>
-          <div
-            style={{
-              ...themeToggleShellStyle,
-              background: themeTokens.toggleShellBackground,
-              border: `1px solid ${themeTokens.toggleShellBorder}`,
-            }}
-          >
-            <div
-              style={{
-                ...themeLabelStyle,
-                color: themeTokens.toggleLabel,
-              }}
-            >
-              Theme
-            </div>
-
-            <div
-              style={{
-                ...themeTrackStyle,
-                background: themeTokens.toggleTrackBackground,
-                border: `1px solid ${themeTokens.toggleTrackBorder}`,
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setTheme('dark')}
-                style={{
-                  ...themeChoiceButtonStyle,
-                  ...(theme === 'dark'
-                    ? {
-                        background: themeTokens.toggleActiveBackground,
-                        color: themeTokens.toggleActiveText,
-                        boxShadow: themeTokens.buttonShadow,
-                      }
-                    : {
-                        background: 'transparent',
-                        color: themeTokens.toggleInactiveText,
-                      }),
-                }}
-              >
-                Dark
-              </button>
-              <button
-                type="button"
-                onClick={() => setTheme('white')}
-                style={{
-                  ...themeChoiceButtonStyle,
-                  ...(theme === 'white'
-                    ? {
-                        background: themeTokens.toggleActiveBackground,
-                        color: themeTokens.toggleActiveText,
-                        boxShadow: themeTokens.buttonShadow,
-                      }
-                    : {
-                        background: 'transparent',
-                        color: themeTokens.toggleInactiveText,
-                      }),
-                }}
-              >
-                White
-              </button>
-            </div>
-          </div>
-
           <button
             onClick={handleLogout}
             style={{
@@ -645,7 +587,7 @@ function App() {
       {isStaff ? (
         <>
           <nav style={navShellStyle}>
-            <div style={navScrollerStyle}>
+            <div className="app-nav-scroller" style={navScrollerStyle}>
               {navItems.map((item) => (
                 <button
                   key={item.key}
@@ -686,9 +628,7 @@ function App() {
                   <section
                     key={item.key}
                     style={
-                      page === item.key
-                        ? visiblePagePaneStyle
-                        : hiddenPagePaneStyle
+                      page === item.key ? visiblePagePaneStyle : hiddenPagePaneStyle
                     }
                   >
                     <Suspense fallback={<InlinePageLoader theme={themeTokens} />}>
@@ -745,7 +685,13 @@ function InlinePageLoader({ theme }: { theme: ThemeTokens }) {
         <div style={{ color: theme.text, fontWeight: 700 }}>
           Loading workspace...
         </div>
-        <div style={{ color: theme.secondaryText, fontSize: '13px', marginTop: '4px' }}>
+        <div
+          style={{
+            color: theme.secondaryText,
+            fontSize: '13px',
+            marginTop: '4px',
+          }}
+        >
           Preparing this page for the first time.
         </div>
       </div>
@@ -882,42 +828,6 @@ const metaPillStyle = {
   fontWeight: 600,
 };
 
-const themeToggleShellStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '10px',
-  padding: '8px 10px',
-  borderRadius: '999px',
-  backdropFilter: 'blur(16px)',
-};
-
-const themeLabelStyle = {
-  fontSize: '12px',
-  fontWeight: 800,
-  letterSpacing: '0.16em',
-  textTransform: 'uppercase' as const,
-  paddingLeft: '6px',
-};
-
-const themeTrackStyle = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '4px',
-  padding: '4px',
-  borderRadius: '999px',
-};
-
-const themeChoiceButtonStyle = {
-  padding: '10px 14px',
-  borderRadius: '999px',
-  border: 'none',
-  cursor: 'pointer',
-  fontWeight: 800,
-  fontSize: '14px',
-  minWidth: '76px',
-  transition: 'all 0.18s ease',
-};
-
 const logoutButtonStyle = {
   padding: '12px 18px',
   borderRadius: '14px',
@@ -935,7 +845,10 @@ const navScrollerStyle = {
   display: 'flex',
   gap: '10px',
   overflowX: 'auto' as const,
+  overflowY: 'hidden' as const,
   padding: '6px 2px 8px 2px',
+  scrollbarWidth: 'none' as const,
+  msOverflowStyle: 'none' as const,
 };
 
 const navButtonStyle = {
