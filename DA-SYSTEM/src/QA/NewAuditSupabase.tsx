@@ -13,6 +13,8 @@ type Metric = {
   pass: number;
   borderline: number;
   countsTowardScore?: boolean;
+  options?: string[];
+  defaultValue?: string;
 };
 
 type TeamType = TeamName | '';
@@ -51,20 +53,30 @@ type AuditDraft = {
   ticketId: string;
   comments: string;
   scores: Record<string, string>;
+  metricComments: Record<string, string>;
 };
 
 const LOCKED_NA_METRICS = new Set(['Active Listening']);
 const AUTO_FAIL_METRICS = new Set(['Hold (≤3 mins)', 'Procedure']);
+const ISSUE_WAS_RESOLVED_METRIC = 'Issue was resolved';
 
 function countsTowardScore(metric: Metric) {
   return metric.countsTowardScore !== false;
 }
 
-const NO_SCORE_CALLS_QUESTION: Metric = {
-  name: 'Additional QA Question',
+function shouldShowMetricComment(result: string) {
+  return (
+    result === 'Borderline' || result === 'Fail' || result === 'Auto-Fail'
+  );
+}
+
+const ISSUE_WAS_RESOLVED_QUESTION: Metric = {
+  name: ISSUE_WAS_RESOLVED_METRIC,
   pass: 0,
   borderline: 0,
   countsTowardScore: false,
+  options: ['', 'Yes', 'No'],
+  defaultValue: '',
 };
 
 const callsMetrics: Metric[] = [
@@ -81,7 +93,7 @@ const callsMetrics: Metric[] = [
   { name: 'Refund Form', pass: 11, borderline: 5 },
   { name: 'Providing RL', pass: 5, borderline: 3 },
   { name: 'Ending', pass: 2, borderline: 1 },
-  NO_SCORE_CALLS_QUESTION,
+  ISSUE_WAS_RESOLVED_QUESTION,
 ];
 
 const ticketsMetrics: Metric[] = [
@@ -140,6 +152,7 @@ function canAutoFail(metricName: string) {
 }
 
 function getMetricOptions(metric: Metric) {
+  if (metric.options?.length) return metric.options;
   if (isLockedToNA(metric.name)) return ['N/A'];
 
   const options = ['N/A', 'Pass', 'Borderline', 'Fail'];
@@ -147,11 +160,16 @@ function getMetricOptions(metric: Metric) {
   return options;
 }
 
+function getMetricStoredValue(metric: Metric, scores: Record<string, string>) {
+  if (isLockedToNA(metric.name)) return 'N/A';
+  return scores[metric.name] ?? metric.defaultValue ?? 'N/A';
+}
+
 function createDefaultScores(teamValue: TeamType) {
   const defaults: Record<string, string> = {};
 
   getMetricsForTeam(teamValue).forEach((metric) => {
-    defaults[metric.name] = 'N/A';
+    defaults[metric.name] = metric.defaultValue ?? 'N/A';
   });
 
   return defaults;
@@ -169,18 +187,31 @@ function createEmptyDraft(teamValue: TeamType = ''): AuditDraft {
     ticketId: '',
     comments: '',
     scores: createDefaultScores(teamValue),
+    metricComments: {},
   };
 }
 
-function getAdjustedScoreData(team: TeamType, scores: Record<string, string>) {
+function getMissingRequiredMetricLabels(
+  teamValue: TeamType,
+  scores: Record<string, string>
+) {
+  return getMetricsForTeam(teamValue)
+    .filter((metric) => Array.isArray(metric.options) && metric.defaultValue === '')
+    .filter((metric) => !getMetricStoredValue(metric, scores))
+    .map((metric) => metric.name);
+}
+
+function getAdjustedScoreData(
+  team: TeamType,
+  scores: Record<string, string>,
+  metricComments: Record<string, string>
+) {
   const metrics = getMetricsForTeam(team);
   const scoredMetrics = metrics.filter((item) => countsTowardScore(item));
 
   const activeMetrics = scoredMetrics.filter((item) => {
-    const itemResult = isLockedToNA(item.name)
-      ? 'N/A'
-      : scores[item.name] || 'N/A';
-    return itemResult !== 'N/A';
+    const itemResult = getMetricStoredValue(item, scores);
+    return itemResult !== 'N/A' && itemResult !== '';
   });
 
   const activeTotalWeight = activeMetrics.reduce(
@@ -190,14 +221,11 @@ function getAdjustedScoreData(team: TeamType, scores: Record<string, string>) {
   const fullTotalWeight = scoredMetrics.reduce((sum, item) => sum + item.pass, 0);
 
   const scoreDetails = metrics.map((metric) => {
-    const result = isLockedToNA(metric.name)
-      ? 'N/A'
-      : scores[metric.name] || 'N/A';
-
+    const result = getMetricStoredValue(metric, scores);
     const scored = countsTowardScore(metric);
 
     const adjustedWeight =
-      !scored || result === 'N/A' || activeTotalWeight === 0
+      !scored || result === 'N/A' || result === '' || activeTotalWeight === 0
         ? 0
         : (metric.pass / activeTotalWeight) * fullTotalWeight;
 
@@ -220,6 +248,10 @@ function getAdjustedScoreData(team: TeamType, scores: Record<string, string>) {
       adjustedWeight,
       earned,
       counts_toward_score: scored,
+      metric_comment:
+        scored && shouldShowMetricComment(result)
+          ? (metricComments[metric.name] || '').trim() || null
+          : null,
     };
   });
 
@@ -238,6 +270,11 @@ function getAdjustedScoreData(team: TeamType, scores: Record<string, string>) {
         .toFixed(2);
 
   return { scoreDetails, qualityScore, hasAutoFail };
+}
+
+function openNativeDatePicker(target: HTMLInputElement) {
+  const input = target as HTMLInputElement & { showPicker?: () => void };
+  input.showPicker?.();
 }
 
 function NewAuditSupabase() {
@@ -389,8 +426,8 @@ function NewAuditSupabase() {
     null;
 
   const adjustedData = useMemo(() => {
-    return getAdjustedScoreData(draft.team, draft.scores);
-  }, [draft.team, draft.scores]);
+    return getAdjustedScoreData(draft.team, draft.scores, draft.metricComments);
+  }, [draft.team, draft.scores, draft.metricComments]);
 
   function setDraftField<K extends keyof AuditDraft>(
     key: K,
@@ -417,14 +454,36 @@ function NewAuditSupabase() {
           ...prev.scores,
           [metricName]: 'N/A',
         },
+        metricComments: {
+          ...prev.metricComments,
+          [metricName]: '',
+        },
       }));
       return;
     }
 
+    setDraft((prev) => {
+      const nextMetricComments = { ...prev.metricComments };
+      if (!shouldShowMetricComment(value)) {
+        delete nextMetricComments[metricName];
+      }
+
+      return {
+        ...prev,
+        scores: {
+          ...prev.scores,
+          [metricName]: value,
+        },
+        metricComments: nextMetricComments,
+      };
+    });
+  }
+
+  function handleMetricCommentChange(metricName: string, value: string) {
     setDraft((prev) => ({
       ...prev,
-      scores: {
-        ...prev.scores,
+      metricComments: {
+        ...prev.metricComments,
         [metricName]: value,
       },
     }));
@@ -468,6 +527,32 @@ function NewAuditSupabase() {
 
     if (draft.team === 'Tickets' && !draft.ticketId) {
       setErrorMessage('Please fill Ticket ID for Tickets.');
+      return;
+    }
+
+    const missingRequiredMetricLabels = getMissingRequiredMetricLabels(
+      draft.team,
+      draft.scores
+    );
+    if (missingRequiredMetricLabels.length > 0) {
+      setErrorMessage(
+        `Please answer: ${missingRequiredMetricLabels.join(', ')}.`
+      );
+      return;
+    }
+
+    const missingMetricCommentLabels = getMetricsForTeam(draft.team)
+      .filter((metric) => countsTowardScore(metric))
+      .filter((metric) =>
+        shouldShowMetricComment(getMetricStoredValue(metric, draft.scores))
+      )
+      .filter((metric) => !(draft.metricComments[metric.name] || '').trim())
+      .map((metric) => metric.name);
+
+    if (missingMetricCommentLabels.length > 0) {
+      setErrorMessage(
+        `Please add a short QA note for: ${missingMetricCommentLabels.join(', ')}.`
+      );
       return;
     }
 
@@ -574,15 +659,16 @@ function NewAuditSupabase() {
         <div style={{ display: 'grid', gap: '15px' }}>
           {metrics.map((metric) => {
             const metricOptions = getMetricOptions(metric);
-            const metricValue = isLockedToNA(metric.name)
-              ? 'N/A'
-              : draft.scores[metric.name] || 'N/A';
+            const metricValue = getMetricStoredValue(metric, draft.scores);
+            const showMetricComment =
+              countsTowardScore(metric) && shouldShowMetricComment(metricValue);
 
             return (
               <div key={metric.name} style={glassFieldCardStyle}>
                 <label style={labelStyle}>
-                  {metric.name}{' '}
-                  {countsTowardScore(metric) ? `(${metric.pass} pts)` : '(No score)'}
+                  {countsTowardScore(metric)
+                    ? `${metric.name} (${metric.pass} pts)`
+                    : metric.name}
                 </label>
                 <select
                   value={metricValue}
@@ -590,11 +676,11 @@ function NewAuditSupabase() {
                     handleScoreChange(metric.name, event.target.value)
                   }
                   disabled={isLockedToNA(metric.name)}
-                  style={fieldStyle}
+                  style={selectFieldStyle}
                 >
                   {metricOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+                    <option key={option || '__empty__'} value={option} style={selectOptionStyle}>
+                      {option || 'Select answer'}
                     </option>
                   ))}
                 </select>
@@ -603,11 +689,20 @@ function NewAuditSupabase() {
                   <div style={helpTextStyle}>Locked to N/A</div>
                 )}
 
-                {!countsTowardScore(metric) && (
-                  <div style={helpTextStyle}>
-                    This question is saved with the audit, but it does not change the score.
+                {showMetricComment ? (
+                  <div style={metricCommentWrapStyle}>
+                    <label style={metricCommentLabelStyle}>QA note for agent</label>
+                    <textarea
+                      value={draft.metricComments[metric.name] || ''}
+                      onChange={(event) =>
+                        handleMetricCommentChange(metric.name, event.target.value)
+                      }
+                      rows={2}
+                      placeholder="Leave a short note explaining the result"
+                      style={metricCommentFieldStyle}
+                    />
                   </div>
-                )}
+                ) : null}
               </div>
             );
           })}
@@ -770,25 +865,13 @@ function NewAuditSupabase() {
                 onChange={(event) =>
                   setDraftField('caseType', event.target.value)
                 }
-                style={fieldStyle}
+                style={selectFieldStyle}
               >
-                <option value="">Select Case Type</option>
-                <option value="Order status">Order status</option>
-                <option value="General Inquiry">General Inquiry</option>
-                <option value="Exchange">Exchange</option>
-                <option value="Missing Parts">Missing Parts</option>
-                <option value="Refund - Store credit">
-                  Refund - Store credit
-                </option>
-                <option value="Delivered but not received">
-                  Delivered but not received
-                </option>
-                <option value="FedEx Cases">FedEx Cases</option>
-                <option value="Replacement">Replacement</option>
-                <option value="Warranty">Warranty</option>
-                <option value="Fitment issue">Fitment issue</option>
-                <option value="Damaged package">Damaged package</option>
-                <option value="Cancellation">Cancellation</option>
+                {['', 'Order status', 'General Inquiry', 'Exchange', 'Missing Parts', 'Refund - Store credit', 'Delivered but not received', 'FedEx Cases', 'Replacement', 'Warranty', 'Fitment issue', 'Damaged package', 'Cancellation'].map((option) => (
+                  <option key={option || '__empty__'} value={option} style={selectOptionStyle}>
+                    {option || 'Select Case Type'}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -800,6 +883,8 @@ function NewAuditSupabase() {
                 onChange={(event) =>
                   setDraftField('auditDate', event.target.value)
                 }
+                onClick={(event) => openNativeDatePicker(event.currentTarget)}
+                onFocus={(event) => openNativeDatePicker(event.currentTarget)}
                 style={fieldStyle}
               />
             </div>
@@ -977,6 +1062,25 @@ const fieldStyle = {
   color: '#e5eefb',
 };
 
+const selectFieldStyle = {
+  ...fieldStyle,
+  appearance: 'none' as const,
+  WebkitAppearance: 'none' as const,
+  MozAppearance: 'none' as const,
+  paddingRight: '44px',
+  backgroundImage:
+    'linear-gradient(45deg, transparent 50%, #cbd5e1 50%), linear-gradient(135deg, #cbd5e1 50%, transparent 50%)',
+  backgroundPosition: 'calc(100% - 22px) calc(50% - 3px), calc(100% - 16px) calc(50% - 3px)',
+  backgroundSize: '6px 6px, 6px 6px',
+  backgroundRepeat: 'no-repeat',
+  colorScheme: 'dark' as const,
+};
+
+const selectOptionStyle = {
+  backgroundColor: '#0f172a',
+  color: '#e5eefb',
+};
+
 const secondaryButton = {
   padding: '12px 16px',
   background: 'rgba(15, 23, 42, 0.74)',
@@ -1094,6 +1198,30 @@ const helpTextStyle = {
   marginTop: '8px',
   fontSize: '12px',
   color: '#94a3b8',
+};
+
+const metricCommentWrapStyle = {
+  marginTop: '12px',
+  display: 'grid',
+  gap: '8px',
+};
+
+const metricCommentLabelStyle = {
+  fontSize: '12px',
+  color: '#93c5fd',
+  fontWeight: 800,
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.1em',
+};
+
+const metricCommentFieldStyle = {
+  width: '100%',
+  padding: '12px 14px',
+  borderRadius: '14px',
+  border: '1px solid rgba(148, 163, 184, 0.16)',
+  background: 'rgba(15, 23, 42, 0.78)',
+  color: '#e5eefb',
+  resize: 'vertical' as const,
 };
 
 const warningBannerStyle = {
