@@ -9,10 +9,9 @@ function readStoredValue<T>(key: string, initialValue: T): T {
     return JSON.parse(rawValue) as T;
   } catch {
     return initialValue;
-  } 
-    @@ -16,10 +57,14 @@ export function usePersistentState<T>(key: string, initialValue: T) {
-  
+  }
 }
+
 export function usePersistentState<T>(key: string, initialValue: T) {
   const [value, setValue] = useState<T>(() => readStoredValue(key, initialValue));
 
@@ -24,9 +23,8 @@ export function usePersistentState<T>(key: string, initialValue: T) {
     } catch {
       // ignore storage write failures
     }
-    @@ -29,9 +74,15 @@ export function usePersistentState<T>(key: string, initialValue: T) {
-  
   }, [key, value]);
+
   function clearStoredValue() {
     if (typeof window === 'undefined') return;
 
@@ -35,6 +33,9 @@ export function usePersistentState<T>(key: string, initialValue: T) {
     } catch {
       // ignore storage remove failures
     }
+
+    setValue(initialValue);
   }
+
   return [value, setValue, clearStoredValue] as const;
 }
