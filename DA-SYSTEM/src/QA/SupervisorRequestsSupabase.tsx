@@ -425,12 +425,12 @@ function SupervisorRequestsSupabase({
   }
 
   return (
-    <div style={{ color: '#e5eefb' }}>
+    <div style={{ color: 'var(--da-page-text, #e5eefb)' }}>
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Supervisor Requests</div>
           <h2 style={{ marginBottom: '8px' }}>Supervisor Requests</h2>
-          <p style={{ margin: 0, color: '#94a3b8' }}>
+          <p style={{ margin: 0, color: 'var(--da-subtle-text, #94a3b8)' }}>
             Requests now use a compact list. Press Details to expand the full
             request.
           </p>
@@ -497,7 +497,7 @@ function SupervisorRequestsSupabase({
                   style={pickerButtonStyle}
                 >
                   <span
-                    style={{ color: selectedAgent ? '#e5eefb' : '#94a3b8' }}
+                    style={{ color: selectedAgent ? 'var(--da-page-text, #e5eefb)' : 'var(--da-subtle-text, #94a3b8)' }}
                   >
                     {selectedAgent
                       ? getAgentLabel(selectedAgent)
@@ -832,7 +832,7 @@ const pageHeaderStyle = {
 };
 
 const sectionEyebrow = {
-  color: '#60a5fa',
+  color: 'var(--da-accent-text, #60a5fa)',
   fontSize: '12px',
   fontWeight: 800,
   letterSpacing: '0.18em',
@@ -842,7 +842,7 @@ const sectionEyebrow = {
 
 const panelStyle = {
   background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
   border: '1px solid rgba(148,163,184,0.14)',
   borderRadius: '20px',
   padding: '20px',
@@ -859,15 +859,15 @@ const scopeInfoStyle = {
   marginBottom: '18px',
   padding: '14px',
   borderRadius: '12px',
-  backgroundColor: 'rgba(15,23,42,0.5)',
+  backgroundColor: 'var(--da-card-bg, rgba(15,23,42,0.5))',
   border: '1px solid rgba(148,163,184,0.12)',
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
 };
 
 const labelStyle = {
   display: 'block',
   marginBottom: '8px',
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
   fontWeight: 700,
   fontSize: '13px',
 };
@@ -877,16 +877,16 @@ const fieldStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
   border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.7)',
-  color: '#e5eefb',
+  background: 'var(--da-surface-bg, rgba(15,23,42,0.7))',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 
 const compactFieldStyle = {
   padding: '10px 12px',
   borderRadius: '10px',
   border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.8)',
-  color: '#e5eefb',
+  background: 'var(--da-field-bg, rgba(15,23,42,0.8))',
+  color: 'var(--da-page-text, #e5eefb)',
   minWidth: '220px',
 };
 
@@ -895,13 +895,13 @@ const pickerButtonStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
   border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.7)',
+  background: 'var(--da-surface-bg, rgba(15,23,42,0.7))',
   textAlign: 'left' as const,
   cursor: 'pointer',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  color: '#e5eefb',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 
 const pickerMenuStyle = {
@@ -909,7 +909,7 @@ const pickerMenuStyle = {
   top: 'calc(100% + 8px)',
   left: 0,
   right: 0,
-  background: 'rgba(15,23,42,0.96)',
+  background: 'var(--da-menu-bg, rgba(15,23,42,0.96))',
   border: '1px solid rgba(148,163,184,0.16)',
   borderRadius: '16px',
   boxShadow: '0 10px 30px rgba(0,0,0,0.22)',
@@ -933,15 +933,15 @@ const pickerListStyle = {
 const pickerInfoStyle = {
   padding: '12px',
   borderRadius: '8px',
-  backgroundColor: 'rgba(15,23,42,0.68)',
-  color: '#94a3b8',
+  backgroundColor: 'var(--da-surface-bg, rgba(15,23,42,0.68))',
+  color: 'var(--da-subtle-text, #94a3b8)',
 };
 
 const pickerErrorStyle = {
   padding: '12px',
   borderRadius: '8px',
   backgroundColor: 'rgba(127,29,29,0.24)',
-  color: '#fecaca',
+  color: 'var(--da-error-text, #fecaca)',
   border: '1px solid rgba(248,113,113,0.22)',
 };
 
@@ -949,20 +949,20 @@ const pickerOptionStyle = {
   padding: '12px',
   borderRadius: '8px',
   border: '1px solid rgba(148,163,184,0.12)',
-  backgroundColor: 'rgba(15,23,42,0.6)',
+  backgroundColor: 'var(--da-surface-bg, rgba(15,23,42,0.6))',
   textAlign: 'left' as const,
   cursor: 'pointer',
   fontWeight: 500,
-  color: '#e5eefb',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 
 const pickerOptionActiveStyle = {
   border: '1px solid #2563eb',
-  backgroundColor: 'rgba(37,99,235,0.18)',
+  backgroundColor: 'var(--da-active-option-bg, rgba(37, 99, 235, 0.18))',
 };
 
 const infoCardStyle = {
-  backgroundColor: 'rgba(15,23,42,0.5)',
+  backgroundColor: 'var(--da-card-bg, rgba(15,23,42,0.5))',
   border: '1px solid rgba(148,163,184,0.12)',
   borderRadius: '12px',
   padding: '14px',
@@ -980,7 +980,7 @@ const primaryButton = {
 
 const secondaryButton = {
   padding: '12px 16px',
-  backgroundColor: 'rgba(15,23,42,0.9)',
+  backgroundColor: 'var(--da-field-bg, rgba(15,23,42,0.9))',
   color: 'white',
   border: '1px solid rgba(148,163,184,0.16)',
   borderRadius: '10px',
@@ -1008,9 +1008,9 @@ const countPillStyle = {
   alignItems: 'center',
   padding: '10px 14px',
   borderRadius: '999px',
-  backgroundColor: 'rgba(15,23,42,0.62)',
+  backgroundColor: 'var(--da-surface-bg, rgba(15,23,42,0.62))',
   border: '1px solid rgba(148,163,184,0.14)',
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
   fontSize: '13px',
   fontWeight: 700,
 };
@@ -1020,7 +1020,7 @@ const requestCardStyle = {
   borderRadius: '16px',
   padding: '16px',
   background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
 };
 
 const requestSummaryRowStyle = {
@@ -1044,13 +1044,13 @@ const requestSummarySideStyle = {
 };
 
 const requestTitleStyle = {
-  color: '#f8fafc',
+  color: 'var(--da-title, #f8fafc)',
   fontSize: '16px',
   fontWeight: 800,
 };
 
 const requestMetaStyle = {
-  color: '#94a3b8',
+  color: 'var(--da-subtle-text, #94a3b8)',
   fontSize: '13px',
 };
 
@@ -1074,18 +1074,18 @@ const detailsGridStyle = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
   gap: '12px',
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
 };
 
 const noteBlockStyle = {
   padding: '14px',
   borderRadius: '12px',
   border: '1px solid rgba(148,163,184,0.12)',
-  backgroundColor: 'rgba(15,23,42,0.48)',
+  backgroundColor: 'var(--da-card-bg, rgba(15,23,42,0.48))',
 };
 
 const noteLabelStyle = {
-  color: '#93c5fd',
+  color: 'var(--da-accent-text, #93c5fd)',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -1094,7 +1094,7 @@ const noteLabelStyle = {
 };
 
 const noteTextStyle = {
-  color: '#f8fafc',
+  color: 'var(--da-title, #f8fafc)',
   lineHeight: 1.6,
 };
 
@@ -1102,14 +1102,14 @@ const statusActionWrapStyle = {
   padding: '14px',
   borderRadius: '12px',
   border: '1px solid rgba(148,163,184,0.12)',
-  backgroundColor: 'rgba(15,23,42,0.48)',
+  backgroundColor: 'var(--da-card-bg, rgba(15,23,42,0.48))',
 };
 
 const miniButtonStyle = {
   padding: '10px 12px',
   borderRadius: '10px',
   border: '1px solid rgba(148,163,184,0.16)',
-  backgroundColor: 'rgba(15,23,42,0.82)',
+  backgroundColor: 'var(--da-field-bg, rgba(15,23,42,0.82))',
   color: '#ffffff',
   cursor: 'pointer',
   fontWeight: 700,
@@ -1121,7 +1121,7 @@ const errorBanner = {
   borderRadius: '10px',
   backgroundColor: 'rgba(127,29,29,0.24)',
   border: '1px solid rgba(248,113,113,0.22)',
-  color: '#fecaca',
+  color: 'var(--da-error-text, #fecaca)',
 };
 
 const warningBanner = {
