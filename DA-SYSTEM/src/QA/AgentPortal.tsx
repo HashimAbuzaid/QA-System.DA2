@@ -25,8 +25,6 @@ type ScoreDetail = {
   borderline: number;
   adjustedWeight: number;
   earned: number;
-  metric_comment?: string | null;
-  counts_toward_score?: boolean;
 };
 
 type AuditItem = {
@@ -149,6 +147,15 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
 
   useEffect(() => {
     void loadAgentData();
+  }, [cacheKey]);
+
+  useEffect(() => {
+    function handleWindowFocus() {
+      void loadAgentData({ force: true, background: true });
+    }
+
+    window.addEventListener('focus', handleWindowFocus);
+    return () => window.removeEventListener('focus', handleWindowFocus);
   }, [cacheKey]);
 
   function applyAgentData(payload: AgentPortalCachePayload) {
@@ -397,10 +404,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
     setAuditDateTo('');
   }
 
-  function isHiddenAgentMetricDetail(detail: ScoreDetail) {
-    return detail.counts_toward_score === false || detail.metric === 'Issue was resolved';
-  }
-
   const hasVisibleData =
     audits.length > 0 ||
     callsRecords.length > 0 ||
@@ -410,16 +413,16 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
     monitoringItems.length > 0;
 
   if (loading && !hasVisibleData) {
-    return <div style={{ color: '#cbd5e1' }}>Loading profile data...</div>;
+    return <div style={{ color: 'var(--da-muted-text, #cbd5e1)' }}>Loading profile data...</div>;
   }
 
   return (
-    <div style={{ color: '#e5eefb' }}>
+    <div style={{ color: 'var(--da-page-text, #e5eefb)' }}>
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Agent Portal</div>
           <h2 style={{ marginBottom: '8px' }}>My Profile</h2>
-          <p style={{ margin: 0, color: '#94a3b8' }}>
+          <p style={{ margin: 0, color: 'var(--da-subtle-text, #94a3b8)' }}>
             This portal is linked to the logged-in agent account. You only see
             audits released to you by QA/Admin.
           </p>
@@ -682,95 +685,46 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
                     {isExpanded ? (
                       <div style={auditExpandedRowStyle}>
                         <div style={expandedPanelStyle}>
-                          <div style={sectionEyebrow}>Audit Details</div>
-
-                          <div style={detailInfoGridStyle}>
-                            <div style={detailInfoCardStyle}>
-                              <div style={detailLabelStyle}>Reference</div>
-                              <div style={detailValueStyle}>
-                                {getAuditReference(audit)}
-                              </div>
-                            </div>
-
-                            <div style={detailInfoCardStyle}>
-                              <div style={detailLabelStyle}>Release Date</div>
-                              <div style={detailValueStyle}>
-                                {formatDate(audit.shared_at)}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div style={fullCommentCardStyle}>
-                            <div style={detailLabelStyle}>Full Comment</div>
-                            <div style={fullCommentTextStyle}>
-                              {audit.comments?.trim() || '-'}
-                            </div>
-                          </div>
-
-                          <div style={{ ...sectionEyebrow, marginTop: '18px' }}>
-                            Score Details
-                          </div>
+                          <div style={sectionEyebrow}>Score Details</div>
                           <div style={{ display: 'grid', gap: '10px' }}>
-                            {(audit.score_details || [])
-                              .filter((detail) => !isHiddenAgentMetricDetail(detail))
-                              .map((detail) => {
-                                const metricComment =
-                                  typeof detail.metric_comment === 'string'
-                                    ? detail.metric_comment.trim()
-                                    : '';
-
-                                return (
+                            {(audit.score_details || []).map((detail) => (
+                              <div
+                                key={`${audit.id}-${detail.metric}`}
+                                style={detailRowStyle}
+                              >
+                                <div>
                                   <div
-                                    key={`${audit.id}-${detail.metric}`}
-                                    style={detailCardStyle}
+                                    style={{
+                                      color: 'var(--da-title, #f8fafc)',
+                                      fontWeight: 700,
+                                    }}
                                   >
-                                    <div style={detailRowStyle}>
-                                      <div>
-                                        <div
-                                          style={{
-                                            color: '#f8fafc',
-                                            fontWeight: 700,
-                                          }}
-                                        >
-                                          {detail.metric}
-                                        </div>
-                                        <div
-                                          style={{
-                                            color: '#94a3b8',
-                                            fontSize: '12px',
-                                            marginTop: '4px',
-                                          }}
-                                        >
-                                          Pass {detail.pass} • Borderline{' '}
-                                          {detail.borderline} • Adjusted{' '}
-                                          {detail.adjustedWeight.toFixed(2)}
-                                        </div>
-                                      </div>
-                                      <span
-                                        style={{
-                                          ...pillStyle,
-                                          backgroundColor: getResultBadgeColor(
-                                            detail.result
-                                          ),
-                                        }}
-                                      >
-                                        {detail.result}
-                                      </span>
-                                    </div>
-
-                                    {metricComment ? (
-                                      <div style={metricCommentCardStyle}>
-                                        <div style={metricCommentLabelStyle}>
-                                          QA Note
-                                        </div>
-                                        <div style={metricCommentTextStyle}>
-                                          {metricComment}
-                                        </div>
-                                      </div>
-                                    ) : null}
+                                    {detail.metric}
                                   </div>
-                                );
-                              })}
+                                  <div
+                                    style={{
+                                      color: 'var(--da-subtle-text, #94a3b8)',
+                                      fontSize: '12px',
+                                      marginTop: '4px',
+                                    }}
+                                  >
+                                    Pass {detail.pass} • Borderline{' '}
+                                    {detail.borderline} • Adjusted{' '}
+                                    {detail.adjustedWeight.toFixed(2)}
+                                  </div>
+                                </div>
+                                <span
+                                  style={{
+                                    ...pillStyle,
+                                    backgroundColor: getResultBadgeColor(
+                                      detail.result
+                                    ),
+                                  }}
+                                >
+                                  {detail.result}
+                                </span>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       </div>
@@ -890,10 +844,10 @@ function SummaryCard({
 }) {
   return (
     <div style={cardStyle}>
-      <div style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '8px' }}>
+      <div style={{ fontSize: '14px', color: 'var(--da-subtle-text, #94a3b8)', marginBottom: '8px' }}>
         {title}
       </div>
-      <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#f8fafc' }}>
+      <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--da-title, #f8fafc)' }}>
         {value}
       </div>
       {subtitle ? (
@@ -924,7 +878,7 @@ const pageHeaderStyle = {
 };
 
 const sectionEyebrow = {
-  color: '#60a5fa',
+  color: 'var(--da-accent-text, #60a5fa)',
   fontSize: '12px',
   fontWeight: 800,
   letterSpacing: '0.18em',
@@ -934,7 +888,7 @@ const sectionEyebrow = {
 
 const panelStyle = {
   background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
   border: '1px solid rgba(148,163,184,0.14)',
   borderRadius: '20px',
   padding: '20px',
@@ -959,8 +913,8 @@ const filterPillStyle = {
   padding: '10px 14px',
   borderRadius: '999px',
   border: '1px solid rgba(148,163,184,0.14)',
-  backgroundColor: 'rgba(15,23,42,0.56)',
-  color: '#cbd5e1',
+  backgroundColor: 'var(--da-card-bg, rgba(15,23,42,0.56))',
+  color: 'var(--da-muted-text, #cbd5e1)',
   fontSize: '13px',
   fontWeight: 600,
 };
@@ -975,7 +929,7 @@ const summaryGridStyle = {
 
 const cardStyle = {
   background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
   border: '1px solid rgba(148,163,184,0.14)',
   borderRadius: '18px',
   padding: '20px',
@@ -988,7 +942,7 @@ const auditTableWrapStyle = {
   borderRadius: '18px',
   border: '1px solid rgba(148,163,184,0.14)',
   background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
   boxShadow: '0 8px 24px rgba(2,6,23,0.2)',
 };
 
@@ -1012,7 +966,7 @@ const auditHeaderRowStyle = {
   top: 0,
   zIndex: 1,
   background: 'rgba(2,6,23,0.92)',
-  color: '#93c5fd',
+  color: 'var(--da-accent-text, #93c5fd)',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -1032,7 +986,7 @@ const auditCellActionsStyle = {
 };
 
 const primaryCellTextStyle = {
-  color: '#f8fafc',
+  color: 'var(--da-title, #f8fafc)',
   fontSize: '14px',
   fontWeight: 600,
   lineHeight: 1.4,
@@ -1054,7 +1008,7 @@ const scorePillStyle = {
   minWidth: '84px',
   padding: '8px 10px',
   borderRadius: '999px',
-  background: 'rgba(37,99,235,0.18)',
+  background: 'var(--da-active-option-bg, rgba(37, 99, 235, 0.18))',
   border: '1px solid rgba(96,165,250,0.26)',
   color: '#dbeafe',
   fontSize: '13px',
@@ -1064,7 +1018,7 @@ const scorePillStyle = {
 const labelStyle = {
   display: 'block',
   marginBottom: '8px',
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
   fontWeight: 700,
   fontSize: '13px',
 };
@@ -1074,12 +1028,12 @@ const fieldStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
   border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.7)',
-  color: '#e5eefb',
+  background: 'var(--da-surface-bg, rgba(15,23,42,0.7))',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 
 const secondaryButton = {
-  backgroundColor: 'rgba(15,23,42,0.78)',
+  backgroundColor: 'var(--da-field-bg, rgba(15,23,42,0.78))',
   color: 'white',
   border: '1px solid rgba(148,163,184,0.18)',
   padding: '10px 14px',
@@ -1093,7 +1047,7 @@ const errorBanner = {
   borderRadius: '10px',
   backgroundColor: 'rgba(127,29,29,0.24)',
   border: '1px solid rgba(248,113,113,0.22)',
-  color: '#fecaca',
+  color: 'var(--da-error-text, #fecaca)',
 };
 
 const pillStyle = {
@@ -1110,7 +1064,7 @@ const expandedPanelStyle = {
   borderRadius: '18px',
   border: '1px solid rgba(148,163,184,0.12)',
   background:
-    'linear-gradient(180deg, rgba(15,23,42,0.78) 0%, rgba(15,23,42,0.6) 100%)',
+    'linear-gradient(180deg, var(--da-field-bg, rgba(15,23,42,0.78)) 0%, var(--da-surface-bg, rgba(15,23,42,0.6)) 100%)',
   padding: '18px',
 };
 
@@ -1122,90 +1076,13 @@ const detailRowStyle = {
   padding: '12px 14px',
   borderRadius: '14px',
   border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(15,23,42,0.52)',
-};
-
-const detailInfoGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-  gap: '12px',
-  marginBottom: '18px',
-};
-
-const detailInfoCardStyle = {
-  borderRadius: '14px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(15,23,42,0.52)',
-  padding: '14px 16px',
-};
-
-const detailLabelStyle = {
-  color: '#94a3b8',
-  fontSize: '12px',
-  fontWeight: 700,
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.08em',
-  marginBottom: '8px',
-};
-
-const detailValueStyle = {
-  color: '#f8fafc',
-  fontSize: '14px',
-  fontWeight: 700,
-  lineHeight: 1.5,
-};
-
-const fullCommentCardStyle = {
-  borderRadius: '14px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(15,23,42,0.52)',
-  padding: '14px 16px',
-  marginBottom: '18px',
-};
-
-const fullCommentTextStyle = {
-  color: '#f8fafc',
-  fontSize: '14px',
-  lineHeight: 1.7,
-  whiteSpace: 'pre-wrap' as const,
-  wordBreak: 'break-word' as const,
-};
-
-const detailCardStyle = {
-  borderRadius: '14px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(15,23,42,0.52)',
-  padding: '12px 14px',
-};
-
-const metricCommentCardStyle = {
-  marginTop: '10px',
-  borderRadius: '12px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(2,6,23,0.24)',
-  padding: '12px 14px',
-};
-
-const metricCommentLabelStyle = {
-  color: '#93c5fd',
-  fontSize: '11px',
-  fontWeight: 800,
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.14em',
-  marginBottom: '8px',
-};
-
-const metricCommentTextStyle = {
-  color: '#e5eefb',
-  fontSize: '14px',
-  lineHeight: 1.6,
-  whiteSpace: 'pre-wrap' as const,
+  background: 'var(--da-card-bg, rgba(15,23,42,0.52))',
 };
 
 const miniSecondaryButton = {
   padding: '8px 10px',
-  background: 'rgba(15,23,42,0.82)',
-  color: '#e5eefb',
+  background: 'var(--da-field-bg, rgba(15,23,42,0.82))',
+  color: 'var(--da-page-text, #e5eefb)',
   border: '1px solid rgba(148,163,184,0.18)',
   borderRadius: '10px',
   cursor: 'pointer',
