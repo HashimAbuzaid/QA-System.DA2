@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { supabase } from '../lib/supabase';
 import {
   clearAgentProfilesCache,
@@ -58,6 +58,7 @@ type AuditDraft = {
 
 const LOCKED_NA_METRICS = new Set(['Active Listening']);
 const AUTO_FAIL_METRICS = new Set(['Hold (≤3 mins)', 'Procedure']);
+const ISSUE_WAS_RESOLVED_METRIC = 'Issue was resolved';
 
 function countsTowardScore(metric: Metric) {
   return metric.countsTowardScore !== false;
@@ -70,7 +71,7 @@ function shouldShowMetricComment(result: string) {
 }
 
 const ISSUE_WAS_RESOLVED_QUESTION: Metric = {
-  name: 'Issue was resolved',
+  name: ISSUE_WAS_RESOLVED_METRIC,
   pass: 0,
   borderline: 0,
   countsTowardScore: false,
@@ -108,6 +109,7 @@ const ticketsMetrics: Metric[] = [
   { name: 'Refund Form', pass: 6, borderline: 3 },
   { name: 'Providing RL', pass: 5, borderline: 3 },
   { name: 'Ending', pass: 5, borderline: 3 },
+  ISSUE_WAS_RESOLVED_QUESTION,
 ];
 
 const salesMetrics: Metric[] = [
@@ -123,6 +125,7 @@ const salesMetrics: Metric[] = [
   { name: 'Refund Form', pass: 5, borderline: 3 },
   { name: 'Up-selling', pass: 8, borderline: 4 },
   { name: 'Ending', pass: 5, borderline: 3 },
+  ISSUE_WAS_RESOLVED_QUESTION,
 ];
 
 function pickPreferredName(values: Array<string | null | undefined>) {
@@ -164,16 +167,6 @@ function getMetricStoredValue(metric: Metric, scores: Record<string, string>) {
   return scores[metric.name] ?? metric.defaultValue ?? 'N/A';
 }
 
-function getMissingRequiredMetricLabels(
-  teamValue: TeamType,
-  scores: Record<string, string>
-) {
-  return getMetricsForTeam(teamValue)
-    .filter((metric) => Array.isArray(metric.options) && metric.defaultValue === '')
-    .filter((metric) => !getMetricStoredValue(metric, scores))
-    .map((metric) => metric.name);
-}
-
 function createDefaultScores(teamValue: TeamType) {
   const defaults: Record<string, string> = {};
 
@@ -198,6 +191,16 @@ function createEmptyDraft(teamValue: TeamType = ''): AuditDraft {
     scores: createDefaultScores(teamValue),
     metricComments: {},
   };
+}
+
+function getMissingRequiredMetricLabels(
+  teamValue: TeamType,
+  scores: Record<string, string>
+) {
+  return getMetricsForTeam(teamValue)
+    .filter((metric) => Array.isArray(metric.options) && metric.defaultValue === '')
+    .filter((metric) => !getMetricStoredValue(metric, scores))
+    .map((metric) => metric.name);
 }
 
 function getAdjustedScoreData(
@@ -247,9 +250,10 @@ function getAdjustedScoreData(
       adjustedWeight,
       earned,
       counts_toward_score: scored,
-      metric_comment: shouldShowMetricComment(result)
-        ? (metricComments[metric.name] || '').trim() || null
-        : null,
+      metric_comment:
+        scored && shouldShowMetricComment(result)
+          ? (metricComments[metric.name] || '').trim() || null
+          : null,
     };
   });
 
@@ -270,6 +274,35 @@ function getAdjustedScoreData(
   return { scoreDetails, qualityScore, hasAutoFail };
 }
 
+function openNativeDatePicker(target: HTMLInputElement) {
+  const input = target as HTMLInputElement & { showPicker?: () => void };
+  input.showPicker?.();
+}
+
+function getThemeVars(): Record<string, string> {
+  const isLight =
+    typeof document !== 'undefined' && document.body.dataset.theme === 'light';
+
+  return {
+    '--screen-text': isLight ? '#0f172a' : '#e5eefb',
+    '--screen-heading': isLight ? '#0f172a' : '#f8fafc',
+    '--screen-muted': isLight ? '#64748b' : '#94a3b8',
+    '--screen-accent': isLight ? '#2563eb' : '#60a5fa',
+    '--screen-panel-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(241,245,249,0.96) 100%)'
+      : 'linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%)',
+    '--screen-card-soft-bg': isLight ? 'rgba(248,250,252,0.9)' : 'rgba(15, 23, 42, 0.5)',
+    '--screen-field-bg': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15, 23, 42, 0.7)',
+    '--screen-border': isLight ? 'rgba(148, 163, 184, 0.28)' : 'rgba(148, 163, 184, 0.14)',
+    '--screen-border-strong': isLight ? 'rgba(148, 163, 184, 0.34)' : 'rgba(148, 163, 184, 0.16)',
+    '--screen-secondary-btn-bg': isLight ? 'rgba(248,250,252,0.98)' : 'rgba(15, 23, 42, 0.74)',
+    '--screen-secondary-btn-text': isLight ? '#0f172a' : '#e5eefb',
+    '--screen-select-option-bg': isLight ? '#ffffff' : '#0f172a',
+    '--screen-select-option-text': isLight ? '#0f172a' : '#e5eefb',
+    '--screen-shadow': isLight ? '0 18px 40px rgba(15, 23, 42, 0.08)' : '0 18px 40px rgba(2, 6, 23, 0.35)',
+  };
+}
+
 function NewAuditSupabase() {
   const [draft, setDraft] = usePersistentState<AuditDraft>(
     'detroit-axle-new-audit-draft',
@@ -287,6 +320,7 @@ function NewAuditSupabase() {
   const [successMessage, setSuccessMessage] = useState('');
   const [isAgentPickerOpen, setIsAgentPickerOpen] = useState(false);
 
+  const themeVars = getThemeVars();
   const agentPickerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -457,7 +491,6 @@ function NewAuditSupabase() {
 
     setDraft((prev) => {
       const nextMetricComments = { ...prev.metricComments };
-
       if (!shouldShowMetricComment(value)) {
         delete nextMetricComments[metricName];
       }
@@ -528,10 +561,24 @@ function NewAuditSupabase() {
       draft.team,
       draft.scores
     );
-
     if (missingRequiredMetricLabels.length > 0) {
       setErrorMessage(
         `Please answer: ${missingRequiredMetricLabels.join(', ')}.`
+      );
+      return;
+    }
+
+    const missingMetricCommentLabels = getMetricsForTeam(draft.team)
+      .filter((metric) => countsTowardScore(metric))
+      .filter((metric) =>
+        shouldShowMetricComment(getMetricStoredValue(metric, draft.scores))
+      )
+      .filter((metric) => !(draft.metricComments[metric.name] || '').trim())
+      .map((metric) => metric.name);
+
+    if (missingMetricCommentLabels.length > 0) {
+      setErrorMessage(
+        `Please add a short QA note for: ${missingMetricCommentLabels.join(', ')}.`
       );
       return;
     }
@@ -656,10 +703,10 @@ function NewAuditSupabase() {
                     handleScoreChange(metric.name, event.target.value)
                   }
                   disabled={isLockedToNA(metric.name)}
-                  style={fieldStyle}
+                  style={selectFieldStyle}
                 >
                   {metricOptions.map((option) => (
-                    <option key={option || '__empty__'} value={option}>
+                    <option key={option || '__empty__'} value={option} style={selectOptionStyle}>
                       {option || 'Select answer'}
                     </option>
                   ))}
@@ -671,14 +718,14 @@ function NewAuditSupabase() {
 
                 {showMetricComment ? (
                   <div style={metricCommentWrapStyle}>
-                    <label style={metricCommentLabelStyle}>QA Note for Agent</label>
+                    <label style={metricCommentLabelStyle}>QA note for agent</label>
                     <textarea
                       value={draft.metricComments[metric.name] || ''}
                       onChange={(event) =>
                         handleMetricCommentChange(metric.name, event.target.value)
                       }
                       rows={2}
-                      placeholder="Leave a short note for the agent"
+                      placeholder="Leave a short note explaining the result"
                       style={metricCommentFieldStyle}
                     />
                   </div>
@@ -703,12 +750,15 @@ function NewAuditSupabase() {
   }
 
   return (
-    <div style={{ color: '#e5eefb' }}>
+    <div
+      data-no-theme-invert="true"
+      style={{ color: 'var(--screen-text)', ...(themeVars as CSSProperties) }}
+    >
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Audit Workspace</div>
           <h2 style={{ margin: 0, fontSize: '30px' }}>New Audit</h2>
-          <p style={{ margin: '10px 0 0 0', color: '#94a3b8' }}>
+          <p style={{ margin: '10px 0 0 0', color: 'var(--screen-muted)' }}>
             Create Detroit Axle audits using the live agent directory from
             profiles.
           </p>
@@ -845,25 +895,13 @@ function NewAuditSupabase() {
                 onChange={(event) =>
                   setDraftField('caseType', event.target.value)
                 }
-                style={fieldStyle}
+                style={selectFieldStyle}
               >
-                <option value="">Select Case Type</option>
-                <option value="Order status">Order status</option>
-                <option value="General Inquiry">General Inquiry</option>
-                <option value="Exchange">Exchange</option>
-                <option value="Missing Parts">Missing Parts</option>
-                <option value="Refund - Store credit">
-                  Refund - Store credit
-                </option>
-                <option value="Delivered but not received">
-                  Delivered but not received
-                </option>
-                <option value="FedEx Cases">FedEx Cases</option>
-                <option value="Replacement">Replacement</option>
-                <option value="Warranty">Warranty</option>
-                <option value="Fitment issue">Fitment issue</option>
-                <option value="Damaged package">Damaged package</option>
-                <option value="Cancellation">Cancellation</option>
+                {['', 'Order status', 'General Inquiry', 'Exchange', 'Missing Parts', 'Refund - Store credit', 'Delivered but not received', 'FedEx Cases', 'Replacement', 'Warranty', 'Fitment issue', 'Damaged package', 'Cancellation'].map((option) => (
+                  <option key={option || '__empty__'} value={option} style={selectOptionStyle}>
+                    {option || 'Select Case Type'}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -875,6 +913,8 @@ function NewAuditSupabase() {
                 onChange={(event) =>
                   setDraftField('auditDate', event.target.value)
                 }
+                onClick={(event) => openNativeDatePicker(event.currentTarget)}
+                onFocus={(event) => openNativeDatePicker(event.currentTarget)}
                 style={fieldStyle}
               />
             </div>
@@ -984,17 +1024,16 @@ const pageHeaderStyle = {
 };
 
 const panelStyle = {
-  background:
-    'linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%)',
-  border: '1px solid rgba(148, 163, 184, 0.14)',
+  background: 'var(--screen-panel-bg)',
+  border: '1px solid var(--screen-border)',
   borderRadius: '24px',
   padding: '22px',
-  boxShadow: '0 18px 40px rgba(2, 6, 23, 0.35)',
+  boxShadow: 'var(--screen-shadow)',
   backdropFilter: 'blur(14px)',
 };
 
 const sectionEyebrow = {
-  color: '#60a5fa',
+  color: 'var(--screen-accent)',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -1012,9 +1051,9 @@ const teamButtonRowStyle = {
 const teamButtonStyle = {
   padding: '12px 16px',
   borderRadius: '14px',
-  border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'rgba(15, 23, 42, 0.62)',
-  color: '#cbd5e1',
+  border: '1px solid var(--screen-border-strong)',
+  background: 'var(--screen-card-soft-bg)',
+  color: 'var(--screen-text)',
   cursor: 'pointer',
   fontWeight: 700,
 };
@@ -1039,7 +1078,7 @@ const labelStyle = {
   display: 'block',
   marginBottom: '8px',
   fontSize: '13px',
-  color: '#cbd5e1',
+  color: 'var(--screen-text)',
   fontWeight: 700,
 };
 
@@ -1047,16 +1086,35 @@ const fieldStyle = {
   width: '100%',
   padding: '14px 16px',
   borderRadius: '16px',
-  border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'rgba(15, 23, 42, 0.7)',
-  color: '#e5eefb',
+  border: '1px solid var(--screen-border-strong)',
+  background: 'var(--screen-field-bg)',
+  color: 'var(--screen-text)',
+};
+
+const selectFieldStyle = {
+  ...fieldStyle,
+  appearance: 'none' as const,
+  WebkitAppearance: 'none' as const,
+  MozAppearance: 'none' as const,
+  paddingRight: '44px',
+  backgroundImage:
+    'linear-gradient(45deg, transparent 50%, #cbd5e1 50%), linear-gradient(135deg, #cbd5e1 50%, transparent 50%)',
+  backgroundPosition: 'calc(100% - 22px) calc(50% - 3px), calc(100% - 16px) calc(50% - 3px)',
+  backgroundSize: '6px 6px, 6px 6px',
+  backgroundRepeat: 'no-repeat',
+  colorScheme: 'normal' as const,
+};
+
+const selectOptionStyle = {
+  backgroundColor: 'var(--screen-select-option-bg)',
+  color: 'var(--screen-text)',
 };
 
 const secondaryButton = {
   padding: '12px 16px',
-  background: 'rgba(15, 23, 42, 0.74)',
-  color: '#e5eefb',
-  border: '1px solid rgba(148, 163, 184, 0.18)',
+  background: 'var(--screen-secondary-btn-bg)',
+  color: 'var(--screen-secondary-btn-text)',
+  border: '1px solid var(--screen-border-strong)',
   borderRadius: '14px',
   cursor: 'pointer',
   fontWeight: 700,
@@ -1077,9 +1135,9 @@ const pickerButtonStyle = {
   width: '100%',
   padding: '14px 16px',
   borderRadius: '16px',
-  border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'rgba(15, 23, 42, 0.7)',
-  color: '#e5eefb',
+  border: '1px solid var(--screen-border-strong)',
+  background: 'var(--screen-field-bg)',
+  color: 'var(--screen-text)',
   textAlign: 'left' as const,
   cursor: 'pointer',
   display: 'flex',
@@ -1093,7 +1151,7 @@ const pickerMenuStyle = {
   left: 0,
   right: 0,
   background: 'rgba(15, 23, 42, 0.96)',
-  border: '1px solid rgba(148, 163, 184, 0.16)',
+  border: '1px solid var(--screen-border-strong)',
   borderRadius: '18px',
   boxShadow: '0 18px 44px rgba(2, 6, 23, 0.45)',
   zIndex: 20,
@@ -1118,7 +1176,7 @@ const pickerInfoStyle = {
   padding: '12px',
   borderRadius: '12px',
   backgroundColor: 'rgba(15, 23, 42, 0.68)',
-  color: '#94a3b8',
+  color: 'var(--screen-muted)',
 };
 
 const pickerErrorStyle = {
@@ -1132,11 +1190,11 @@ const pickerErrorStyle = {
 const pickerOptionStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
-  border: '1px solid rgba(148, 163, 184, 0.12)',
+  border: '1px solid var(--screen-border)',
   backgroundColor: 'rgba(15, 23, 42, 0.6)',
   textAlign: 'left' as const,
   cursor: 'pointer',
-  color: '#e5eefb',
+  color: 'var(--screen-text)',
   fontWeight: 600,
 };
 
@@ -1149,53 +1207,49 @@ const infoCardStyle = {
   gridColumn: '1 / -1',
   borderRadius: '18px',
   padding: '18px',
-  border: '1px solid rgba(148, 163, 184, 0.12)',
-  background: 'rgba(15, 23, 42, 0.5)',
+  border: '1px solid var(--screen-border)',
+  background: 'var(--screen-card-soft-bg)',
 };
 
 const infoLineStyle = {
   margin: '0 0 8px 0',
-  color: '#cbd5e1',
+  color: 'var(--screen-text)',
 };
 
 const glassFieldCardStyle = {
   borderRadius: '18px',
   padding: '16px',
-  border: '1px solid rgba(148, 163, 184, 0.12)',
-  background: 'rgba(15, 23, 42, 0.5)',
+  border: '1px solid var(--screen-border)',
+  background: 'var(--screen-card-soft-bg)',
 };
 
 const helpTextStyle = {
   marginTop: '8px',
   fontSize: '12px',
-  color: '#94a3b8',
+  color: 'var(--screen-muted)',
 };
 
 const metricCommentWrapStyle = {
   marginTop: '12px',
-  padding: '12px',
-  borderRadius: '14px',
-  border: '1px solid rgba(248, 113, 113, 0.16)',
-  background: 'rgba(2, 6, 23, 0.28)',
+  display: 'grid',
+  gap: '8px',
 };
 
 const metricCommentLabelStyle = {
-  display: 'block',
-  marginBottom: '8px',
-  color: '#f8fafc',
   fontSize: '12px',
+  color: '#93c5fd',
   fontWeight: 800,
-  letterSpacing: '0.06em',
   textTransform: 'uppercase' as const,
+  letterSpacing: '0.1em',
 };
 
 const metricCommentFieldStyle = {
   width: '100%',
   padding: '12px 14px',
   borderRadius: '14px',
-  border: '1px solid rgba(148, 163, 184, 0.16)',
+  border: '1px solid var(--screen-border-strong)',
   background: 'rgba(15, 23, 42, 0.78)',
-  color: '#e5eefb',
+  color: 'var(--screen-text)',
   resize: 'vertical' as const,
 };
 
@@ -1230,7 +1284,7 @@ const scoreLabelStyle = {
 const scoreValueStyle = {
   fontSize: '36px',
   fontWeight: 800,
-  color: '#f8fafc',
+  color: 'var(--screen-heading)',
 };
 
 const actionRowStyle = {
