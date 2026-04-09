@@ -1,45 +1,90 @@
-// ThemeProvider.tsx
-import React, { createContext, useContext, useEffect } from 'react';
-import { usePersistentState } from './usePersistentState';
+import { useEffect, useState } from 'react';
 
-type Theme = 'light' | 'dark';
+function getAvailableStorage(): Storage | null {
+  if (typeof window === 'undefined') return null;
 
-type ThemeContextType = {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
-  toggleTheme: () => void;
-};
+  try {
+    if (window.localStorage) {
+      const testKey = '__detroit_axle_storage_test__';
+      window.localStorage.setItem(testKey, '1');
+      window.localStorage.removeItem(testKey);
+      return window.localStorage;
+    }
+  } catch {
+    // ignore localStorage failures and fall back below
+  }
 
-const ThemeContext = createContext<ThemeContextType | null>(null);
+  try {
+    if (window.sessionStorage) {
+      return window.sessionStorage;
+    }
+  } catch {
+    // ignore storage failures
+  }
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = usePersistentState<Theme>('theme', 'light');
-
-  useEffect(() => {
-    const root = document.documentElement;
-
-    // remove both first
-    root.classList.remove('light', 'dark');
-
-    // apply only the saved theme
-    root.classList.add(theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
-  };
-
-  return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return null;
 }
 
-export function useTheme() {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) {
-    throw new Error('useTheme must be used inside ThemeProvider');
+function readStoredValue<T>(key: string, initialValue: T): T {
+  const storage = getAvailableStorage();
+  if (!storage) return initialValue;
+
+  try {
+    const localValue = window.localStorage?.getItem(key);
+    if (localValue) {
+      return JSON.parse(localValue) as T;
+    }
+
+    const sessionValue = window.sessionStorage?.getItem(key);
+    if (sessionValue) {
+      const parsed = JSON.parse(sessionValue) as T;
+      try {
+        window.localStorage?.setItem(key, sessionValue);
+        window.sessionStorage?.removeItem(key);
+      } catch {
+        // ignore migration failures
+      }
+      return parsed;
+    }
+
+    return initialValue;
+  } catch {
+    return initialValue;
   }
-  return ctx;
+}
+
+export function usePersistentState<T>(key: string, initialValue: T) {
+  const [value, setValue] = useState<T>(() => readStoredValue(key, initialValue));
+
+  useEffect(() => {
+    const storage = getAvailableStorage();
+    if (!storage) return;
+
+    try {
+      storage.setItem(key, JSON.stringify(value));
+      if (storage === window.localStorage) {
+        window.sessionStorage?.removeItem(key);
+      }
+    } catch {
+      // ignore storage write failures
+    }
+  }, [key, value]);
+
+  function clearStoredValue() {
+    if (typeof window === 'undefined') return;
+
+    try {
+      window.localStorage?.removeItem(key);
+    } catch {
+      // ignore localStorage remove failures
+    }
+
+    try {
+      window.sessionStorage?.removeItem(key);
+    } catch {
+      // ignore sessionStorage remove failures
+    }
+  }
+
+  return [value, setValue, clearStoredValue] as const;
 }
