@@ -43,6 +43,8 @@ type Metric = {
   pass: number;
   borderline: number;
   countsTowardScore?: boolean;
+  options?: string[];
+  defaultValue?: string;
 };
 type EditFormState = {
   team: 'Calls' | 'Tickets' | 'Sales' | '';
@@ -60,12 +62,15 @@ function countsTowardScore(metric: Metric) {
   return metric.countsTowardScore !== false;
 }
 
-const NO_SCORE_CALLS_QUESTION: Metric = {
-  name: 'Additional QA Question',
+const ISSUE_WAS_RESOLVED_QUESTION: Metric = {
+  name: 'Issue was resolved',
   pass: 0,
   borderline: 0,
   countsTowardScore: false,
+  options: ['', 'Yes', 'No'],
+  defaultValue: '',
 };
+
 const callsMetrics: Metric[] = [
   { name: 'Greeting', pass: 2, borderline: 1 },
   { name: 'Friendliness', pass: 5, borderline: 3 },
@@ -80,7 +85,7 @@ const callsMetrics: Metric[] = [
   { name: 'Refund Form', pass: 11, borderline: 5 },
   { name: 'Providing RL', pass: 5, borderline: 3 },
   { name: 'Ending', pass: 2, borderline: 1 },
-  NO_SCORE_CALLS_QUESTION,
+  ISSUE_WAS_RESOLVED_QUESTION,
 ];
 const ticketsMetrics: Metric[] = [
   { name: 'Greeting', pass: 5, borderline: 3 },
@@ -213,17 +218,34 @@ function AuditsListSupabase() {
     return [];
   }
   function getMetricOptions(metric: Metric) {
+    if (metric.options?.length) return metric.options;
     if (LOCKED_NA_METRICS.has(metric.name)) return ['N/A'];
     const options = ['N/A', 'Pass', 'Borderline', 'Fail'];
     if (AUTO_FAIL_METRICS.has(metric.name)) options.push('Auto-Fail');
     return options;
   }
+  function getMetricStoredValue(
+    metric: Metric,
+    scores: Record<string, string>
+  ) {
+    if (LOCKED_NA_METRICS.has(metric.name)) return 'N/A';
+    return scores[metric.name] ?? metric.defaultValue ?? 'N/A';
+  }
   function createDefaultScores(team: EditFormState['team']) {
     const defaults: Record<string, string> = {};
     getMetricsForTeam(team).forEach((metric) => {
-      defaults[metric.name] = 'N/A';
+      defaults[metric.name] = metric.defaultValue ?? 'N/A';
     });
     return defaults;
+  }
+  function getMissingRequiredMetricLabels(
+    team: EditFormState['team'],
+    scores: Record<string, string>
+  ) {
+    return getMetricsForTeam(team)
+      .filter((metric) => Array.isArray(metric.options) && metric.defaultValue === '')
+      .filter((metric) => !getMetricStoredValue(metric, scores))
+      .map((metric) => metric.name);
   }
   function buildScoreMapFromAudit(audit: AuditItem) {
     const defaults = createDefaultScores(audit.team);
@@ -244,10 +266,8 @@ function AuditsListSupabase() {
     const metrics = getMetricsForTeam(team);
     const scoredMetrics = metrics.filter((item) => countsTowardScore(item));
     const activeMetrics = scoredMetrics.filter((item) => {
-      const itemResult = LOCKED_NA_METRICS.has(item.name)
-        ? 'N/A'
-        : scores[item.name] || 'N/A';
-      return itemResult !== 'N/A';
+      const itemResult = getMetricStoredValue(item, scores);
+      return itemResult !== 'N/A' && itemResult !== '';
     });
     const activeTotalWeight = activeMetrics.reduce(
       (sum, item) => sum + item.pass,
@@ -255,12 +275,10 @@ function AuditsListSupabase() {
     );
     const fullTotalWeight = scoredMetrics.reduce((sum, item) => sum + item.pass, 0);
     const scoreDetails = metrics.map((metric) => {
-      const result = LOCKED_NA_METRICS.has(metric.name)
-        ? 'N/A'
-        : scores[metric.name] || 'N/A';
+      const result = getMetricStoredValue(metric, scores);
       const scored = countsTowardScore(metric);
       const adjustedWeight =
-        !scored || result === 'N/A' || activeTotalWeight === 0
+        !scored || result === 'N/A' || result === '' || activeTotalWeight === 0
           ? 0
           : (metric.pass / activeTotalWeight) * fullTotalWeight;
       let earned = 0;
@@ -285,8 +303,7 @@ function AuditsListSupabase() {
     const hasAutoFail = scoreDetails.some(
       (item) =>
         item.counts_toward_score !== false &&
-        AUTO_FAIL_METRICS.has(item.metric) &&
-        item.result === 'Auto-Fail'
+        AUTO_FAIL_METRICS.has(item.metric) && item.result === 'Auto-Fail'
     );
     const qualityScore = hasAutoFail
       ? '0.00'
@@ -338,6 +355,9 @@ function AuditsListSupabase() {
     if (!text) return '-';
     if (text.length <= 120) return text;
     return `${text.slice(0, 117)}...`;
+  }
+  function isNoScoreDetail(detail: ScoreDetail) {
+    return detail.counts_toward_score === false;
   }
   const editTeamAgents = useMemo(() => {
     return profiles.filter(
@@ -503,6 +523,16 @@ function AuditsListSupabase() {
     }
     if (editForm.team === 'Tickets' && !editForm.ticketId) {
       setErrorMessage('Please fill Ticket ID for Tickets.');
+      return;
+    }
+    const missingRequiredMetricLabels = getMissingRequiredMetricLabels(
+      editForm.team,
+      editScores
+    );
+    if (missingRequiredMetricLabels.length > 0) {
+      setErrorMessage(
+        `Please answer: ${missingRequiredMetricLabels.join(', ')}.`
+      );
       return;
     }
     if (!selectedAgent.agent_id) {
@@ -1277,33 +1307,39 @@ function AuditsListSupabase() {
                                 >
                                   {' '}
                                   {metric.name}{' '}
-                                {countsTowardScore(metric) ? `(${metric.pass} pts)` : '(No score)'}{' '}
+                                  {countsTowardScore(metric)
+                                    ? `(${metric.pass} pts)`
+                                    : '(No score)'}{' '}
                                 </div>{' '}
-                                <select
-                                  value={
-                                    LOCKED_NA_METRICS.has(metric.name)
-                                      ? 'N/A'
-                                      : editScores[metric.name] || 'N/A'
-                                  }
-                                  onChange={(e) =>
-                                    handleScoreChange(
-                                      metric.name,
-                                      e.target.value
-                                    )
-                                  }
-                                  disabled={LOCKED_NA_METRICS.has(metric.name)}
-                                  style={compactFieldStyle}
-                                >
-                                  {' '}
-                                  {getMetricOptions(metric).map(
-                                    (option) => (
-                                      <option key={option} value={option}>
+                                <div style={{ display: 'grid', gap: '8px' }}>
+                                  <select
+                                    value={getMetricStoredValue(metric, editScores)}
+                                    onChange={(e) =>
+                                      handleScoreChange(
+                                        metric.name,
+                                        e.target.value
+                                      )
+                                    }
+                                    disabled={LOCKED_NA_METRICS.has(metric.name)}
+                                    style={compactFieldStyle}
+                                  >
+                                    {' '}
+                                    {getMetricOptions(metric).map((option) => (
+                                      <option
+                                        key={option || '__empty__'}
+                                        value={option}
+                                      >
                                         {' '}
-                                        {option}{' '}
+                                        {option || 'Select answer'}{' '}
                                       </option>
-                                    )
-                                  )}{' '}
-                                </select>{' '}
+                                    ))}{' '}
+                                  </select>{' '}
+                                  {!countsTowardScore(metric) ? (
+                                    <div style={compactHelpTextStyle}>
+                                      This question is saved with the audit, but it does not change the score.
+                                    </div>
+                                  ) : null}
+                                </div>
                               </div>
                             ))}{' '}
                           </div>{' '}
@@ -1438,9 +1474,8 @@ function AuditsListSupabase() {
                                     }}
                                   >
                                     {' '}
-                                    {detail.counts_toward_score === false ||
-                                    (detail.pass === 0 && detail.borderline === 0)
-                                      ? 'No score question'
+                                    {isNoScoreDetail(detail)
+                                      ? 'Yes / No question • No score'
                                       : `Pass ${detail.pass} • Borderline ${detail.borderline} • Adjusted ${detail.adjustedWeight.toFixed(2)}`}{' '}
                                   </div>{' '}
                                 </div>{' '}
