@@ -218,7 +218,7 @@ const drawerStyle = {
   boxShadow: '-16px 0 40px rgba(2,6,23,0.42)',
   padding: '22px',
   overflowY: 'auto' as const,
-  color: '#e5eefb',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 
 const headerStyle = {
@@ -230,7 +230,7 @@ const headerStyle = {
 };
 
 const eyebrowStyle = {
-  color: '#60a5fa',
+  color: 'var(--da-accent-text, #60a5fa)',
   fontSize: '12px',
   fontWeight: 800,
   letterSpacing: '0.16em',
@@ -243,7 +243,7 @@ const closeButtonStyle = {
   height: '40px',
   borderRadius: '999px',
   border: '1px solid rgba(148,163,184,0.18)',
-  background: 'rgba(15,23,42,0.72)',
+  background: 'var(--da-field-bg, rgba(15,23,42,0.72))',
   color: '#fff',
   cursor: 'pointer',
 };
@@ -255,7 +255,7 @@ const filterWrapStyle = {
 };
 
 const labelStyle = {
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
   fontWeight: 700,
   fontSize: '13px',
 };
@@ -265,17 +265,17 @@ const fieldStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
   border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.7)',
-  color: '#e5eefb',
+  background: 'var(--da-surface-bg, rgba(15,23,42,0.7))',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 
 const errorBannerStyle = {
   marginBottom: '14px',
   padding: '12px 14px',
   borderRadius: '12px',
-  border: '1px solid rgba(248, 113, 113, 0.22)',
-  background: 'rgba(127, 29, 29, 0.24)',
-  color: '#fecaca',
+  border: 'var(--da-error-border, 1px solid rgba(248, 113, 113, 0.22))',
+  background: 'var(--da-error-bg, rgba(127, 29, 29, 0.24))',
+  color: 'var(--da-error-text, #fecaca)',
 };
 
 const countPillStyle = {
@@ -299,8 +299,8 @@ const emptyStateStyle = {
   padding: '18px',
   borderRadius: '16px',
   border: '1px dashed rgba(148,163,184,0.24)',
-  backgroundColor: 'rgba(15,23,42,0.52)',
-  color: '#94a3b8',
+  backgroundColor: 'var(--da-card-bg, rgba(15,23,42,0.52))',
+  color: 'var(--da-subtle-text, #94a3b8)',
   textAlign: 'center' as const,
 };
 
@@ -309,7 +309,7 @@ const itemCardStyle = {
   borderRadius: '18px',
   border: '1px solid rgba(148,163,184,0.14)',
   background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.66) 100%)',
+    'linear-gradient(180deg, var(--da-field-bg, rgba(15,23,42,0.82)) 0%, var(--da-surface-bg, rgba(15,23,42,0.66)) 100%)',
 };
 
 const topRowStyle = {
@@ -322,14 +322,14 @@ const topRowStyle = {
 
 const orderNumberStyle = {
   fontWeight: 800,
-  color: '#f8fafc',
+  color: 'var(--da-title, #f8fafc)',
   fontSize: '16px',
 };
 
 const statusPillStyle = {
   padding: '6px 10px',
   borderRadius: '999px',
-  background: 'rgba(37,99,235,0.18)',
+  background: 'var(--da-active-option-bg, rgba(37, 99, 235, 0.18))',
   color: '#bfdbfe',
   fontSize: '11px',
   fontWeight: 800,
@@ -342,7 +342,7 @@ const commentStyle = {
 };
 
 const metaTextStyle = {
-  color: '#94a3b8',
+  color: 'var(--da-subtle-text, #94a3b8)',
   fontSize: '13px',
   marginBottom: '10px',
 };
@@ -350,7 +350,7 @@ const metaTextStyle = {
 const metaGridStyle = {
   display: 'grid',
   gap: '8px',
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
   fontSize: '13px',
   marginBottom: '12px',
 };
@@ -371,7 +371,7 @@ const acknowledgedPillStyle = {
   borderRadius: '999px',
   background: 'rgba(22,101,52,0.18)',
   border: '1px solid rgba(74,222,128,0.2)',
-  color: '#bbf7d0',
+  color: 'var(--da-success-text, #bbf7d0)',
   fontSize: '12px',
   fontWeight: 800,
 };
