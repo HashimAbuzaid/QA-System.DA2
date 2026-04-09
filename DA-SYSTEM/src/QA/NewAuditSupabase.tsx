@@ -12,6 +12,7 @@ type Metric = {
   name: string;
   pass: number;
   borderline: number;
+  countsTowardScore?: boolean;
 };
 
 type TeamType = TeamName | '';
@@ -50,11 +51,21 @@ type AuditDraft = {
   ticketId: string;
   comments: string;
   scores: Record<string, string>;
-  metricComments: Record<string, string>;
 };
 
 const LOCKED_NA_METRICS = new Set(['Active Listening']);
 const AUTO_FAIL_METRICS = new Set(['Hold (≤3 mins)', 'Procedure']);
+
+function countsTowardScore(metric: Metric) {
+  return metric.countsTowardScore !== false;
+}
+
+const NO_SCORE_CALLS_QUESTION: Metric = {
+  name: 'Additional QA Question',
+  pass: 0,
+  borderline: 0,
+  countsTowardScore: false,
+};
 
 const callsMetrics: Metric[] = [
   { name: 'Greeting', pass: 2, borderline: 1 },
@@ -70,6 +81,7 @@ const callsMetrics: Metric[] = [
   { name: 'Refund Form', pass: 11, borderline: 5 },
   { name: 'Providing RL', pass: 5, borderline: 3 },
   { name: 'Ending', pass: 2, borderline: 1 },
+  NO_SCORE_CALLS_QUESTION,
 ];
 
 const ticketsMetrics: Metric[] = [
@@ -127,18 +139,12 @@ function canAutoFail(metricName: string) {
   return AUTO_FAIL_METRICS.has(metricName);
 }
 
-function getMetricOptions(metricName: string) {
-  if (isLockedToNA(metricName)) return ['N/A'];
+function getMetricOptions(metric: Metric) {
+  if (isLockedToNA(metric.name)) return ['N/A'];
 
   const options = ['N/A', 'Pass', 'Borderline', 'Fail'];
-  if (canAutoFail(metricName)) options.push('Auto-Fail');
+  if (canAutoFail(metric.name)) options.push('Auto-Fail');
   return options;
-}
-
-function shouldShowMetricComment(result: string) {
-  return (
-    result === 'Borderline' || result === 'Fail' || result === 'Auto-Fail'
-  );
 }
 
 function createDefaultScores(teamValue: TeamType) {
@@ -163,18 +169,14 @@ function createEmptyDraft(teamValue: TeamType = ''): AuditDraft {
     ticketId: '',
     comments: '',
     scores: createDefaultScores(teamValue),
-    metricComments: {},
   };
 }
 
-function getAdjustedScoreData(
-  team: TeamType,
-  scores: Record<string, string>,
-  metricComments: Record<string, string>
-) {
+function getAdjustedScoreData(team: TeamType, scores: Record<string, string>) {
   const metrics = getMetricsForTeam(team);
+  const scoredMetrics = metrics.filter((item) => countsTowardScore(item));
 
-  const activeMetrics = metrics.filter((item) => {
+  const activeMetrics = scoredMetrics.filter((item) => {
     const itemResult = isLockedToNA(item.name)
       ? 'N/A'
       : scores[item.name] || 'N/A';
@@ -185,33 +187,30 @@ function getAdjustedScoreData(
     (sum, item) => sum + item.pass,
     0
   );
-  const fullTotalWeight = metrics.reduce((sum, item) => sum + item.pass, 0);
+  const fullTotalWeight = scoredMetrics.reduce((sum, item) => sum + item.pass, 0);
 
   const scoreDetails = metrics.map((metric) => {
     const result = isLockedToNA(metric.name)
       ? 'N/A'
       : scores[metric.name] || 'N/A';
 
+    const scored = countsTowardScore(metric);
+
     const adjustedWeight =
-      result === 'N/A' || activeTotalWeight === 0
+      !scored || result === 'N/A' || activeTotalWeight === 0
         ? 0
         : (metric.pass / activeTotalWeight) * fullTotalWeight;
 
     let earned = 0;
 
-    if (result === 'Pass') {
+    if (scored && result === 'Pass') {
       earned = adjustedWeight;
-    } else if (result === 'Borderline') {
+    } else if (scored && result === 'Borderline') {
       earned =
         metric.pass > 0
           ? adjustedWeight * (metric.borderline / metric.pass)
           : 0;
     }
-
-    const rawComment = metricComments[metric.name] || '';
-    const normalizedComment = shouldShowMetricComment(result)
-      ? rawComment.trim()
-      : '';
 
     return {
       metric: metric.name,
@@ -220,17 +219,23 @@ function getAdjustedScoreData(
       borderline: metric.borderline,
       adjustedWeight,
       earned,
-      metric_comment: normalizedComment || null,
+      counts_toward_score: scored,
     };
   });
 
   const hasAutoFail = scoreDetails.some(
-    (item) => canAutoFail(item.metric) && item.result === 'Auto-Fail'
+    (item) =>
+      item.counts_toward_score !== false &&
+      canAutoFail(item.metric) &&
+      item.result === 'Auto-Fail'
   );
 
   const qualityScore = hasAutoFail
     ? '0.00'
-    : scoreDetails.reduce((sum, item) => sum + item.earned, 0).toFixed(2);
+    : scoreDetails
+        .filter((item) => item.counts_toward_score !== false)
+        .reduce((sum, item) => sum + item.earned, 0)
+        .toFixed(2);
 
   return { scoreDetails, qualityScore, hasAutoFail };
 }
@@ -384,8 +389,8 @@ function NewAuditSupabase() {
     null;
 
   const adjustedData = useMemo(() => {
-    return getAdjustedScoreData(draft.team, draft.scores, draft.metricComments);
-  }, [draft.team, draft.scores, draft.metricComments]);
+    return getAdjustedScoreData(draft.team, draft.scores);
+  }, [draft.team, draft.scores]);
 
   function setDraftField<K extends keyof AuditDraft>(
     key: K,
@@ -412,37 +417,14 @@ function NewAuditSupabase() {
           ...prev.scores,
           [metricName]: 'N/A',
         },
-        metricComments: {
-          ...prev.metricComments,
-          [metricName]: '',
-        },
       }));
       return;
     }
 
-    setDraft((prev) => {
-      const nextMetricComments = { ...prev.metricComments };
-
-      if (!shouldShowMetricComment(value)) {
-        delete nextMetricComments[metricName];
-      }
-
-      return {
-        ...prev,
-        scores: {
-          ...prev.scores,
-          [metricName]: value,
-        },
-        metricComments: nextMetricComments,
-      };
-    });
-  }
-
-  function handleMetricCommentChange(metricName: string, value: string) {
     setDraft((prev) => ({
       ...prev,
-      metricComments: {
-        ...prev.metricComments,
+      scores: {
+        ...prev.scores,
         [metricName]: value,
       },
     }));
@@ -455,16 +437,6 @@ function NewAuditSupabase() {
       agentSearch: getAgentLabel(profile),
     }));
     setIsAgentPickerOpen(false);
-  }
-
-  function getMissingMetricCommentLabels() {
-    return getMetricsForTeam(draft.team)
-      .filter((metric) => {
-        const result = draft.scores[metric.name] || 'N/A';
-        if (!shouldShowMetricComment(result)) return false;
-        return !(draft.metricComments[metric.name] || '').trim();
-      })
-      .map((metric) => metric.name);
   }
 
   async function handleSave() {
@@ -496,14 +468,6 @@ function NewAuditSupabase() {
 
     if (draft.team === 'Tickets' && !draft.ticketId) {
       setErrorMessage('Please fill Ticket ID for Tickets.');
-      return;
-    }
-
-    const missingMetricCommentLabels = getMissingMetricCommentLabels();
-    if (missingMetricCommentLabels.length > 0) {
-      setErrorMessage(
-        `Please add a short QA note for: ${missingMetricCommentLabels.join(', ')}.`
-      );
       return;
     }
 
@@ -609,16 +573,16 @@ function NewAuditSupabase() {
 
         <div style={{ display: 'grid', gap: '15px' }}>
           {metrics.map((metric) => {
-            const metricOptions = getMetricOptions(metric.name);
+            const metricOptions = getMetricOptions(metric);
             const metricValue = isLockedToNA(metric.name)
               ? 'N/A'
               : draft.scores[metric.name] || 'N/A';
-            const showMetricComment = shouldShowMetricComment(metricValue);
 
             return (
               <div key={metric.name} style={glassFieldCardStyle}>
                 <label style={labelStyle}>
-                  {metric.name} ({metric.pass} pts)
+                  {metric.name}{' '}
+                  {countsTowardScore(metric) ? `(${metric.pass} pts)` : '(No score)'}
                 </label>
                 <select
                   value={metricValue}
@@ -639,25 +603,11 @@ function NewAuditSupabase() {
                   <div style={helpTextStyle}>Locked to N/A</div>
                 )}
 
-                {showMetricComment ? (
-                  <div style={metricCommentWrapStyle}>
-                    <label style={metricCommentLabelStyle}>
-                      QA Note for Agent
-                    </label>
-                    <textarea
-                      value={draft.metricComments[metric.name] || ''}
-                      onChange={(event) =>
-                        handleMetricCommentChange(metric.name, event.target.value)
-                      }
-                      rows={2}
-                      placeholder="Leave a short note explaining the Borderline / Fail result"
-                      style={metricCommentFieldStyle}
-                    />
-                    <div style={metricCommentHelpStyle}>
-                      This note will appear to the agent inside audit details.
-                    </div>
+                {!countsTowardScore(metric) && (
+                  <div style={helpTextStyle}>
+                    This question is saved with the audit, but it does not change the score.
                   </div>
-                ) : null}
+                )}
               </div>
             );
           })}
@@ -1141,40 +1091,6 @@ const glassFieldCardStyle = {
 };
 
 const helpTextStyle = {
-  marginTop: '8px',
-  fontSize: '12px',
-  color: '#94a3b8',
-};
-
-const metricCommentWrapStyle = {
-  marginTop: '12px',
-  padding: '12px',
-  borderRadius: '14px',
-  border: '1px solid rgba(248, 113, 113, 0.18)',
-  background: 'rgba(2, 6, 23, 0.26)',
-};
-
-const metricCommentLabelStyle = {
-  display: 'block',
-  marginBottom: '8px',
-  color: '#f8fafc',
-  fontSize: '12px',
-  fontWeight: 800,
-  letterSpacing: '0.06em',
-  textTransform: 'uppercase' as const,
-};
-
-const metricCommentFieldStyle = {
-  width: '100%',
-  padding: '12px 14px',
-  borderRadius: '14px',
-  border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'rgba(15, 23, 42, 0.78)',
-  color: '#e5eefb',
-  resize: 'vertical' as const,
-};
-
-const metricCommentHelpStyle = {
   marginTop: '8px',
   fontSize: '12px',
   color: '#94a3b8',
