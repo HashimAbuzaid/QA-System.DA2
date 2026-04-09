@@ -254,12 +254,12 @@ function AgentFeedbackSupabase() {
   }
 
   return (
-    <div style={{ color: '#e5eefb' }}>
+    <div style={{ color: 'var(--da-page-text, #e5eefb)' }}>
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Coaching Workspace</div>
           <h2 style={{ margin: 0, fontSize: '30px' }}>Agent Feedback</h2>
-          <p style={{ margin: '10px 0 0 0', color: '#94a3b8' }}>
+          <p style={{ margin: '10px 0 0 0', color: 'var(--da-subtle-text, #94a3b8)' }}>
             Create coaching notes, warnings, follow-ups, and audit feedback
             using the live agent directory from profiles.
           </p>
@@ -289,7 +289,7 @@ function AgentFeedbackSupabase() {
                 onClick={() => setIsAgentPickerOpen((prev) => !prev)}
                 style={pickerButtonStyle}
               >
-                <span style={{ color: selectedAgent ? '#f8fafc' : '#94a3b8' }}>
+                <span style={{ color: selectedAgent ? 'var(--da-title, #f8fafc)' : 'var(--da-subtle-text, #94a3b8)' }}>
                   {selectedAgent
                     ? getAgentLabel(selectedAgent)
                     : 'Select agent'}
@@ -451,9 +451,9 @@ function AgentFeedbackSupabase() {
       <div style={{ marginTop: '32px' }}>
         <div style={sectionEyebrow}>Saved Feedback Items</div>
         {loading ? (
-          <p style={{ color: '#94a3b8' }}>Loading feedback...</p>
+          <p style={{ color: 'var(--da-subtle-text, #94a3b8)' }}>Loading feedback...</p>
         ) : feedbackItems.length === 0 ? (
-          <p style={{ color: '#94a3b8' }}>No feedback items found.</p>
+          <p style={{ color: 'var(--da-subtle-text, #94a3b8)' }}>No feedback items found.</p>
         ) : (
           <div style={{ display: 'grid', gap: '16px' }}>
             {feedbackItems.map((item) => (
@@ -559,7 +559,7 @@ const pageHeaderStyle = {
 };
 
 const sectionEyebrow = {
-  color: '#60a5fa',
+  color: 'var(--da-accent-text, #60a5fa)',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -569,7 +569,7 @@ const sectionEyebrow = {
 
 const panelStyle = {
   background:
-    'linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%)',
+    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
   border: '1px solid rgba(148, 163, 184, 0.14)',
   borderRadius: '24px',
   padding: '22px',
@@ -591,7 +591,7 @@ const labelStyle = {
   display: 'block',
   marginBottom: '8px',
   fontSize: '13px',
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
   fontWeight: 700,
 };
 
@@ -600,8 +600,8 @@ const fieldStyle = {
   padding: '14px 16px',
   borderRadius: '16px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'rgba(15, 23, 42, 0.7)',
-  color: '#e5eefb',
+  background: 'var(--da-surface-bg, rgba(15, 23, 42, 0.7))',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 
 const pickerButtonStyle = {
@@ -609,8 +609,8 @@ const pickerButtonStyle = {
   padding: '14px 16px',
   borderRadius: '16px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'rgba(15, 23, 42, 0.7)',
-  color: '#e5eefb',
+  background: 'var(--da-surface-bg, rgba(15, 23, 42, 0.7))',
+  color: 'var(--da-page-text, #e5eefb)',
   textAlign: 'left' as const,
   cursor: 'pointer',
   display: 'flex',
@@ -623,7 +623,7 @@ const pickerMenuStyle = {
   top: 'calc(100% + 8px)',
   left: 0,
   right: 0,
-  background: 'rgba(15, 23, 42, 0.96)',
+  background: 'var(--da-menu-bg, rgba(15, 23, 42, 0.96))',
   border: '1px solid rgba(148, 163, 184, 0.16)',
   borderRadius: '18px',
   boxShadow: '0 18px 44px rgba(2, 6, 23, 0.45)',
@@ -648,24 +648,24 @@ const pickerListStyle = {
 const pickerInfoStyle = {
   padding: '12px',
   borderRadius: '12px',
-  backgroundColor: 'rgba(15, 23, 42, 0.68)',
-  color: '#94a3b8',
+  backgroundColor: 'var(--da-surface-bg, rgba(15, 23, 42, 0.68))',
+  color: 'var(--da-subtle-text, #94a3b8)',
 };
 
 const pickerOptionStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
   border: '1px solid rgba(148, 163, 184, 0.12)',
-  backgroundColor: 'rgba(15, 23, 42, 0.6)',
+  backgroundColor: 'var(--da-surface-bg, rgba(15, 23, 42, 0.6))',
   textAlign: 'left' as const,
   cursor: 'pointer',
   fontWeight: 600,
-  color: '#e5eefb',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 
 const pickerOptionActiveStyle = {
   border: '1px solid rgba(96, 165, 250, 0.36)',
-  backgroundColor: 'rgba(30, 64, 175, 0.32)',
+  backgroundColor: 'var(--da-active-option-bg, rgba(30, 64, 175, 0.32))',
 };
 
 const infoCardStyle = {
@@ -673,11 +673,11 @@ const infoCardStyle = {
   borderRadius: '18px',
   padding: '18px',
   border: '1px solid rgba(148, 163, 184, 0.12)',
-  background: 'rgba(15, 23, 42, 0.5)',
+  background: 'var(--da-card-bg, rgba(15, 23, 42, 0.5))',
 };
 
 const infoCardTitleStyle = {
-  color: '#93c5fd',
+  color: 'var(--da-accent-text, #93c5fd)',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -687,7 +687,7 @@ const infoCardTitleStyle = {
 
 const infoLineStyle = {
   margin: '0 0 8px 0',
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
 };
 
 const actionRowStyle = {
@@ -712,8 +712,8 @@ const secondaryButton = {
   padding: '14px 18px',
   borderRadius: '16px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'rgba(15, 23, 42, 0.74)',
-  color: '#e5eefb',
+  background: 'var(--da-field-bg, rgba(15, 23, 42, 0.74))',
+  color: 'var(--da-page-text, #e5eefb)',
   fontWeight: 700,
   cursor: 'pointer',
 };
@@ -722,18 +722,18 @@ const errorBannerStyle = {
   marginBottom: '16px',
   padding: '14px 16px',
   borderRadius: '16px',
-  border: '1px solid rgba(248, 113, 113, 0.22)',
-  background: 'rgba(127, 29, 29, 0.24)',
-  color: '#fecaca',
+  border: 'var(--da-error-border, 1px solid rgba(248, 113, 113, 0.22))',
+  background: 'var(--da-error-bg, rgba(127, 29, 29, 0.24))',
+  color: 'var(--da-error-text, #fecaca)',
 };
 
 const successBannerStyle = {
   marginBottom: '16px',
   padding: '14px 16px',
   borderRadius: '16px',
-  border: '1px solid rgba(74, 222, 128, 0.2)',
-  background: 'rgba(22, 101, 52, 0.16)',
-  color: '#bbf7d0',
+  border: 'var(--da-success-border, 1px solid rgba(74, 222, 128, 0.2))',
+  background: 'var(--da-success-bg, rgba(22, 101, 52, 0.16))',
+  color: 'var(--da-success-text, #bbf7d0)',
 };
 
 const dangerButton = {
@@ -751,7 +751,7 @@ const savedCardStyle = {
   borderRadius: '20px',
   padding: '20px',
   background:
-    'linear-gradient(180deg, rgba(15, 23, 42, 0.74) 0%, rgba(15, 23, 42, 0.56) 100%)',
+    'linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.74)) 0%, var(--da-card-bg, rgba(15, 23, 42, 0.56)) 100%)',
 };
 
 const savedCardHeaderStyle = {
@@ -764,13 +764,13 @@ const savedCardHeaderStyle = {
 };
 
 const savedCardTitleStyle = {
-  color: '#f8fafc',
+  color: 'var(--da-title, #f8fafc)',
   fontSize: '18px',
   fontWeight: 800,
 };
 
 const savedCardMetaStyle = {
-  color: '#94a3b8',
+  color: 'var(--da-subtle-text, #94a3b8)',
   fontSize: '13px',
   marginTop: '6px',
 };
@@ -785,7 +785,7 @@ const savedGridStyle = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
   gap: '10px',
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
 };
 
 const savedActionRowStyle = {
