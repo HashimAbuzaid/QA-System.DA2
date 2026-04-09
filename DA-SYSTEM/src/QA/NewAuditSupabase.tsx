@@ -13,6 +13,8 @@ type Metric = {
   pass: number;
   borderline: number;
   countsTowardScore?: boolean;
+  options?: string[];
+  defaultValue?: string;
 };
 
 type TeamType = TeamName | '';
@@ -60,11 +62,13 @@ function countsTowardScore(metric: Metric) {
   return metric.countsTowardScore !== false;
 }
 
-const NO_SCORE_CALLS_QUESTION: Metric = {
-  name: 'Additional QA Question',
+const ISSUE_WAS_RESOLVED_QUESTION: Metric = {
+  name: 'Issue was resolved',
   pass: 0,
   borderline: 0,
   countsTowardScore: false,
+  options: ['', 'Yes', 'No'],
+  defaultValue: '',
 };
 
 const callsMetrics: Metric[] = [
@@ -81,7 +85,7 @@ const callsMetrics: Metric[] = [
   { name: 'Refund Form', pass: 11, borderline: 5 },
   { name: 'Providing RL', pass: 5, borderline: 3 },
   { name: 'Ending', pass: 2, borderline: 1 },
-  NO_SCORE_CALLS_QUESTION,
+  ISSUE_WAS_RESOLVED_QUESTION,
 ];
 
 const ticketsMetrics: Metric[] = [
@@ -140,6 +144,7 @@ function canAutoFail(metricName: string) {
 }
 
 function getMetricOptions(metric: Metric) {
+  if (metric.options?.length) return metric.options;
   if (isLockedToNA(metric.name)) return ['N/A'];
 
   const options = ['N/A', 'Pass', 'Borderline', 'Fail'];
@@ -147,14 +152,32 @@ function getMetricOptions(metric: Metric) {
   return options;
 }
 
+function getMetricStoredValue(
+  metric: Metric,
+  scores: Record<string, string>
+) {
+  if (isLockedToNA(metric.name)) return 'N/A';
+  return scores[metric.name] ?? metric.defaultValue ?? 'N/A';
+}
+
 function createDefaultScores(teamValue: TeamType) {
   const defaults: Record<string, string> = {};
 
   getMetricsForTeam(teamValue).forEach((metric) => {
-    defaults[metric.name] = 'N/A';
+    defaults[metric.name] = metric.defaultValue ?? 'N/A';
   });
 
   return defaults;
+}
+
+function getMissingRequiredMetricLabels(
+  teamValue: TeamType,
+  scores: Record<string, string>
+) {
+  return getMetricsForTeam(teamValue)
+    .filter((metric) => Array.isArray(metric.options) && metric.defaultValue === '')
+    .filter((metric) => !getMetricStoredValue(metric, scores))
+    .map((metric) => metric.name);
 }
 
 function createEmptyDraft(teamValue: TeamType = ''): AuditDraft {
@@ -177,10 +200,8 @@ function getAdjustedScoreData(team: TeamType, scores: Record<string, string>) {
   const scoredMetrics = metrics.filter((item) => countsTowardScore(item));
 
   const activeMetrics = scoredMetrics.filter((item) => {
-    const itemResult = isLockedToNA(item.name)
-      ? 'N/A'
-      : scores[item.name] || 'N/A';
-    return itemResult !== 'N/A';
+    const itemResult = getMetricStoredValue(item, scores);
+    return itemResult !== 'N/A' && itemResult !== '';
   });
 
   const activeTotalWeight = activeMetrics.reduce(
@@ -190,14 +211,11 @@ function getAdjustedScoreData(team: TeamType, scores: Record<string, string>) {
   const fullTotalWeight = scoredMetrics.reduce((sum, item) => sum + item.pass, 0);
 
   const scoreDetails = metrics.map((metric) => {
-    const result = isLockedToNA(metric.name)
-      ? 'N/A'
-      : scores[metric.name] || 'N/A';
-
+    const result = getMetricStoredValue(metric, scores);
     const scored = countsTowardScore(metric);
 
     const adjustedWeight =
-      !scored || result === 'N/A' || activeTotalWeight === 0
+      !scored || result === 'N/A' || result === '' || activeTotalWeight === 0
         ? 0
         : (metric.pass / activeTotalWeight) * fullTotalWeight;
 
@@ -471,6 +489,18 @@ function NewAuditSupabase() {
       return;
     }
 
+    const missingRequiredMetricLabels = getMissingRequiredMetricLabels(
+      draft.team,
+      draft.scores
+    );
+
+    if (missingRequiredMetricLabels.length > 0) {
+      setErrorMessage(
+        `Please answer: ${missingRequiredMetricLabels.join(', ')}.`
+      );
+      return;
+    }
+
     if (!selectedAgent.agent_id) {
       setErrorMessage('Selected agent does not have an Agent ID.');
       return;
@@ -574,9 +604,7 @@ function NewAuditSupabase() {
         <div style={{ display: 'grid', gap: '15px' }}>
           {metrics.map((metric) => {
             const metricOptions = getMetricOptions(metric);
-            const metricValue = isLockedToNA(metric.name)
-              ? 'N/A'
-              : draft.scores[metric.name] || 'N/A';
+            const metricValue = getMetricStoredValue(metric, draft.scores);
 
             return (
               <div key={metric.name} style={glassFieldCardStyle}>
@@ -593,8 +621,8 @@ function NewAuditSupabase() {
                   style={fieldStyle}
                 >
                   {metricOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+                    <option key={option || '__empty__'} value={option}>
+                      {option || 'Select answer'}
                     </option>
                   ))}
                 </select>
