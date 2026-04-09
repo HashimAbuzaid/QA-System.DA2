@@ -50,6 +50,7 @@ type AuditDraft = {
   ticketId: string;
   comments: string;
   scores: Record<string, string>;
+  metricComments: Record<string, string>;
 };
 
 const LOCKED_NA_METRICS = new Set(['Active Listening']);
@@ -134,6 +135,12 @@ function getMetricOptions(metricName: string) {
   return options;
 }
 
+function shouldShowMetricComment(result: string) {
+  return (
+    result === 'Borderline' || result === 'Fail' || result === 'Auto-Fail'
+  );
+}
+
 function createDefaultScores(teamValue: TeamType) {
   const defaults: Record<string, string> = {};
 
@@ -156,10 +163,15 @@ function createEmptyDraft(teamValue: TeamType = ''): AuditDraft {
     ticketId: '',
     comments: '',
     scores: createDefaultScores(teamValue),
+    metricComments: {},
   };
 }
 
-function getAdjustedScoreData(team: TeamType, scores: Record<string, string>) {
+function getAdjustedScoreData(
+  team: TeamType,
+  scores: Record<string, string>,
+  metricComments: Record<string, string>
+) {
   const metrics = getMetricsForTeam(team);
 
   const activeMetrics = metrics.filter((item) => {
@@ -196,6 +208,11 @@ function getAdjustedScoreData(team: TeamType, scores: Record<string, string>) {
           : 0;
     }
 
+    const rawComment = metricComments[metric.name] || '';
+    const normalizedComment = shouldShowMetricComment(result)
+      ? rawComment.trim()
+      : '';
+
     return {
       metric: metric.name,
       result,
@@ -203,6 +220,7 @@ function getAdjustedScoreData(team: TeamType, scores: Record<string, string>) {
       borderline: metric.borderline,
       adjustedWeight,
       earned,
+      metric_comment: normalizedComment || null,
     };
   });
 
@@ -366,8 +384,8 @@ function NewAuditSupabase() {
     null;
 
   const adjustedData = useMemo(() => {
-    return getAdjustedScoreData(draft.team, draft.scores);
-  }, [draft.team, draft.scores]);
+    return getAdjustedScoreData(draft.team, draft.scores, draft.metricComments);
+  }, [draft.team, draft.scores, draft.metricComments]);
 
   function setDraftField<K extends keyof AuditDraft>(
     key: K,
@@ -394,14 +412,37 @@ function NewAuditSupabase() {
           ...prev.scores,
           [metricName]: 'N/A',
         },
+        metricComments: {
+          ...prev.metricComments,
+          [metricName]: '',
+        },
       }));
       return;
     }
 
+    setDraft((prev) => {
+      const nextMetricComments = { ...prev.metricComments };
+
+      if (!shouldShowMetricComment(value)) {
+        delete nextMetricComments[metricName];
+      }
+
+      return {
+        ...prev,
+        scores: {
+          ...prev.scores,
+          [metricName]: value,
+        },
+        metricComments: nextMetricComments,
+      };
+    });
+  }
+
+  function handleMetricCommentChange(metricName: string, value: string) {
     setDraft((prev) => ({
       ...prev,
-      scores: {
-        ...prev.scores,
+      metricComments: {
+        ...prev.metricComments,
         [metricName]: value,
       },
     }));
@@ -414,6 +455,16 @@ function NewAuditSupabase() {
       agentSearch: getAgentLabel(profile),
     }));
     setIsAgentPickerOpen(false);
+  }
+
+  function getMissingMetricCommentLabels() {
+    return getMetricsForTeam(draft.team)
+      .filter((metric) => {
+        const result = draft.scores[metric.name] || 'N/A';
+        if (!shouldShowMetricComment(result)) return false;
+        return !(draft.metricComments[metric.name] || '').trim();
+      })
+      .map((metric) => metric.name);
   }
 
   async function handleSave() {
@@ -445,6 +496,14 @@ function NewAuditSupabase() {
 
     if (draft.team === 'Tickets' && !draft.ticketId) {
       setErrorMessage('Please fill Ticket ID for Tickets.');
+      return;
+    }
+
+    const missingMetricCommentLabels = getMissingMetricCommentLabels();
+    if (missingMetricCommentLabels.length > 0) {
+      setErrorMessage(
+        `Please add a short QA note for: ${missingMetricCommentLabels.join(', ')}.`
+      );
       return;
     }
 
@@ -554,6 +613,7 @@ function NewAuditSupabase() {
             const metricValue = isLockedToNA(metric.name)
               ? 'N/A'
               : draft.scores[metric.name] || 'N/A';
+            const showMetricComment = shouldShowMetricComment(metricValue);
 
             return (
               <div key={metric.name} style={glassFieldCardStyle}>
@@ -578,6 +638,26 @@ function NewAuditSupabase() {
                 {isLockedToNA(metric.name) && (
                   <div style={helpTextStyle}>Locked to N/A</div>
                 )}
+
+                {showMetricComment ? (
+                  <div style={metricCommentWrapStyle}>
+                    <label style={metricCommentLabelStyle}>
+                      QA Note for Agent
+                    </label>
+                    <textarea
+                      value={draft.metricComments[metric.name] || ''}
+                      onChange={(event) =>
+                        handleMetricCommentChange(metric.name, event.target.value)
+                      }
+                      rows={2}
+                      placeholder="Leave a short note explaining the Borderline / Fail result"
+                      style={metricCommentFieldStyle}
+                    />
+                    <div style={metricCommentHelpStyle}>
+                      This note will appear to the agent inside audit details.
+                    </div>
+                  </div>
+                ) : null}
               </div>
             );
           })}
@@ -1061,6 +1141,40 @@ const glassFieldCardStyle = {
 };
 
 const helpTextStyle = {
+  marginTop: '8px',
+  fontSize: '12px',
+  color: '#94a3b8',
+};
+
+const metricCommentWrapStyle = {
+  marginTop: '12px',
+  padding: '12px',
+  borderRadius: '14px',
+  border: '1px solid rgba(248, 113, 113, 0.18)',
+  background: 'rgba(2, 6, 23, 0.26)',
+};
+
+const metricCommentLabelStyle = {
+  display: 'block',
+  marginBottom: '8px',
+  color: '#f8fafc',
+  fontSize: '12px',
+  fontWeight: 800,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase' as const,
+};
+
+const metricCommentFieldStyle = {
+  width: '100%',
+  padding: '12px 14px',
+  borderRadius: '14px',
+  border: '1px solid rgba(148, 163, 184, 0.16)',
+  background: 'rgba(15, 23, 42, 0.78)',
+  color: '#e5eefb',
+  resize: 'vertical' as const,
+};
+
+const metricCommentHelpStyle = {
   marginTop: '8px',
   fontSize: '12px',
   color: '#94a3b8',
