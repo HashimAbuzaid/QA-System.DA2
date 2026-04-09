@@ -1,39 +1,45 @@
-import { useEffect, useState } from 'react';
+// ThemeProvider.tsx
+import React, { createContext, useContext, useEffect } from 'react';
+import { usePersistentState } from './usePersistentState';
 
-function readStoredValue<T>(key: string, initialValue: T): T {
-  if (typeof window === 'undefined') return initialValue;
+type Theme = 'light' | 'dark';
 
-  try {
-    const rawValue = window.localStorage.getItem(key);
-    if (!rawValue) return initialValue;
-    return JSON.parse(rawValue) as T;
-  } catch {
-    return initialValue;
-  }
-}
+type ThemeContextType = {
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+  toggleTheme: () => void;
+};
 
-export function usePersistentState<T>(key: string, initialValue: T) {
-  const [value, setValue] = useState<T>(() => readStoredValue(key, initialValue));
+const ThemeContext = createContext<ThemeContextType | null>(null);
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = usePersistentState<Theme>('theme', 'light');
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    const root = document.documentElement;
 
-    try {
-      window.localStorage.setItem(key, JSON.stringify(value));
-    } catch {
-      // ignore storage write failures
-    }
-  }, [key, value]);
+    // remove both first
+    root.classList.remove('light', 'dark');
 
-  function clearStoredValue() {
-    if (typeof window === 'undefined') return;
+    // apply only the saved theme
+    root.classList.add(theme);
+  }, [theme]);
 
-    try {
-      window.localStorage.removeItem(key);
-    } catch {
-      // ignore storage remove failures
-    }
+  const toggleTheme = () => {
+    setTheme(theme === 'light' ? 'dark' : 'light');
+  };
+
+  return (
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+export function useTheme() {
+  const ctx = useContext(ThemeContext);
+  if (!ctx) {
+    throw new Error('useTheme must be used inside ThemeProvider');
   }
-
-  return [value, setValue, clearStoredValue] as const;
+  return ctx;
 }
