@@ -26,6 +26,7 @@ type ScoreDetail = {
   adjustedWeight: number;
   earned: number;
   counts_toward_score?: boolean;
+  metric_comment?: string | null;
 };
 
 type AuditItem = {
@@ -123,6 +124,7 @@ type AgentPortalCachePayload = {
 };
 
 const AGENT_PORTAL_CACHE_TTL_MS = 1000 * 60 * 3;
+const HIDDEN_AGENT_METRICS = new Set(['Issue was resolved']);
 
 function AgentPortal({ currentUser }: AgentPortalProps) {
   const [audits, setAudits] = useState<AuditItem[]>([]);
@@ -148,15 +150,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
 
   useEffect(() => {
     void loadAgentData();
-  }, [cacheKey]);
-
-  useEffect(() => {
-    function handleWindowFocus() {
-      void loadAgentData({ force: true, background: true });
-    }
-
-    window.addEventListener('focus', handleWindowFocus);
-    return () => window.removeEventListener('focus', handleWindowFocus);
   }, [cacheKey]);
 
   function applyAgentData(payload: AgentPortalCachePayload) {
@@ -367,13 +360,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
     if (result === 'Fail' || result === 'Auto-Fail') return '#991b1b';
     if (result === 'N/A') return '#374151';
     return '#1f2937';
-  }
-
-  function isNoScoreDetail(detail: ScoreDetail) {
-    return (
-      detail.counts_toward_score === false ||
-      (detail.pass === 0 && detail.borderline === 0)
-    );
   }
 
   function formatDate(dateValue?: string | null) {
@@ -695,44 +681,56 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
                         <div style={expandedPanelStyle}>
                           <div style={sectionEyebrow}>Score Details</div>
                           <div style={{ display: 'grid', gap: '10px' }}>
-                            {(audit.score_details || []).map((detail) => (
-                              <div
-                                key={`${audit.id}-${detail.metric}`}
-                                style={detailRowStyle}
-                              >
-                                <div>
-                                  <div
-                                    style={{
-                                      color: '#f8fafc',
-                                      fontWeight: 700,
-                                    }}
-                                  >
-                                    {detail.metric}
-                                  </div>
-                                  <div
-                                    style={{
-                                      color: '#94a3b8',
-                                      fontSize: '12px',
-                                      marginTop: '4px',
-                                    }}
-                                  >
-                                    {isNoScoreDetail(detail)
-                                      ? 'No score question'
-                                      : `Pass ${detail.pass} • Borderline ${detail.borderline} • Adjusted ${detail.adjustedWeight.toFixed(2)}`}
-                                  </div>
-                                </div>
-                                <span
-                                  style={{
-                                    ...pillStyle,
-                                    backgroundColor: getResultBadgeColor(
-                                      detail.result
-                                    ),
-                                  }}
+                            {(audit.score_details || [])
+                              .filter(
+                                (detail) => !HIDDEN_AGENT_METRICS.has(detail.metric)
+                              )
+                              .map((detail) => (
+                                <div
+                                  key={`${audit.id}-${detail.metric}`}
+                                  style={detailRowStyle}
                                 >
-                                  {detail.result}
-                                </span>
-                              </div>
-                            ))}
+                                  <div>
+                                    <div
+                                      style={{
+                                        color: '#f8fafc',
+                                        fontWeight: 700,
+                                      }}
+                                    >
+                                      {detail.metric}
+                                    </div>
+                                    <div
+                                      style={{
+                                        color: '#94a3b8',
+                                        fontSize: '12px',
+                                        marginTop: '4px',
+                                      }}
+                                    >
+                                      {detail.counts_toward_score === false
+                                        ? 'Administrative question'
+                                        : `Pass ${detail.pass} • Borderline ${detail.borderline} • Adjusted ${detail.adjustedWeight.toFixed(2)}`}
+                                    </div>
+                                    {detail.metric_comment ? (
+                                      <div style={metricNoteCardStyle}>
+                                        <div style={metricNoteLabelStyle}>QA Note</div>
+                                        <div style={metricNoteTextStyle}>
+                                          {detail.metric_comment}
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                  <span
+                                    style={{
+                                      ...pillStyle,
+                                      backgroundColor: getResultBadgeColor(
+                                        detail.result
+                                      ),
+                                    }}
+                                  >
+                                    {detail.result}
+                                  </span>
+                                </div>
+                              ))}
                           </div>
                         </div>
                       </div>
@@ -1085,6 +1083,30 @@ const detailRowStyle = {
   borderRadius: '14px',
   border: '1px solid rgba(148,163,184,0.12)',
   background: 'rgba(15,23,42,0.52)',
+};
+
+const metricNoteCardStyle = {
+  marginTop: '10px',
+  borderRadius: '12px',
+  border: '1px solid rgba(148,163,184,0.12)',
+  background: 'rgba(15,23,42,0.52)',
+  padding: '10px 12px',
+};
+
+const metricNoteLabelStyle = {
+  color: '#93c5fd',
+  fontSize: '11px',
+  fontWeight: 800,
+  letterSpacing: '0.1em',
+  textTransform: 'uppercase' as const,
+  marginBottom: '6px',
+};
+
+const metricNoteTextStyle = {
+  color: '#e5eefb',
+  fontSize: '13px',
+  lineHeight: 1.55,
+  whiteSpace: 'pre-wrap' as const,
 };
 
 const miniSecondaryButton = {
