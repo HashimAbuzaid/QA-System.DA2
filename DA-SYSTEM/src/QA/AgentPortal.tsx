@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import {
   clearCachedValue,
@@ -124,6 +124,43 @@ type AgentPortalCachePayload = {
 };
 
 const AGENT_PORTAL_CACHE_TTL_MS = 1000 * 60 * 3;
+const HIDDEN_AGENT_METRICS = new Set(['Issue was resolved']);
+
+function openNativeDatePicker(target: HTMLInputElement) {
+  const input = target as HTMLInputElement & { showPicker?: () => void };
+  input.showPicker?.();
+}
+
+function getThemeVars(): Record<string, string> {
+  const isLight =
+    typeof document !== 'undefined' && document.body.dataset.theme === 'light';
+
+  return {
+    '--screen-text': isLight ? '#0f172a' : '#e5eefb',
+    '--screen-heading': isLight ? '#0f172a' : '#f8fafc',
+    '--screen-muted': isLight ? '#64748b' : '#94a3b8',
+    '--screen-subtle': isLight ? '#475569' : '#64748b',
+    '--screen-accent': isLight ? '#2563eb' : '#60a5fa',
+    '--screen-panel-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(241,245,249,0.96) 100%)'
+      : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    '--screen-card-bg': isLight
+      ? 'linear-gradient(180deg, rgba(248,250,252,0.98) 0%, rgba(241,245,249,0.98) 100%)'
+      : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    '--screen-card-soft-bg': isLight ? 'rgba(248,250,252,0.9)' : 'rgba(15,23,42,0.52)',
+    '--screen-field-bg': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.7)',
+    '--screen-border': isLight ? 'rgba(148,163,184,0.28)' : 'rgba(148,163,184,0.14)',
+    '--screen-border-strong': isLight ? 'rgba(148,163,184,0.34)' : 'rgba(148,163,184,0.18)',
+    '--screen-table-head-bg': isLight ? 'rgba(226,232,240,0.95)' : 'rgba(2,6,23,0.92)',
+    '--screen-pill-bg': isLight ? 'rgba(255,255,255,0.92)' : 'rgba(15,23,42,0.56)',
+    '--screen-shadow': isLight ? '0 18px 40px rgba(15,23,42,0.08)' : '0 18px 40px rgba(2,6,23,0.35)',
+    '--screen-score-pill-bg': isLight ? 'rgba(219,234,254,0.95)' : 'rgba(37,99,235,0.18)',
+    '--screen-score-pill-border': isLight ? 'rgba(96,165,250,0.38)' : 'rgba(96,165,250,0.26)',
+    '--screen-primary-btn-text': '#ffffff',
+    '--screen-secondary-btn-bg': isLight ? 'rgba(248,250,252,0.98)' : 'rgba(15,23,42,0.78)',
+    '--screen-secondary-btn-text': isLight ? '#0f172a' : '#e5eefb',
+  };
+}
 
 function AgentPortal({ currentUser }: AgentPortalProps) {
   const [audits, setAudits] = useState<AuditItem[]>([]);
@@ -141,6 +178,8 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
   const [lastLoadedAt, setLastLoadedAt] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  const themeVars = getThemeVars();
+
   const cacheKey = useMemo(() => {
     return `agent-portal:${currentUser.id}:${
       currentUser.agent_id || 'no-agent'
@@ -150,7 +189,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
   useEffect(() => {
     void loadAgentData();
   }, [cacheKey]);
-
 
   function applyAgentData(payload: AgentPortalCachePayload) {
     setAudits(payload.audits);
@@ -393,15 +431,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
     return `${text.slice(0, 117)}...`;
   }
 
-  function isNoScoreDetail(detail: ScoreDetail) {
-    return detail.counts_toward_score === false;
-  }
-
-  function getMetricComment(detail: ScoreDetail) {
-    const value = detail.metric_comment;
-    return typeof value === 'string' && value.trim() ? value.trim() : null;
-  }
-
   function clearAuditDateFilters() {
     setAuditDateFrom('');
     setAuditDateTo('');
@@ -420,41 +449,40 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
   }
 
   return (
-    <div style={{ color: '#e5eefb' }}>
+    <div
+      data-no-theme-invert="true"
+      style={{ color: 'var(--screen-text)', ...(themeVars as CSSProperties) }}
+    >
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Agent Portal</div>
-          <h2 style={{ marginBottom: '8px' }}>My Profile</h2>
-          <p style={{ margin: 0, color: '#94a3b8' }}>
+          <h2 style={{ marginBottom: '8px', color: 'var(--screen-heading)' }}>My Profile</h2>
+          <p style={{ margin: 0, color: 'var(--screen-muted)' }}>
             This portal is linked to the logged-in agent account. You only see
             audits released to you by QA/Admin.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            clearCachedValue(cacheKey);
-            void loadAgentData({ force: true });
-          }}
-          disabled={refreshing}
-          style={secondaryButton}
-        >
-          {refreshing ? 'Refreshing...' : 'Refresh'}
-        </button>
+        <div style={pageHeaderActionsStyle}>
+          <button
+            type="button"
+            onClick={() => {
+              clearCachedValue(cacheKey);
+              void loadAgentData({ force: true });
+            }}
+            disabled={refreshing}
+            style={secondaryButton}
+          >
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+
+          <div style={headerMetaPillStyle}>
+            Last Loaded: {lastLoadedAt ? formatDate(lastLoadedAt) : 'Current session'}
+          </div>
+        </div>
       </div>
 
       {errorMessage ? <div style={errorBanner}>{errorMessage}</div> : null}
-
-      <div style={filterActionsStyle}>
-        <div style={filterPillStyle}>
-          Cache: {refreshing ? 'Refreshing in background' : 'Warm'}
-        </div>
-        <div style={filterPillStyle}>
-          Last Loaded:{' '}
-          {lastLoadedAt ? formatDate(lastLoadedAt) : 'Current session'}
-        </div>
-      </div>
 
       <div style={panelStyle}>
         <p>
@@ -583,6 +611,8 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
                 type="date"
                 value={auditDateFrom}
                 onChange={(e) => setAuditDateFrom(e.target.value)}
+                onClick={(e) => openNativeDatePicker(e.currentTarget)}
+                onFocus={(e) => openNativeDatePicker(e.currentTarget)}
                 style={fieldStyle}
               />
             </div>
@@ -593,6 +623,8 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
                 type="date"
                 value={auditDateTo}
                 onChange={(e) => setAuditDateTo(e.target.value)}
+                onClick={(e) => openNativeDatePicker(e.currentTarget)}
+                onFocus={(e) => openNativeDatePicker(e.currentTarget)}
                 style={fieldStyle}
               />
             </div>
@@ -691,15 +723,15 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
                           <div style={detailInfoGridStyle}>
                             <div style={detailInfoCardStyle}>
                               <div style={detailLabelStyle}>Reference</div>
-                              <div style={detailValueStyle}>
-                                {getAuditReference(audit)}
-                              </div>
+                              <div style={detailValueStyle}>{getAuditReference(audit)}</div>
                             </div>
                             <div style={detailInfoCardStyle}>
                               <div style={detailLabelStyle}>Released</div>
-                              <div style={detailValueStyle}>
-                                {formatDate(audit.shared_at)}
-                              </div>
+                              <div style={detailValueStyle}>{formatDate(audit.shared_at)}</div>
+                            </div>
+                            <div style={detailInfoCardStyle}>
+                              <div style={detailLabelStyle}>Quality</div>
+                              <div style={detailValueStyle}>{Number(audit.quality_score).toFixed(2)}%</div>
                             </div>
                           </div>
 
@@ -710,56 +742,58 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
                             </div>
                           </div>
 
-                          <div style={{ ...sectionEyebrow, marginTop: '18px' }}>
-                            Score Details
-                          </div>
+                          <div style={{ ...sectionEyebrow, marginTop: '18px' }}>Score Details</div>
                           <div style={{ display: 'grid', gap: '10px' }}>
-                            {(audit.score_details || []).map((detail) => {
-                              const metricComment = getMetricComment(detail);
-
-                              return (
+                            {(audit.score_details || [])
+                              .filter(
+                                (detail) => !HIDDEN_AGENT_METRICS.has(detail.metric)
+                              )
+                              .map((detail) => (
                                 <div
                                   key={`${audit.id}-${detail.metric}`}
-                                  style={detailCardStyle}
+                                  style={detailRowStyle}
                                 >
-                                  <div style={detailTopRowStyle}>
-                                    <div>
-                                      <div style={detailMetricTitleStyle}>
-                                        {detail.metric}
-                                      </div>
-                                      <div style={detailMetricMetaStyle}>
-                                        {isNoScoreDetail(detail)
-                                          ? 'Yes / No question'
-                                          : `Pass ${detail.pass} • Borderline ${detail.borderline} • Adjusted ${detail.adjustedWeight.toFixed(
-                                              2
-                                            )}`}
-                                      </div>
-                                    </div>
-                                    <span
+                                  <div>
+                                    <div
                                       style={{
-                                        ...pillStyle,
-                                        backgroundColor: getResultBadgeColor(
-                                          detail.result
-                                        ),
+                                        color: 'var(--screen-heading)',
+                                        fontWeight: 700,
                                       }}
                                     >
-                                      {detail.result || '-'}
-                                    </span>
-                                  </div>
-
-                                  {metricComment ? (
-                                    <div style={metricNoteCardStyle}>
-                                      <div style={metricNoteLabelStyle}>
-                                        QA Note
-                                      </div>
-                                      <div style={metricNoteTextStyle}>
-                                        {metricComment}
-                                      </div>
+                                      {detail.metric}
                                     </div>
-                                  ) : null}
+                                    <div
+                                      style={{
+                                        color: 'var(--screen-muted)',
+                                        fontSize: '12px',
+                                        marginTop: '4px',
+                                      }}
+                                    >
+                                      {detail.counts_toward_score === false
+                                        ? 'Administrative question'
+                                        : `Pass ${detail.pass} • Borderline ${detail.borderline} • Adjusted ${detail.adjustedWeight.toFixed(2)}`}
+                                    </div>
+                                    {detail.metric_comment ? (
+                                      <div style={metricNoteCardStyle}>
+                                        <div style={metricNoteLabelStyle}>QA Note</div>
+                                        <div style={metricNoteTextStyle}>
+                                          {detail.metric_comment}
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                  <span
+                                    style={{
+                                      ...pillStyle,
+                                      backgroundColor: getResultBadgeColor(
+                                        detail.result
+                                      ),
+                                    }}
+                                  >
+                                    {detail.result}
+                                  </span>
                                 </div>
-                              );
-                            })}
+                              ))}
                           </div>
                         </div>
                       </div>
@@ -879,14 +913,14 @@ function SummaryCard({
 }) {
   return (
     <div style={cardStyle}>
-      <div style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '8px' }}>
+      <div style={{ fontSize: '14px', color: 'var(--screen-muted)', marginBottom: '8px' }}>
         {title}
       </div>
-      <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#f8fafc' }}>
+      <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--screen-heading)' }}>
         {value}
       </div>
       {subtitle ? (
-        <div style={{ marginTop: '8px', fontSize: '12px', color: '#64748b' }}>
+        <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--screen-subtle)' }}>
           {subtitle}
         </div>
       ) : null}
@@ -913,7 +947,7 @@ const pageHeaderStyle = {
 };
 
 const sectionEyebrow = {
-  color: '#60a5fa',
+  color: 'var(--screen-accent)',
   fontSize: '12px',
   fontWeight: 800,
   letterSpacing: '0.18em',
@@ -922,9 +956,8 @@ const sectionEyebrow = {
 };
 
 const panelStyle = {
-  background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
-  border: '1px solid rgba(148,163,184,0.14)',
+  background: 'var(--screen-card-bg)',
+  border: '1px solid var(--screen-border)',
   borderRadius: '20px',
   padding: '20px',
 };
@@ -947,8 +980,8 @@ const filterActionsStyle = {
 const filterPillStyle = {
   padding: '10px 14px',
   borderRadius: '999px',
-  border: '1px solid rgba(148,163,184,0.14)',
-  backgroundColor: 'rgba(15,23,42,0.56)',
+  border: '1px solid var(--screen-border)',
+  backgroundColor: 'var(--screen-pill-bg)',
   color: '#cbd5e1',
   fontSize: '13px',
   fontWeight: 600,
@@ -963,9 +996,8 @@ const summaryGridStyle = {
 };
 
 const cardStyle = {
-  background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
-  border: '1px solid rgba(148,163,184,0.14)',
+  background: 'var(--screen-card-bg)',
+  border: '1px solid var(--screen-border)',
   borderRadius: '18px',
   padding: '20px',
   boxShadow: '0 8px 24px rgba(2,6,23,0.2)',
@@ -975,9 +1007,8 @@ const auditTableWrapStyle = {
   marginTop: '16px',
   overflowX: 'auto' as const,
   borderRadius: '18px',
-  border: '1px solid rgba(148,163,184,0.14)',
-  background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+  border: '1px solid var(--screen-border)',
+  background: 'var(--screen-card-bg)',
   boxShadow: '0 8px 24px rgba(2,6,23,0.2)',
 };
 
@@ -1000,7 +1031,7 @@ const auditHeaderRowStyle = {
   position: 'sticky' as const,
   top: 0,
   zIndex: 1,
-  background: 'rgba(2,6,23,0.92)',
+  background: 'var(--screen-table-head-bg)',
   color: '#93c5fd',
   fontSize: '12px',
   fontWeight: 800,
@@ -1021,7 +1052,7 @@ const auditCellActionsStyle = {
 };
 
 const primaryCellTextStyle = {
-  color: '#f8fafc',
+  color: 'var(--screen-heading)',
   fontSize: '14px',
   fontWeight: 600,
   lineHeight: 1.4,
@@ -1029,7 +1060,7 @@ const primaryCellTextStyle = {
 
 const secondaryCellTextStyle = {
   marginTop: '4px',
-  color: '#64748b',
+  color: 'var(--screen-subtle)',
   fontSize: '12px',
   fontWeight: 600,
   textTransform: 'uppercase' as const,
@@ -1043,9 +1074,9 @@ const scorePillStyle = {
   minWidth: '84px',
   padding: '8px 10px',
   borderRadius: '999px',
-  background: 'rgba(37,99,235,0.18)',
-  border: '1px solid rgba(96,165,250,0.26)',
-  color: '#dbeafe',
+  background: 'var(--screen-score-pill-bg)',
+  border: '1px solid var(--screen-score-pill-border)',
+  color: 'var(--screen-heading)',
   fontSize: '13px',
   fontWeight: 800,
 };
@@ -1062,15 +1093,15 @@ const fieldStyle = {
   width: '100%',
   padding: '12px 14px',
   borderRadius: '12px',
-  border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.7)',
-  color: '#e5eefb',
+  border: '1px solid var(--screen-border-strong)',
+  background: 'var(--screen-field-bg)',
+  color: 'var(--screen-text)',
 };
 
 const secondaryButton = {
   backgroundColor: 'rgba(15,23,42,0.78)',
-  color: 'white',
-  border: '1px solid rgba(148,163,184,0.18)',
+  color: 'var(--screen-text)',
+  border: '1px solid var(--screen-border-strong)',
   padding: '10px 14px',
   borderRadius: '10px',
   cursor: 'pointer',
@@ -1086,7 +1117,7 @@ const errorBanner = {
 };
 
 const pillStyle = {
-  color: 'white',
+  color: 'var(--screen-text)',
   padding: '4px 8px',
   borderRadius: '999px',
   fontSize: '12px',
@@ -1097,10 +1128,56 @@ const auditExpandedRowStyle = { padding: '0 16px 16px 16px' };
 
 const expandedPanelStyle = {
   borderRadius: '18px',
-  border: '1px solid rgba(148,163,184,0.12)',
+  border: '1px solid var(--screen-border)',
   background:
     'linear-gradient(180deg, rgba(15,23,42,0.78) 0%, rgba(15,23,42,0.6) 100%)',
   padding: '18px',
+};
+
+const detailRowStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: '12px',
+  alignItems: 'center',
+  padding: '12px 14px',
+  borderRadius: '14px',
+  border: '1px solid var(--screen-border)',
+  background: 'var(--screen-card-soft-bg)',
+};
+
+const metricNoteCardStyle = {
+  marginTop: '10px',
+  borderRadius: '12px',
+  border: '1px solid var(--screen-border)',
+  background: 'var(--screen-card-soft-bg)',
+  padding: '10px 12px',
+};
+
+const metricNoteLabelStyle = {
+  color: '#93c5fd',
+  fontSize: '11px',
+  fontWeight: 800,
+  letterSpacing: '0.1em',
+  textTransform: 'uppercase' as const,
+  marginBottom: '6px',
+};
+
+const metricNoteTextStyle = {
+  color: 'var(--screen-text)',
+  fontSize: '13px',
+  lineHeight: 1.55,
+  whiteSpace: 'pre-wrap' as const,
+};
+
+const miniSecondaryButton = {
+  padding: '8px 10px',
+  background: 'var(--screen-secondary-btn-bg)',
+  color: 'var(--screen-secondary-btn-text)',
+  border: '1px solid var(--screen-border-strong)',
+  borderRadius: '10px',
+  cursor: 'pointer',
+  fontWeight: 700,
+  fontSize: '12px',
 };
 
 const detailInfoGridStyle = {
@@ -1112,13 +1189,13 @@ const detailInfoGridStyle = {
 
 const detailInfoCardStyle = {
   borderRadius: '14px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(15,23,42,0.52)',
+  border: '1px solid var(--screen-border)',
+  background: 'var(--screen-card-soft-bg)',
   padding: '14px 16px',
 };
 
 const detailLabelStyle = {
-  color: '#94a3b8',
+  color: 'var(--screen-muted)',
   fontSize: '12px',
   fontWeight: 700,
   textTransform: 'uppercase' as const,
@@ -1127,88 +1204,44 @@ const detailLabelStyle = {
 };
 
 const detailValueStyle = {
-  color: '#f8fafc',
+  color: 'var(--screen-heading)',
   fontSize: '14px',
   fontWeight: 700,
   lineHeight: 1.5,
 };
 
+const pageHeaderActionsStyle = {
+  display: 'flex',
+  flexDirection: 'column' as const,
+  alignItems: 'flex-end',
+  gap: '10px',
+};
+
+const headerMetaPillStyle = {
+  padding: '10px 14px',
+  borderRadius: '999px',
+  border: '1px solid var(--screen-border)',
+  backgroundColor: 'var(--screen-pill-bg)',
+  color: 'var(--screen-muted)',
+  fontSize: '13px',
+  fontWeight: 700,
+  textAlign: 'right' as const,
+};
+
 const fullCommentCardStyle = {
   borderRadius: '14px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(15,23,42,0.52)',
+  border: '1px solid var(--screen-border)',
+  background: 'var(--screen-card-soft-bg)',
   padding: '14px 16px',
   marginBottom: '18px',
 };
 
 const fullCommentTextStyle = {
-  color: '#f8fafc',
+  color: 'var(--screen-text)',
   fontSize: '14px',
   lineHeight: 1.7,
   whiteSpace: 'pre-wrap' as const,
   wordBreak: 'break-word' as const,
-};
-
-const detailCardStyle = {
-  padding: '14px',
-  borderRadius: '16px',
-  border: '1px solid rgba(148,163,184,0.1)',
-  background: 'rgba(10, 23, 56, 0.76)',
-};
-
-const detailTopRowStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  gap: '12px',
-  alignItems: 'flex-start',
-  flexWrap: 'wrap' as const,
-};
-
-const detailMetricTitleStyle = {
-  color: '#f8fafc',
-  fontWeight: 800,
-  fontSize: '16px',
-};
-
-const detailMetricMetaStyle = {
-  color: '#94a3b8',
-  fontSize: '12px',
-  marginTop: '6px',
-};
-
-const metricNoteCardStyle = {
-  marginTop: '12px',
-  borderRadius: '14px',
-  padding: '12px 14px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(15,23,42,0.52)',
-};
-
-const metricNoteLabelStyle = {
-  color: '#93c5fd',
-  fontSize: '11px',
-  fontWeight: 800,
-  letterSpacing: '0.14em',
-  textTransform: 'uppercase' as const,
-  marginBottom: '8px',
-};
-
-const metricNoteTextStyle = {
-  color: '#e5eefb',
-  fontSize: '14px',
-  lineHeight: 1.55,
-  whiteSpace: 'pre-wrap' as const,
-};
-
-const miniSecondaryButton = {
-  padding: '8px 10px',
-  background: 'rgba(15,23,42,0.82)',
-  color: '#e5eefb',
-  border: '1px solid rgba(148,163,184,0.18)',
-  borderRadius: '10px',
-  cursor: 'pointer',
-  fontWeight: 700,
-  fontSize: '12px',
 };
 
 export default AgentPortal;
