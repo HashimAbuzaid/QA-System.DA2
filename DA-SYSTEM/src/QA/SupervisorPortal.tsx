@@ -316,18 +316,18 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
   );
 
   if (loading) {
-    return <div style={{ color: '#cbd5e1' }}>Loading supervisor portal...</div>;
+    return <div style={{ color: 'var(--da-muted-text, #cbd5e1)' }}>Loading supervisor portal...</div>;
   }
 
   return (
-    <div style={{ color: '#e5eefb' }}>
+    <div style={{ color: 'var(--da-page-text, #e5eefb)' }}>
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Supervisor Portal</div>
           <h2 style={{ marginBottom: '8px' }}>
             {currentUser.team || 'Team'} Supervisor Portal
           </h2>
-          <p style={{ margin: 0, color: '#94a3b8' }}>
+          <p style={{ margin: 0, color: 'var(--da-subtle-text, #94a3b8)' }}>
             You can only see your own team data and can filter down to a single
             agent.
           </p>
@@ -383,7 +383,7 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
                 onClick={() => setIsAgentPickerOpen((prev) => !prev)}
                 style={pickerButtonStyle}
               >
-                <span style={{ color: selectedAgent ? '#f8fafc' : '#94a3b8' }}>
+                <span style={{ color: selectedAgent ? 'var(--da-title, #f8fafc)' : 'var(--da-subtle-text, #94a3b8)' }}>
                   {selectedAgent
                     ? getAgentLabel(
                         selectedAgent.agent_id,
@@ -638,10 +638,10 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
 function SummaryCard({ title, value }: { title: string; value: string }) {
   return (
     <div style={cardStyle}>
-      <div style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '8px' }}>
+      <div style={{ fontSize: '13px', color: 'var(--da-subtle-text, #94a3b8)', marginBottom: '8px' }}>
         {title}
       </div>
-      <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#f8fafc' }}>
+      <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--da-title, #f8fafc)' }}>
         {value}
       </div>
     </div>
@@ -667,7 +667,7 @@ const pageHeaderStyle = {
 };
 
 const sectionEyebrow = {
-  color: '#60a5fa',
+  color: 'var(--da-accent-text, #60a5fa)',
   fontSize: '12px',
   fontWeight: 800,
   letterSpacing: '0.18em',
@@ -686,8 +686,8 @@ const tabButtonStyle = {
   padding: '12px 16px',
   borderRadius: '14px',
   border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.62)',
-  color: '#cbd5e1',
+  background: 'var(--da-surface-bg, rgba(15,23,42,0.62))',
+  color: 'var(--da-muted-text, #cbd5e1)',
   cursor: 'pointer',
   fontWeight: 700,
   whiteSpace: 'nowrap' as const,
@@ -704,7 +704,7 @@ const activeTabButtonStyle = {
 
 const panelStyle = {
   background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
   border: '1px solid rgba(148,163,184,0.14)',
   borderRadius: '20px',
   padding: '20px',
@@ -713,7 +713,7 @@ const panelStyle = {
 const labelStyle = {
   display: 'block',
   marginBottom: '8px',
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
   fontWeight: 700,
   fontSize: '13px',
 };
@@ -723,8 +723,8 @@ const fieldStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
   border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.7)',
-  color: '#e5eefb',
+  background: 'var(--da-surface-bg, rgba(15,23,42,0.7))',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 
 const pickerButtonStyle = {
@@ -732,13 +732,13 @@ const pickerButtonStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
   border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.7)',
+  background: 'var(--da-surface-bg, rgba(15,23,42,0.7))',
   textAlign: 'left' as const,
   cursor: 'pointer',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  color: '#e5eefb',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 
 const pickerMenuStyle = {
@@ -746,7 +746,7 @@ const pickerMenuStyle = {
   top: 'calc(100% + 8px)',
   left: 0,
   right: 0,
-  background: 'rgba(15,23,42,0.96)',
+  background: 'var(--da-menu-bg, rgba(15,23,42,0.96))',
   border: '1px solid rgba(148,163,184,0.16)',
   borderRadius: '16px',
   boxShadow: '0 10px 30px rgba(0,0,0,0.22)',
@@ -770,24 +770,24 @@ const pickerListStyle = {
 const pickerInfoStyle = {
   padding: '12px',
   borderRadius: '8px',
-  backgroundColor: 'rgba(15,23,42,0.68)',
-  color: '#94a3b8',
+  backgroundColor: 'var(--da-surface-bg, rgba(15,23,42,0.68))',
+  color: 'var(--da-subtle-text, #94a3b8)',
 };
 
 const pickerOptionStyle = {
   padding: '12px',
   borderRadius: '8px',
   border: '1px solid rgba(148,163,184,0.12)',
-  backgroundColor: 'rgba(15,23,42,0.6)',
+  backgroundColor: 'var(--da-surface-bg, rgba(15,23,42,0.6))',
   textAlign: 'left' as const,
   cursor: 'pointer',
   fontWeight: 500,
-  color: '#e5eefb',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 
 const pickerOptionActiveStyle = {
   border: '1px solid #2563eb',
-  backgroundColor: 'rgba(37,99,235,0.18)',
+  backgroundColor: 'var(--da-active-option-bg, rgba(37, 99, 235, 0.18))',
 };
 
 const summaryGridStyle = {
@@ -800,7 +800,7 @@ const summaryGridStyle = {
 
 const cardStyle = {
   background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
   border: '1px solid rgba(148,163,184,0.14)',
   borderRadius: '18px',
   padding: '20px',
@@ -808,7 +808,7 @@ const cardStyle = {
 };
 
 const secondaryButton = {
-  backgroundColor: 'rgba(15,23,42,0.78)',
+  backgroundColor: 'var(--da-field-bg, rgba(15,23,42,0.78))',
   color: 'white',
   border: '1px solid rgba(148,163,184,0.18)',
   padding: '10px 14px',
@@ -822,7 +822,7 @@ const errorBanner = {
   borderRadius: '10px',
   backgroundColor: 'rgba(127,29,29,0.24)',
   border: '1px solid rgba(248,113,113,0.22)',
-  color: '#fecaca',
+  color: 'var(--da-error-text, #fecaca)',
 };
 
 const auditTableWrapStyle = {
@@ -831,7 +831,7 @@ const auditTableWrapStyle = {
   borderRadius: '18px',
   border: '1px solid rgba(148,163,184,0.14)',
   background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
   boxShadow: '0 8px 24px rgba(2,6,23,0.2)',
 };
 
@@ -854,7 +854,7 @@ const auditHeaderRowStyle = {
   top: 0,
   zIndex: 1,
   background: 'rgba(2,6,23,0.92)',
-  color: '#93c5fd',
+  color: 'var(--da-accent-text, #93c5fd)',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -870,7 +870,7 @@ const auditCellCreatorStyle = {};
 const auditCellCommentsStyle = {};
 
 const primaryCellTextStyle = {
-  color: '#f8fafc',
+  color: 'var(--da-title, #f8fafc)',
   fontSize: '14px',
   fontWeight: 600,
   lineHeight: 1.4,
@@ -891,7 +891,7 @@ const scorePillStyle = {
   minWidth: '84px',
   padding: '8px 10px',
   borderRadius: '999px',
-  background: 'rgba(37,99,235,0.18)',
+  background: 'var(--da-active-option-bg, rgba(37, 99, 235, 0.18))',
   border: '1px solid rgba(96,165,250,0.26)',
   color: '#dbeafe',
   fontSize: '13px',
