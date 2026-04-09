@@ -1,4 +1,3 @@
-
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { supabase } from './lib/supabase';
 import { usePersistentState } from './hooks/usePersistentState';
@@ -71,8 +70,11 @@ type ThemeTokens = {
   toggleShellBackground: string;
   toggleShellBorder: string;
   toggleLabel: string;
+  toggleTrackBackground: string;
+  toggleTrackBorder: string;
   toggleActiveBackground: string;
   toggleActiveText: string;
+  toggleInactiveText: string;
   buttonBorder: string;
   buttonShadow: string;
   buttonBackground: string;
@@ -112,9 +114,12 @@ function getThemeTokens(mode: ThemeMode): ThemeTokens {
         'linear-gradient(180deg, rgba(239,246,255,0.96) 0%, rgba(219,234,254,0.94) 100%)',
       toggleShellBorder: 'rgba(96,165,250,0.36)',
       toggleLabel: '#334155',
+      toggleTrackBackground: 'rgba(255,255,255,0.86)',
+      toggleTrackBorder: 'rgba(148,163,184,0.26)',
       toggleActiveBackground:
         'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
       toggleActiveText: '#ffffff',
+      toggleInactiveText: '#475569',
       buttonBorder: 'rgba(96,165,250,0.34)',
       buttonShadow: '0 12px 28px rgba(37,99,235,0.18)',
       buttonBackground: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
@@ -153,9 +158,12 @@ function getThemeTokens(mode: ThemeMode): ThemeTokens {
       'linear-gradient(180deg, rgba(10,30,72,0.96) 0%, rgba(10,26,62,0.94) 100%)',
     toggleShellBorder: 'rgba(37,99,235,0.36)',
     toggleLabel: '#cbd5e1',
+    toggleTrackBackground: 'rgba(15,23,42,0.72)',
+    toggleTrackBorder: 'rgba(96,165,250,0.22)',
     toggleActiveBackground:
       'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
     toggleActiveText: '#ffffff',
+    toggleInactiveText: '#cbd5e1',
     buttonBorder: 'rgba(96,165,250,0.34)',
     buttonShadow: '0 12px 28px rgba(37,99,235,0.28)',
     buttonBackground: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
@@ -212,8 +220,7 @@ function App() {
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    document.documentElement.style.backgroundColor =
-      themeTokens.pageBackgroundFlat;
+    document.documentElement.style.backgroundColor = themeTokens.pageBackgroundFlat;
     document.body.style.backgroundColor = themeTokens.pageBackgroundFlat;
   }, [themeTokens]);
 
@@ -286,10 +293,6 @@ function App() {
     setProfile(null);
     setProfileLoadError('');
     setPage('dashboard');
-  }
-
-  function handleToggleTheme() {
-    setTheme(theme === 'dark' ? 'white' : 'dark');
   }
 
   const isAdmin = profile?.role === 'admin';
@@ -382,54 +385,19 @@ function App() {
               background: themeTokens.panelBackground,
             }}
           >
-            <div
-              style={{
-                ...sectionEyebrow,
-                color: theme === 'white' ? '#2563eb' : '#60a5fa',
-              }}
-            >
+            <div style={{ ...sectionEyebrow, color: theme === 'white' ? '#2563eb' : '#60a5fa' }}>
               Profile
             </div>
-            <h2
-              style={{
-                marginTop: 0,
-                marginBottom: '18px',
-                color: themeTokens.text,
-              }}
-            >
+            <h2 style={{ marginTop: 0, marginBottom: '18px', color: themeTokens.text }}>
               {isAdmin ? 'My Admin Profile' : 'My QA Profile'}
             </h2>
             <div style={profileGridStyle}>
-              <ProfileInfoCard
-                label="Name"
-                value={profile?.agent_name || '-'}
-                theme={themeTokens}
-              />
-              <ProfileInfoCard
-                label="Display Name"
-                value={profile?.display_name || '-'}
-                theme={themeTokens}
-              />
-              <ProfileInfoCard
-                label="Email"
-                value={profile?.email || '-'}
-                theme={themeTokens}
-              />
-              <ProfileInfoCard
-                label="Role"
-                value={profile?.role || '-'}
-                theme={themeTokens}
-              />
-              <ProfileInfoCard
-                label="Agent ID"
-                value={profile?.agent_id || '-'}
-                theme={themeTokens}
-              />
-              <ProfileInfoCard
-                label="Team"
-                value={profile?.team || '-'}
-                theme={themeTokens}
-              />
+              <ProfileInfoCard label="Name" value={profile?.agent_name || '-'} theme={themeTokens} />
+              <ProfileInfoCard label="Display Name" value={profile?.display_name || '-'} theme={themeTokens} />
+              <ProfileInfoCard label="Email" value={profile?.email || '-'} theme={themeTokens} />
+              <ProfileInfoCard label="Role" value={profile?.role || '-'} theme={themeTokens} />
+              <ProfileInfoCard label="Agent ID" value={profile?.agent_id || '-'} theme={themeTokens} />
+              <ProfileInfoCard label="Team" value={profile?.team || '-'} theme={themeTokens} />
             </div>
           </div>
         );
@@ -486,9 +454,7 @@ function App() {
             color: themeTokens.text,
           }}
         >
-          <div style={{ ...sectionEyebrow, color: '#ef4444' }}>
-            Profile Error
-          </div>
+          <div style={{ ...sectionEyebrow, color: '#ef4444' }}>Profile Error</div>
           <h1 style={{ marginTop: 0 }}>Profile not found</h1>
           <p style={{ color: themeTokens.secondaryText }}>
             {profileLoadError ||
@@ -597,36 +563,69 @@ function App() {
         </div>
 
         <div style={headerActionsStyle}>
-          <button
-            type="button"
-            onClick={handleToggleTheme}
+          <div
             style={{
-              ...compactThemeButtonStyle,
+              ...themeToggleShellStyle,
               background: themeTokens.toggleShellBackground,
               border: `1px solid ${themeTokens.toggleShellBorder}`,
-              boxShadow: themeTokens.buttonShadow,
             }}
-            aria-label={`Switch theme. Current theme is ${theme}.`}
-            title={`Current theme: ${theme}`}
           >
-            <span
+            <div
               style={{
-                ...compactThemeLabelStyle,
+                ...themeLabelStyle,
                 color: themeTokens.toggleLabel,
               }}
             >
               Theme
-            </span>
-            <span
+            </div>
+
+            <div
               style={{
-                ...compactThemeValueStyle,
-                background: themeTokens.toggleActiveBackground,
-                color: themeTokens.toggleActiveText,
+                ...themeTrackStyle,
+                background: themeTokens.toggleTrackBackground,
+                border: `1px solid ${themeTokens.toggleTrackBorder}`,
               }}
             >
-              {theme === 'white' ? 'White' : 'Dark'}
-            </span>
-          </button>
+              <button
+                type="button"
+                onClick={() => setTheme('dark')}
+                style={{
+                  ...themeChoiceButtonStyle,
+                  ...(theme === 'dark'
+                    ? {
+                        background: themeTokens.toggleActiveBackground,
+                        color: themeTokens.toggleActiveText,
+                        boxShadow: themeTokens.buttonShadow,
+                      }
+                    : {
+                        background: 'transparent',
+                        color: themeTokens.toggleInactiveText,
+                      }),
+                }}
+              >
+                Dark
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme('white')}
+                style={{
+                  ...themeChoiceButtonStyle,
+                  ...(theme === 'white'
+                    ? {
+                        background: themeTokens.toggleActiveBackground,
+                        color: themeTokens.toggleActiveText,
+                        boxShadow: themeTokens.buttonShadow,
+                      }
+                    : {
+                        background: 'transparent',
+                        color: themeTokens.toggleInactiveText,
+                      }),
+                }}
+              >
+                White
+              </button>
+            </div>
+          </div>
 
           <button
             onClick={handleLogout}
@@ -692,9 +691,7 @@ function App() {
                         : hiddenPagePaneStyle
                     }
                   >
-                    <Suspense
-                      fallback={<InlinePageLoader theme={themeTokens} />}
-                    >
+                    <Suspense fallback={<InlinePageLoader theme={themeTokens} />}>
                       {renderStaffPage(item.key)}
                     </Suspense>
                   </section>
@@ -748,13 +745,7 @@ function InlinePageLoader({ theme }: { theme: ThemeTokens }) {
         <div style={{ color: theme.text, fontWeight: 700 }}>
           Loading workspace...
         </div>
-        <div
-          style={{
-            color: theme.secondaryText,
-            fontSize: '13px',
-            marginTop: '4px',
-          }}
-        >
+        <div style={{ color: theme.secondaryText, fontSize: '13px', marginTop: '4px' }}>
           Preparing this page for the first time.
         </div>
       </div>
@@ -891,32 +882,40 @@ const metaPillStyle = {
   fontWeight: 600,
 };
 
-const compactThemeButtonStyle = {
-  display: 'inline-flex',
+const themeToggleShellStyle = {
+  display: 'flex',
   alignItems: 'center',
   gap: '10px',
-  padding: '10px 12px 10px 14px',
-  borderRadius: '16px',
-  cursor: 'pointer',
+  padding: '8px 10px',
+  borderRadius: '999px',
   backdropFilter: 'blur(16px)',
 };
 
-const compactThemeLabelStyle = {
+const themeLabelStyle = {
   fontSize: '12px',
   fontWeight: 800,
   letterSpacing: '0.16em',
   textTransform: 'uppercase' as const,
+  paddingLeft: '6px',
 };
 
-const compactThemeValueStyle = {
+const themeTrackStyle = {
   display: 'inline-flex',
   alignItems: 'center',
-  justifyContent: 'center',
-  minWidth: '72px',
-  padding: '8px 12px',
+  gap: '4px',
+  padding: '4px',
   borderRadius: '999px',
+};
+
+const themeChoiceButtonStyle = {
+  padding: '10px 14px',
+  borderRadius: '999px',
+  border: 'none',
+  cursor: 'pointer',
   fontWeight: 800,
   fontSize: '14px',
+  minWidth: '76px',
+  transition: 'all 0.18s ease',
 };
 
 const logoutButtonStyle = {
