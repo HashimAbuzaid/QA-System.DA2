@@ -69,15 +69,8 @@ function shouldShowMetricComment(result: string) {
   );
 }
 
-function openNativeDatePicker(target: HTMLInputElement) {
-  const input = target as HTMLInputElement & { showPicker?: () => void };
-  input.showPicker?.();
-}
-
-const ISSUE_WAS_RESOLVED_METRIC = 'Issue was resolved';
-
 const ISSUE_WAS_RESOLVED_QUESTION: Metric = {
-  name: ISSUE_WAS_RESOLVED_METRIC,
+  name: 'Issue was resolved',
   pass: 0,
   borderline: 0,
   countsTowardScore: false,
@@ -161,9 +154,7 @@ function AuditsListSupabase() {
     comments: '',
   });
   const [editScores, setEditScores] = useState<Record<string, string>>({});
-  const [editMetricComments, setEditMetricComments] = useState<
-    Record<string, string>
-  >({});
+  const [editMetricComments, setEditMetricComments] = useState<Record<string, string>>({});
   const agentPickerRef = useRef<HTMLDivElement | null>(null);
   const isAdmin = currentProfile?.role === 'admin';
   useEffect(() => {
@@ -255,6 +246,14 @@ function AuditsListSupabase() {
     });
     return defaults;
   }
+
+  function createDefaultMetricComments(team: EditFormState['team']) {
+    const defaults: Record<string, string> = {};
+    getMetricsForTeam(team).forEach((metric) => {
+      defaults[metric.name] = '';
+    });
+    return defaults;
+  }
   function getMissingRequiredMetricLabels(
     team: EditFormState['team'],
     scores: Record<string, string>
@@ -277,14 +276,14 @@ function AuditsListSupabase() {
     return defaults;
   }
 
-  function buildMetricCommentsFromAudit(audit: AuditItem) {
-    const defaults: Record<string, string> = {};
+  function buildMetricCommentMapFromAudit(audit: AuditItem) {
+    const defaults = createDefaultMetricComments(audit.team);
     (audit.score_details || []).forEach((item) => {
-      defaults[item.metric] = item.metric_comment || '';
+      defaults[item.metric] =
+        typeof item.metric_comment === 'string' ? item.metric_comment : '';
     });
     return defaults;
   }
-
   function getAdjustedScoreData(
     team: EditFormState['team'],
     scores: Record<string, string>,
@@ -317,6 +316,11 @@ function AuditsListSupabase() {
             ? adjustedWeight * (metric.borderline / metric.pass)
             : 0;
       }
+      const rawComment = metricComments[metric.name] || '';
+      const normalizedComment = shouldShowMetricComment(result)
+        ? rawComment.trim()
+        : '';
+
       return {
         metric: metric.name,
         result,
@@ -325,10 +329,7 @@ function AuditsListSupabase() {
         adjustedWeight,
         earned,
         counts_toward_score: scored,
-        metric_comment:
-          scored && shouldShowMetricComment(result)
-            ? (metricComments[metric.name] || '').trim() || null
-            : null,
+        metric_comment: normalizedComment || null,
       };
     });
     const hasAutoFail = scoreDetails.some(
@@ -484,7 +485,7 @@ function AuditsListSupabase() {
       comments: audit.comments || '',
     });
     setEditScores(buildScoreMapFromAudit(audit));
-    setEditMetricComments(buildMetricCommentsFromAudit(audit));
+    setEditMetricComments(buildMetricCommentMapFromAudit(audit));
   }
   function cancelEdit() {
     setEditingAuditId(null);
@@ -515,7 +516,7 @@ function AuditsListSupabase() {
     setAgentSearch('');
     setIsAgentPickerOpen(false);
     setEditScores(createDefaultScores(nextTeam));
-    setEditMetricComments({});
+    setEditMetricComments(createDefaultMetricComments(nextTeam));
   }
   function handleSelectAgent(profile: AgentProfile) {
     setSelectedAgentProfileId(profile.id);
@@ -532,11 +533,7 @@ function AuditsListSupabase() {
     setEditScores((prev) => ({ ...prev, [metricName]: value }));
 
     if (!shouldShowMetricComment(value)) {
-      setEditMetricComments((prev) => {
-        const next = { ...prev };
-        delete next[metricName];
-        return next;
-      });
+      setEditMetricComments((prev) => ({ ...prev, [metricName]: '' }));
     }
   }
 
@@ -585,19 +582,6 @@ function AuditsListSupabase() {
     }
     if (!selectedAgent.agent_id) {
       setErrorMessage('Selected agent does not have an Agent ID.');
-      return;
-    }
-    const missingMetricCommentLabels = getMetricsForTeam(editForm.team)
-      .filter((metric) => countsTowardScore(metric))
-      .filter((metric) =>
-        shouldShowMetricComment(getMetricStoredValue(metric, editScores))
-      )
-      .filter((metric) => !(editMetricComments[metric.name] || '').trim())
-      .map((metric) => metric.name);
-    if (missingMetricCommentLabels.length > 0) {
-      setErrorMessage(
-        `Please add a short QA note for: ${missingMetricCommentLabels.join(', ')}.`
-      );
       return;
     }
     const adjustedData = getAdjustedScoreData(
@@ -867,7 +851,7 @@ function AuditsListSupabase() {
             <select
               value={teamFilter}
               onChange={(e) => setTeamFilter(e.target.value)}
-              style={selectFieldStyle}
+              style={fieldStyle}
             >
               {' '}
               <option value="">All Teams</option>{' '}
@@ -882,7 +866,7 @@ function AuditsListSupabase() {
             <select
               value={caseTypeFilter}
               onChange={(e) => setCaseTypeFilter(e.target.value)}
-              style={selectFieldStyle}
+              style={fieldStyle}
             >
               {' '}
               <option value="">All Case Types</option>{' '}
@@ -901,8 +885,6 @@ function AuditsListSupabase() {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              onClick={(e) => openNativeDatePicker(e.currentTarget)}
-              onFocus={(e) => openNativeDatePicker(e.currentTarget)}
               style={fieldStyle}
             />{' '}
           </div>{' '}
@@ -913,8 +895,6 @@ function AuditsListSupabase() {
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              onClick={(e) => openNativeDatePicker(e.currentTarget)}
-              onFocus={(e) => openNativeDatePicker(e.currentTarget)}
               style={fieldStyle}
             />{' '}
           </div>{' '}
@@ -1178,7 +1158,7 @@ function AuditsListSupabase() {
                                     e.target.value as EditFormState['team']
                                   )
                                 }
-                                style={selectFieldStyle}
+                                style={fieldStyle}
                               >
                                 {' '}
                                 <option value="">Select Team</option>{' '}
@@ -1291,8 +1271,6 @@ function AuditsListSupabase() {
                                     auditDate: e.target.value,
                                   }))
                                 }
-                                onClick={(e) => openNativeDatePicker(e.currentTarget)}
-                                onFocus={(e) => openNativeDatePicker(e.currentTarget)}
                                 style={fieldStyle}
                               />{' '}
                             </div>{' '}
@@ -1381,11 +1359,12 @@ function AuditsListSupabase() {
                                   style={{ color: '#cbd5e1', fontWeight: 700 }}
                                 >
                                   {' '}
+                                  {metric.name}{' '}
                                   {countsTowardScore(metric)
-                                    ? `${metric.name} (${metric.pass} pts)`
-                                    : metric.name}{' '}
+                                    ? `(${metric.pass} pts)`
+                                    : '(No score)'}{' '}
                                 </div>{' '}
-                                <div style={{ display: 'grid', gap: '8px', minWidth: '230px' }}>
+                                <div style={{ display: 'grid', gap: '8px' }}>
                                   <select
                                     value={getMetricStoredValue(metric, editScores)}
                                     onChange={(e) =>
@@ -1395,36 +1374,39 @@ function AuditsListSupabase() {
                                       )
                                     }
                                     disabled={LOCKED_NA_METRICS.has(metric.name)}
-                                    style={compactSelectFieldStyle}
+                                    style={compactFieldStyle}
                                   >
                                     {' '}
                                     {getMetricOptions(metric).map((option) => (
                                       <option
                                         key={option || '__empty__'}
                                         value={option}
-                                        style={selectOptionStyle}
                                       >
                                         {' '}
                                         {option || 'Select answer'}{' '}
                                       </option>
                                     ))}{' '}
                                   </select>{' '}
-                                  {countsTowardScore(metric) &&
-                                  shouldShowMetricComment(
+                                  {shouldShowMetricComment(
                                     getMetricStoredValue(metric, editScores)
                                   ) ? (
-                                    <textarea
-                                      value={editMetricComments[metric.name] || ''}
-                                      onChange={(e) =>
-                                        handleMetricCommentChange(
-                                          metric.name,
-                                          e.target.value
-                                        )
-                                      }
-                                      rows={2}
-                                      placeholder="Leave a short note explaining the result"
-                                      style={metricCommentFieldStyle}
-                                    />
+                                    <div style={compactCommentWrapStyle}>
+                                      <label style={compactCommentLabelStyle}>
+                                        QA Note for Agent
+                                      </label>
+                                      <textarea
+                                        value={editMetricComments[metric.name] || ''}
+                                        onChange={(e) =>
+                                          handleMetricCommentChange(
+                                            metric.name,
+                                            e.target.value
+                                          )
+                                        }
+                                        rows={2}
+                                        style={compactCommentFieldStyle}
+                                        placeholder="Leave a short note explaining the Borderline / Fail result"
+                                      />
+                                    </div>
                                   ) : null}
                                 </div>
                               </div>
@@ -1539,52 +1521,51 @@ function AuditsListSupabase() {
                             {(audit.score_details || []).map((detail) => (
                               <div
                                 key={`${audit.id}-${detail.metric}`}
-                                style={detailRowStyle}
+                                style={detailCardStyle}
                               >
-                                {' '}
-                                <div>
-                                  {' '}
-                                  <div
-                                    style={{
-                                      color: '#f8fafc',
-                                      fontWeight: 700,
-                                    }}
-                                  >
-                                    {' '}
-                                    {detail.metric}{' '}
-                                  </div>{' '}
-                                  <div
-                                    style={{
-                                      color: '#94a3b8',
-                                      fontSize: '12px',
-                                      marginTop: '4px',
-                                    }}
-                                  >
-                                    {' '}
-                                    {isNoScoreDetail(detail)
-                                      ? 'Administrative question'
-                                      : `Pass ${detail.pass} • Borderline ${detail.borderline} • Adjusted ${detail.adjustedWeight.toFixed(2)}`}{' '}
-                                  </div>{' '}
-                                  {detail.metric_comment ? (
-                                    <div style={metricNoteCardStyle}>
-                                      <div style={metricNoteLabelStyle}>QA Note</div>
-                                      <div style={metricNoteTextStyle}>
-                                        {detail.metric_comment}
-                                      </div>
+                                <div style={detailRowStyle}>
+                                  <div>
+                                    <div
+                                      style={{
+                                        color: '#f8fafc',
+                                        fontWeight: 700,
+                                      }}
+                                    >
+                                      {detail.metric}
                                     </div>
-                                  ) : null}
-                                </div>{' '}
-                                <span
-                                  style={{
-                                    ...pillStyle,
-                                    backgroundColor: getResultBadgeColor(
-                                      detail.result
-                                    ),
-                                  }}
-                                >
-                                  {' '}
-                                  {detail.result}{' '}
-                                </span>{' '}
+                                    <div
+                                      style={{
+                                        color: '#94a3b8',
+                                        fontSize: '12px',
+                                        marginTop: '4px',
+                                      }}
+                                    >
+                                      {isNoScoreDetail(detail)
+                                        ? 'Yes / No question'
+                                        : `Pass ${detail.pass} • Borderline ${detail.borderline} • Adjusted ${detail.adjustedWeight.toFixed(2)}`}
+                                    </div>
+                                  </div>
+                                  <span
+                                    style={{
+                                      ...pillStyle,
+                                      backgroundColor: getResultBadgeColor(
+                                        detail.result
+                                      ),
+                                    }}
+                                  >
+                                    {detail.result}
+                                  </span>
+                                </div>
+                                {detail.metric_comment ? (
+                                  <div style={detailMetricCommentCardStyle}>
+                                    <div style={detailMetricCommentLabelStyle}>
+                                      QA Note
+                                    </div>
+                                    <div style={detailMetricCommentTextStyle}>
+                                      {detail.metric_comment}
+                                    </div>
+                                  </div>
+                                ) : null}
                               </div>
                             ))}{' '}
                           </div>{' '}
@@ -1646,19 +1627,6 @@ const fieldStyle = {
   background: 'rgba(15,23,42,0.7)',
   color: '#e5eefb',
 };
-const selectFieldStyle = {
-  ...fieldStyle,
-  appearance: 'none' as const,
-  WebkitAppearance: 'none' as const,
-  MozAppearance: 'none' as const,
-  paddingRight: '44px',
-  backgroundImage:
-    'linear-gradient(45deg, transparent 50%, #cbd5e1 50%), linear-gradient(135deg, #cbd5e1 50%, transparent 50%)',
-  backgroundPosition: 'calc(100% - 22px) calc(50% - 3px), calc(100% - 16px) calc(50% - 3px)',
-  backgroundSize: '6px 6px, 6px 6px',
-  backgroundRepeat: 'no-repeat',
-  colorScheme: 'dark' as const,
-};
 const compactFieldStyle = {
   padding: '10px 12px',
   borderRadius: '12px',
@@ -1667,52 +1635,29 @@ const compactFieldStyle = {
   color: '#e5eefb',
   minWidth: '170px',
 };
-const compactSelectFieldStyle = {
-  ...compactFieldStyle,
-  appearance: 'none' as const,
-  WebkitAppearance: 'none' as const,
-  MozAppearance: 'none' as const,
-  paddingRight: '40px',
-  backgroundImage:
-    'linear-gradient(45deg, transparent 50%, #cbd5e1 50%), linear-gradient(135deg, #cbd5e1 50%, transparent 50%)',
-  backgroundPosition: 'calc(100% - 18px) calc(50% - 3px), calc(100% - 12px) calc(50% - 3px)',
-  backgroundSize: '6px 6px, 6px 6px',
-  backgroundRepeat: 'no-repeat',
-  colorScheme: 'dark' as const,
+
+const compactCommentWrapStyle = {
+  marginTop: '10px',
+  display: 'grid',
+  gap: '8px',
 };
-const selectOptionStyle = {
-  backgroundColor: '#0f172a',
-  color: '#e5eefb',
+
+const compactCommentLabelStyle = {
+  color: '#f8fafc',
+  fontSize: '11px',
+  fontWeight: 800,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase' as const,
 };
-const metricCommentFieldStyle = {
+
+const compactCommentFieldStyle = {
   width: '100%',
   padding: '10px 12px',
   borderRadius: '12px',
   border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.78)',
+  background: 'rgba(15,23,42,0.74)',
   color: '#e5eefb',
   resize: 'vertical' as const,
-};
-const metricNoteCardStyle = {
-  marginTop: '10px',
-  borderRadius: '12px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(15,23,42,0.52)',
-  padding: '10px 12px',
-};
-const metricNoteLabelStyle = {
-  color: '#93c5fd',
-  fontSize: '11px',
-  fontWeight: 800,
-  letterSpacing: '0.1em',
-  textTransform: 'uppercase' as const,
-  marginBottom: '6px',
-};
-const metricNoteTextStyle = {
-  color: '#e5eefb',
-  fontSize: '13px',
-  lineHeight: 1.55,
-  whiteSpace: 'pre-wrap' as const,
 };
 const secondaryButton = {
   padding: '12px 16px',
@@ -2030,5 +1975,36 @@ const detailRowStyle = {
   borderRadius: '14px',
   border: '1px solid rgba(148,163,184,0.12)',
   background: 'rgba(15,23,42,0.52)',
+};
+
+const detailCardStyle = {
+  borderRadius: '14px',
+  border: '1px solid rgba(148,163,184,0.12)',
+  background: 'rgba(15,23,42,0.52)',
+  padding: '12px 14px',
+};
+
+const detailMetricCommentCardStyle = {
+  marginTop: '10px',
+  borderRadius: '12px',
+  border: '1px solid rgba(148,163,184,0.12)',
+  background: 'rgba(2,6,23,0.24)',
+  padding: '12px 14px',
+};
+
+const detailMetricCommentLabelStyle = {
+  color: '#93c5fd',
+  fontSize: '11px',
+  fontWeight: 800,
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase' as const,
+  marginBottom: '8px',
+};
+
+const detailMetricCommentTextStyle = {
+  color: '#e5eefb',
+  fontSize: '14px',
+  lineHeight: 1.6,
+  whiteSpace: 'pre-wrap' as const,
 };
 export default AuditsListSupabase;
