@@ -163,13 +163,13 @@ const cardStyle = {
   borderRadius: '28px',
   border: '1px solid rgba(148,163,184,0.14)',
   background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.64) 100%)',
+    'linear-gradient(180deg, var(--da-field-bg, rgba(15,23,42,0.82)) 0%, var(--da-surface-bg, rgba(15,23,42,0.64)) 100%)',
   boxShadow: '0 22px 60px rgba(2,6,23,0.45)',
   backdropFilter: 'blur(18px)',
 };
 
 const eyebrowStyle = {
-  color: '#60a5fa',
+  color: 'var(--da-accent-text, #60a5fa)',
   fontSize: '12px',
   fontWeight: 800,
   letterSpacing: '0.18em',
@@ -182,13 +182,13 @@ const titleStyle = {
   marginBottom: '10px',
   fontSize: '36px',
   lineHeight: 1.05,
-  color: '#f8fafc',
+  color: 'var(--da-title, #f8fafc)',
 };
 
 const subtitleStyle = {
   marginTop: 0,
   marginBottom: '24px',
-  color: '#94a3b8',
+  color: 'var(--da-subtle-text, #94a3b8)',
 };
 
 const formStyle = {
@@ -200,7 +200,7 @@ const labelStyle = {
   display: 'block',
   marginBottom: '8px',
   fontSize: '13px',
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
   fontWeight: 700,
 };
 
@@ -208,9 +208,9 @@ const inputStyle = {
   width: '100%',
   padding: '14px 16px',
   borderRadius: '16px',
-  border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.7)',
-  color: '#e5eefb',
+  border: 'var(--da-panel-border, 1px solid rgba(148,163,184,0.16))',
+  background: 'var(--da-surface-bg, rgba(15,23,42,0.7))',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 
 const buttonStyle = {
@@ -227,9 +227,9 @@ const buttonStyle = {
 const secondaryButtonStyle = {
   padding: '14px 18px',
   borderRadius: '16px',
-  border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.72)',
-  color: '#e5eefb',
+  border: 'var(--da-panel-border, 1px solid rgba(148,163,184,0.16))',
+  background: 'var(--da-field-bg, rgba(15,23,42,0.72))',
+  color: 'var(--da-page-text, #e5eefb)',
   fontWeight: 700,
   cursor: 'pointer',
 };
@@ -239,7 +239,7 @@ const ghostButtonStyle = {
   borderRadius: '14px',
   border: '1px solid rgba(148,163,184,0.12)',
   background: 'transparent',
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
   fontWeight: 700,
   cursor: 'pointer',
 };
@@ -250,7 +250,7 @@ const errorBannerStyle = {
   borderRadius: '16px',
   backgroundColor: 'rgba(127,29,29,0.24)',
   border: '1px solid rgba(252,165,165,0.24)',
-  color: '#fecaca',
+  color: 'var(--da-error-text, #fecaca)',
   fontWeight: 700,
 };
 
@@ -260,7 +260,7 @@ const successBannerStyle = {
   borderRadius: '16px',
   backgroundColor: 'rgba(22,101,52,0.24)',
   border: '1px solid rgba(134,239,172,0.22)',
-  color: '#bbf7d0',
+  color: 'var(--da-success-text, #bbf7d0)',
   fontWeight: 700,
 };
 
