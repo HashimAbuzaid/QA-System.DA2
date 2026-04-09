@@ -7,6 +7,7 @@ type ScoreDetail = {
   borderline: number;
   adjustedWeight: number;
   earned: number;
+  counts_toward_score?: boolean;
 };
 type AuditItem = {
   id: string;
@@ -37,7 +38,12 @@ type AgentProfile = {
   team: 'Calls' | 'Tickets' | 'Sales' | null;
 };
 type CurrentProfile = { id: string; role: 'admin' | 'qa' | 'agent' | null };
-type Metric = { name: string; pass: number; borderline: number };
+type Metric = {
+  name: string;
+  pass: number;
+  borderline: number;
+  countsTowardScore?: boolean;
+};
 type EditFormState = {
   team: 'Calls' | 'Tickets' | 'Sales' | '';
   caseType: string;
@@ -49,6 +55,17 @@ type EditFormState = {
 };
 const LOCKED_NA_METRICS = new Set(['Active Listening']);
 const AUTO_FAIL_METRICS = new Set(['Hold (≤3 mins)', 'Procedure']);
+
+function countsTowardScore(metric: Metric) {
+  return metric.countsTowardScore !== false;
+}
+
+const NO_SCORE_CALLS_QUESTION: Metric = {
+  name: 'Additional QA Question',
+  pass: 0,
+  borderline: 0,
+  countsTowardScore: false,
+};
 const callsMetrics: Metric[] = [
   { name: 'Greeting', pass: 2, borderline: 1 },
   { name: 'Friendliness', pass: 5, borderline: 3 },
@@ -63,6 +80,7 @@ const callsMetrics: Metric[] = [
   { name: 'Refund Form', pass: 11, borderline: 5 },
   { name: 'Providing RL', pass: 5, borderline: 3 },
   { name: 'Ending', pass: 2, borderline: 1 },
+  NO_SCORE_CALLS_QUESTION,
 ];
 const ticketsMetrics: Metric[] = [
   { name: 'Greeting', pass: 5, borderline: 3 },
@@ -194,10 +212,10 @@ function AuditsListSupabase() {
     if (team === 'Sales') return salesMetrics;
     return [];
   }
-  function getMetricOptions(metricName: string) {
-    if (LOCKED_NA_METRICS.has(metricName)) return ['N/A'];
+  function getMetricOptions(metric: Metric) {
+    if (LOCKED_NA_METRICS.has(metric.name)) return ['N/A'];
     const options = ['N/A', 'Pass', 'Borderline', 'Fail'];
-    if (AUTO_FAIL_METRICS.has(metricName)) options.push('Auto-Fail');
+    if (AUTO_FAIL_METRICS.has(metric.name)) options.push('Auto-Fail');
     return options;
   }
   function createDefaultScores(team: EditFormState['team']) {
@@ -224,7 +242,8 @@ function AuditsListSupabase() {
     scores: Record<string, string>
   ) {
     const metrics = getMetricsForTeam(team);
-    const activeMetrics = metrics.filter((item) => {
+    const scoredMetrics = metrics.filter((item) => countsTowardScore(item));
+    const activeMetrics = scoredMetrics.filter((item) => {
       const itemResult = LOCKED_NA_METRICS.has(item.name)
         ? 'N/A'
         : scores[item.name] || 'N/A';
@@ -234,19 +253,20 @@ function AuditsListSupabase() {
       (sum, item) => sum + item.pass,
       0
     );
-    const fullTotalWeight = metrics.reduce((sum, item) => sum + item.pass, 0);
+    const fullTotalWeight = scoredMetrics.reduce((sum, item) => sum + item.pass, 0);
     const scoreDetails = metrics.map((metric) => {
       const result = LOCKED_NA_METRICS.has(metric.name)
         ? 'N/A'
         : scores[metric.name] || 'N/A';
+      const scored = countsTowardScore(metric);
       const adjustedWeight =
-        result === 'N/A' || activeTotalWeight === 0
+        !scored || result === 'N/A' || activeTotalWeight === 0
           ? 0
           : (metric.pass / activeTotalWeight) * fullTotalWeight;
       let earned = 0;
-      if (result === 'Pass') {
+      if (scored && result === 'Pass') {
         earned = adjustedWeight;
-      } else if (result === 'Borderline') {
+      } else if (scored && result === 'Borderline') {
         earned =
           metric.pass > 0
             ? adjustedWeight * (metric.borderline / metric.pass)
@@ -259,15 +279,21 @@ function AuditsListSupabase() {
         borderline: metric.borderline,
         adjustedWeight,
         earned,
+        counts_toward_score: scored,
       };
     });
     const hasAutoFail = scoreDetails.some(
       (item) =>
-        AUTO_FAIL_METRICS.has(item.metric) && item.result === 'Auto-Fail'
+        item.counts_toward_score !== false &&
+        AUTO_FAIL_METRICS.has(item.metric) &&
+        item.result === 'Auto-Fail'
     );
     const qualityScore = hasAutoFail
       ? '0.00'
-      : scoreDetails.reduce((sum, item) => sum + item.earned, 0).toFixed(2);
+      : scoreDetails
+          .filter((item) => item.counts_toward_score !== false)
+          .reduce((sum, item) => sum + item.earned, 0)
+          .toFixed(2);
     return { scoreDetails, qualityScore, hasAutoFail };
   }
   function getAgentLabel(profile: AgentProfile) {
@@ -1250,7 +1276,8 @@ function AuditsListSupabase() {
                                   style={{ color: '#cbd5e1', fontWeight: 700 }}
                                 >
                                   {' '}
-                                  {metric.name} ({metric.pass} pts){' '}
+                                  {metric.name}{' '}
+                                {countsTowardScore(metric) ? `(${metric.pass} pts)` : '(No score)'}{' '}
                                 </div>{' '}
                                 <select
                                   value={
@@ -1268,7 +1295,7 @@ function AuditsListSupabase() {
                                   style={compactFieldStyle}
                                 >
                                   {' '}
-                                  {getMetricOptions(metric.name).map(
+                                  {getMetricOptions(metric).map(
                                     (option) => (
                                       <option key={option} value={option}>
                                         {' '}
@@ -1411,9 +1438,10 @@ function AuditsListSupabase() {
                                     }}
                                   >
                                     {' '}
-                                    Pass {detail.pass} • Borderline{' '}
-                                    {detail.borderline} • Adjusted{' '}
-                                    {detail.adjustedWeight.toFixed(2)}{' '}
+                                    {detail.counts_toward_score === false ||
+                                    (detail.pass === 0 && detail.borderline === 0)
+                                      ? 'No score question'
+                                      : `Pass ${detail.pass} • Borderline ${detail.borderline} • Adjusted ${detail.adjustedWeight.toFixed(2)}`}{' '}
                                   </div>{' '}
                                 </div>{' '}
                                 <span
