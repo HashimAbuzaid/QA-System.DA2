@@ -25,8 +25,8 @@ type ScoreDetail = {
   borderline: number;
   adjustedWeight: number;
   earned: number;
-  counts_toward_score?: boolean;
   metric_comment?: string | null;
+  counts_toward_score?: boolean;
 };
 
 type AuditItem = {
@@ -124,7 +124,6 @@ type AgentPortalCachePayload = {
 };
 
 const AGENT_PORTAL_CACHE_TTL_MS = 1000 * 60 * 3;
-const HIDDEN_AGENT_METRICS = new Set(['Issue was resolved']);
 
 function AgentPortal({ currentUser }: AgentPortalProps) {
   const [audits, setAudits] = useState<AuditItem[]>([]);
@@ -143,9 +142,7 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const cacheKey = useMemo(() => {
-    return `agent-portal:${currentUser.id}:${
-      currentUser.agent_id || 'no-agent'
-    }:${currentUser.team || 'no-team'}`;
+    return `agent-portal:${currentUser.id}:${currentUser.agent_id || 'no-agent'}:${currentUser.team || 'no-team'}`;
   }, [currentUser.id, currentUser.agent_id, currentUser.team]);
 
   useEffect(() => {
@@ -308,11 +305,10 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
       setRefreshing(false);
     }
   }
+
   const filteredAudits = useMemo(() => {
     return audits.filter((audit) => {
-      const matchesFrom = auditDateFrom
-        ? audit.audit_date >= auditDateFrom
-        : true;
+      const matchesFrom = auditDateFrom ? audit.audit_date >= auditDateFrom : true;
       const matchesTo = auditDateTo ? audit.audit_date <= auditDateTo : true;
       return matchesFrom && matchesTo;
     });
@@ -398,6 +394,10 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
     setAuditDateTo('');
   }
 
+  function isNoScoreDetail(detail: ScoreDetail) {
+    return detail.counts_toward_score === false;
+  }
+
   const hasVisibleData =
     audits.length > 0 ||
     callsRecords.length > 0 ||
@@ -442,8 +442,7 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           Cache: {refreshing ? 'Refreshing in background' : 'Warm'}
         </div>
         <div style={filterPillStyle}>
-          Last Loaded:{' '}
-          {lastLoadedAt ? formatDate(lastLoadedAt) : 'Current session'}
+          Last Loaded: {lastLoadedAt ? formatDate(lastLoadedAt) : 'Current session'}
         </div>
       </div>
 
@@ -623,6 +622,7 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
 
               {filteredAudits.map((audit) => {
                 const isExpanded = expandedId === audit.id;
+
                 return (
                   <div key={audit.id} style={auditEntryStyle}>
                     <div style={auditRowStyle}>
@@ -660,14 +660,12 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
                           {getCommentsPreview(audit.comments)}
                         </div>
                       </div>
-                      
+
                       <div style={auditCellActionsStyle}>
                         <button
                           type="button"
                           onClick={() =>
-                            setExpandedId(
-                              expandedId === audit.id ? null : audit.id
-                            )
+                            setExpandedId(expandedId === audit.id ? null : audit.id)
                           }
                           style={miniSecondaryButton}
                         >
@@ -679,58 +677,94 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
                     {isExpanded ? (
                       <div style={auditExpandedRowStyle}>
                         <div style={expandedPanelStyle}>
-                          <div style={sectionEyebrow}>Score Details</div>
+                          <div style={sectionEyebrow}>Audit Details</div>
+
+                          <div style={detailInfoGridStyle}>
+                            <div style={detailInfoCardStyle}>
+                              <div style={detailLabelStyle}>Reference</div>
+                              <div style={detailValueStyle}>
+                                {getAuditReference(audit)}
+                              </div>
+                            </div>
+
+                            <div style={detailInfoCardStyle}>
+                              <div style={detailLabelStyle}>Release Date</div>
+                              <div style={detailValueStyle}>
+                                {formatDate(audit.shared_at)}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={fullCommentCardStyle}>
+                            <div style={detailLabelStyle}>Full Comment</div>
+                            <div style={fullCommentTextStyle}>
+                              {audit.comments?.trim() || '-'}
+                            </div>
+                          </div>
+
+                          <div style={{ ...sectionEyebrow, marginTop: '18px' }}>
+                            Score Details
+                          </div>
+
                           <div style={{ display: 'grid', gap: '10px' }}>
-                            {(audit.score_details || [])
-                              .filter(
-                                (detail) => !HIDDEN_AGENT_METRICS.has(detail.metric)
-                              )
-                              .map((detail) => (
+                            {(audit.score_details || []).map((detail) => {
+                              const metricComment =
+                                typeof detail.metric_comment === 'string'
+                                  ? detail.metric_comment.trim()
+                                  : '';
+
+                              return (
                                 <div
                                   key={`${audit.id}-${detail.metric}`}
-                                  style={detailRowStyle}
+                                  style={detailCardStyle}
                                 >
-                                  <div>
-                                    <div
-                                      style={{
-                                        color: '#f8fafc',
-                                        fontWeight: 700,
-                                      }}
-                                    >
-                                      {detail.metric}
-                                    </div>
-                                    <div
-                                      style={{
-                                        color: '#94a3b8',
-                                        fontSize: '12px',
-                                        marginTop: '4px',
-                                      }}
-                                    >
-                                      {detail.counts_toward_score === false
-                                        ? 'Administrative question'
-                                        : `Pass ${detail.pass} • Borderline ${detail.borderline} • Adjusted ${detail.adjustedWeight.toFixed(2)}`}
-                                    </div>
-                                    {detail.metric_comment ? (
-                                      <div style={metricNoteCardStyle}>
-                                        <div style={metricNoteLabelStyle}>QA Note</div>
-                                        <div style={metricNoteTextStyle}>
-                                          {detail.metric_comment}
-                                        </div>
+                                  <div style={detailRowStyle}>
+                                    <div>
+                                      <div
+                                        style={{
+                                          color: '#f8fafc',
+                                          fontWeight: 700,
+                                        }}
+                                      >
+                                        {detail.metric}
                                       </div>
-                                    ) : null}
+                                      <div
+                                        style={{
+                                          color: '#94a3b8',
+                                          fontSize: '12px',
+                                          marginTop: '4px',
+                                        }}
+                                      >
+                                        {isNoScoreDetail(detail)
+                                          ? 'No score question'
+                                          : `Pass ${detail.pass} • Borderline ${detail.borderline} • Adjusted ${detail.adjustedWeight.toFixed(2)}`}
+                                      </div>
+                                    </div>
+                                    <span
+                                      style={{
+                                        ...pillStyle,
+                                        backgroundColor: getResultBadgeColor(
+                                          detail.result
+                                        ),
+                                      }}
+                                    >
+                                      {detail.result}
+                                    </span>
                                   </div>
-                                  <span
-                                    style={{
-                                      ...pillStyle,
-                                      backgroundColor: getResultBadgeColor(
-                                        detail.result
-                                      ),
-                                    }}
-                                  >
-                                    {detail.result}
-                                  </span>
+
+                                  {metricComment ? (
+                                    <div style={metricCommentCardStyle}>
+                                      <div style={metricCommentLabelStyle}>
+                                        QA Note
+                                      </div>
+                                      <div style={metricCommentTextStyle}>
+                                        {metricComment}
+                                      </div>
+                                    </div>
+                                  ) : null}
                                 </div>
-                              ))}
+                              );
+                            })}
                           </div>
                         </div>
                       </div>
@@ -1074,38 +1108,87 @@ const expandedPanelStyle = {
   padding: '18px',
 };
 
+const detailInfoGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+  gap: '12px',
+  marginBottom: '18px',
+};
+
+const detailInfoCardStyle = {
+  borderRadius: '14px',
+  border: '1px solid rgba(148,163,184,0.12)',
+  background: 'rgba(15,23,42,0.52)',
+  padding: '14px 16px',
+};
+
+const detailLabelStyle = {
+  color: '#94a3b8',
+  fontSize: '12px',
+  fontWeight: 700,
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.08em',
+  marginBottom: '8px',
+};
+
+const detailValueStyle = {
+  color: '#f8fafc',
+  fontSize: '14px',
+  fontWeight: 700,
+  lineHeight: 1.5,
+};
+
+const fullCommentCardStyle = {
+  borderRadius: '14px',
+  border: '1px solid rgba(148,163,184,0.12)',
+  background: 'rgba(15,23,42,0.52)',
+  padding: '14px 16px',
+  marginBottom: '18px',
+};
+
+const fullCommentTextStyle = {
+  color: '#f8fafc',
+  fontSize: '14px',
+  lineHeight: 1.7,
+  whiteSpace: 'pre-wrap' as const,
+  wordBreak: 'break-word' as const,
+};
+
+const detailCardStyle = {
+  borderRadius: '14px',
+  border: '1px solid rgba(148,163,184,0.12)',
+  background: 'rgba(15,23,42,0.52)',
+  padding: '12px 14px',
+};
+
 const detailRowStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   gap: '12px',
   alignItems: 'center',
-  padding: '12px 14px',
-  borderRadius: '14px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(15,23,42,0.52)',
 };
 
-const metricNoteCardStyle = {
+const metricCommentCardStyle = {
   marginTop: '10px',
   borderRadius: '12px',
   border: '1px solid rgba(148,163,184,0.12)',
-  background: 'rgba(15,23,42,0.52)',
-  padding: '10px 12px',
+  background: 'rgba(2,6,23,0.24)',
+  padding: '12px 14px',
 };
 
-const metricNoteLabelStyle = {
+const metricCommentLabelStyle = {
   color: '#93c5fd',
   fontSize: '11px',
   fontWeight: 800,
-  letterSpacing: '0.1em',
   textTransform: 'uppercase' as const,
-  marginBottom: '6px',
+  letterSpacing: '0.14em',
+  marginBottom: '8px',
 };
 
-const metricNoteTextStyle = {
+const metricCommentTextStyle = {
   color: '#e5eefb',
-  fontSize: '13px',
-  lineHeight: 1.55,
+  fontSize: '14px',
+  lineHeight: 1.6,
   whiteSpace: 'pre-wrap' as const,
 };
 
