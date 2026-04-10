@@ -1287,7 +1287,8 @@ const sectionEyebrowStyle = {
 
 const sectionSubtitleStyle = {
   margin: 0,
-  color: '#94a3b8',
+  color: 'var(--da-subtle-text, #64748b)',
+  fontWeight: 500,
 };
 
 const fieldStyle = {
@@ -1436,14 +1437,16 @@ const panelStyle = {
 const panelTitleStyle = {
   marginTop: 0,
   marginBottom: '8px',
-  color: '#f8fafc',
+  color: 'var(--da-title, #0f172a)',
   fontSize: '18px',
+  fontWeight: 800,
 };
 
 const panelSubtitleStyle = {
   marginTop: 0,
-  color: '#94a3b8',
+  color: 'var(--da-subtle-text, #64748b)',
   fontSize: '14px',
+  fontWeight: 500,
 };
 
 const rankingListStyle = {
@@ -1459,8 +1462,8 @@ const rowCardStyle = {
   alignItems: 'center',
   padding: '14px 16px',
   borderRadius: '16px',
-  border: 'var(--da-row-border, 1px solid rgba(148, 163, 184, 0.12))',
-  background: 'var(--da-row-bg, rgba(15, 23, 42, 0.52))',
+  border: 'var(--da-row-border, 1px solid rgba(148, 163, 184, 0.16))',
+  background: 'var(--da-card-bg, rgba(255, 255, 255, 0.88))',
 };
 
 const rankBadgeStyle = {
@@ -1470,29 +1473,32 @@ const rankBadgeStyle = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: 'var(--da-rank-badge-bg, rgba(37, 99, 235, 0.22))',
-  color: 'var(--da-rank-badge-text, #bfdbfe)',
+  background: 'var(--da-rank-badge-bg, rgba(37, 99, 235, 0.14))',
+  color: 'var(--da-rank-badge-text, #2563eb)',
   fontWeight: 800,
   flexShrink: 0,
 };
 
 const rowTitleStyle = {
   fontWeight: 700,
-  color: 'var(--da-row-title, #f8fafc)',
+  color: 'var(--da-title, #0f172a)',
+  lineHeight: 1.45,
 };
 
 const rowSubtitleStyle = {
   fontSize: '12px',
-  color: 'var(--da-row-subtitle, #94a3b8)',
+  color: 'var(--da-subtle-text, #64748b)',
   marginTop: '4px',
+  fontWeight: 600,
 };
 
 const pillStyle = {
   padding: '8px 12px',
   borderRadius: '999px',
-  background: 'var(--da-pill-bg, linear-gradient(135deg, #0f4c81 0%, #2563eb 100%))',
-  color: 'var(--da-pill-text, #ffffff)',
-  fontWeight: 700,
+  background: 'var(--da-pill-bg, rgba(37, 99, 235, 0.14))',
+  color: 'var(--da-pill-text, #2563eb)',
+  border: '1px solid rgba(96, 165, 250, 0.28)',
+  fontWeight: 800,
   minWidth: '96px',
   textAlign: 'center' as const,
   flexShrink: 0,
@@ -1514,7 +1520,7 @@ const insightCardStyle = {
 };
 
 const insightTitleStyle = {
-  color: 'var(--da-insight-title, #93c5fd)',
+  color: 'var(--da-accent-text, #2563eb)',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -1523,15 +1529,15 @@ const insightTitleStyle = {
 };
 
 const insightHeadlineStyle = {
-  color: 'var(--da-card-value, #f8fafc)',
+  color: 'var(--da-title, #0f172a)',
   fontSize: '20px',
   fontWeight: 800,
   marginBottom: '10px',
 };
 
 const insightBodyStyle = {
-  color: 'var(--da-insight-body, #cbd5e1)',
-  lineHeight: 1.5,
+  color: 'var(--da-page-text, #334155)',
+  lineHeight: 1.6,
 };
 
 const emptyStateStyle = {
@@ -1539,9 +1545,10 @@ const emptyStateStyle = {
   padding: '18px',
   borderRadius: '16px',
   border: 'var(--da-empty-border, 1px dashed rgba(148, 163, 184, 0.24))',
-  backgroundColor: 'var(--da-empty-bg, rgba(15, 23, 42, 0.52))',
-  color: 'var(--da-empty-text, #94a3b8)',
+  backgroundColor: 'var(--da-card-bg, rgba(255, 255, 255, 0.88))',
+  color: 'var(--da-subtle-text, #64748b)',
   textAlign: 'center' as const,
+  fontWeight: 500,
 };
 
 function formatDateTime(value?: string | null) {
