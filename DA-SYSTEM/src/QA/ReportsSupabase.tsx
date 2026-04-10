@@ -374,7 +374,11 @@ function ReportsSupabase() {
         item.agent_name,
         'Calls'
       );
-      return matchesTeam && matchesAgent && matchesDateRange(item.call_date, item.date_to || null);
+      return (
+        matchesTeam &&
+        matchesAgent &&
+        matchesDateRange(item.call_date, item.date_to || null)
+      );
     });
   }, [callsRecords, teamFilter, dateFrom, dateTo, selectedAgentProfileId]);
 
@@ -386,7 +390,11 @@ function ReportsSupabase() {
         item.agent_name,
         'Tickets'
       );
-      return matchesTeam && matchesAgent && matchesDateRange(item.ticket_date, item.date_to || null);
+      return (
+        matchesTeam &&
+        matchesAgent &&
+        matchesDateRange(item.ticket_date, item.date_to || null)
+      );
     });
   }, [ticketsRecords, teamFilter, dateFrom, dateTo, selectedAgentProfileId]);
 
@@ -398,7 +406,11 @@ function ReportsSupabase() {
         item.agent_name,
         'Sales'
       );
-      return matchesTeam && matchesAgent && matchesDateRange(item.sale_date, item.date_to || null);
+      return (
+        matchesTeam &&
+        matchesAgent &&
+        matchesDateRange(item.sale_date, item.date_to || null)
+      );
     });
   }, [salesRecords, teamFilter, dateFrom, dateTo, selectedAgentProfileId]);
 
