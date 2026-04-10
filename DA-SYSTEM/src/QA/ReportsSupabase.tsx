@@ -118,7 +118,7 @@ function getThemeVars(): Record<string, string> {
     '--screen-field-text': isLight ? '#334155' : '#e5eefb',
     '--screen-border': isLight ? 'rgba(203,213,225,0.92)' : 'rgba(148,163,184,0.14)',
     '--screen-border-strong': isLight ? 'rgba(203,213,225,1)' : 'rgba(148,163,184,0.18)',
-    '--screen-table-head-bg': isLight ? 'rgba(13, 27, 57, 0.98)' : 'rgba(2,6,23,0.92)',
+    '--screen-table-head-bg': isLight ? 'rgba(13,27,57,0.98)' : 'rgba(2,6,23,0.92)',
     '--screen-secondary-btn-bg': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.78)',
     '--screen-secondary-btn-text': isLight ? '#475569' : '#e5eefb',
     '--screen-shadow': isLight ? '0 18px 40px rgba(15,23,42,0.10)' : '0 18px 40px rgba(2,6,23,0.35)',
@@ -483,31 +483,51 @@ function ReportsSupabase() {
 
   function getRequestPriorityBadgeStyle(priority?: string | null) {
     const normalized = String(priority || '').toLowerCase();
-    if (normalized === 'urgent') return { ...statusPillStyle, backgroundColor: '#991b1b', color: '#ffffff' };
-    if (normalized === 'high') return { ...statusPillStyle, backgroundColor: '#b91c1c', color: '#ffffff' };
-    if (normalized === 'medium') return { ...statusPillStyle, backgroundColor: '#b45309', color: '#ffffff' };
+    if (normalized === 'urgent') {
+      return { ...statusPillStyle, backgroundColor: '#991b1b', color: '#ffffff' };
+    }
+    if (normalized === 'high') {
+      return { ...statusPillStyle, backgroundColor: '#b91c1c', color: '#ffffff' };
+    }
+    if (normalized === 'medium') {
+      return { ...statusPillStyle, backgroundColor: '#b45309', color: '#ffffff' };
+    }
     return { ...statusPillStyle, backgroundColor: '#475569', color: '#ffffff' };
   }
 
   function getRequestStatusBadgeStyle(status?: string | null) {
     const normalized = String(status || '').toLowerCase();
-    if (normalized === 'closed') return { ...statusPillStyle, backgroundColor: '#166534', color: '#ffffff' };
-    if (normalized === 'under review') return { ...statusPillStyle, backgroundColor: '#1d4ed8', color: '#ffffff' };
+    if (normalized === 'closed') {
+      return { ...statusPillStyle, backgroundColor: '#166534', color: '#ffffff' };
+    }
+    if (normalized === 'under review') {
+      return { ...statusPillStyle, backgroundColor: '#1d4ed8', color: '#ffffff' };
+    }
     return { ...statusPillStyle, backgroundColor: '#475569', color: '#ffffff' };
   }
 
   function getFeedbackTypeBadgeStyle(feedbackType?: string | null) {
     const normalized = String(feedbackType || '').toLowerCase();
-    if (normalized === 'warning') return { ...statusPillStyle, backgroundColor: '#991b1b', color: '#ffffff' };
-    if (normalized === 'audit feedback') return { ...statusPillStyle, backgroundColor: '#7c3aed', color: '#ffffff' };
-    if (normalized === 'follow-up') return { ...statusPillStyle, backgroundColor: '#b45309', color: '#ffffff' };
+    if (normalized === 'warning') {
+      return { ...statusPillStyle, backgroundColor: '#991b1b', color: '#ffffff' };
+    }
+    if (normalized === 'audit feedback') {
+      return { ...statusPillStyle, backgroundColor: '#7c3aed', color: '#ffffff' };
+    }
+    if (normalized === 'follow-up') {
+      return { ...statusPillStyle, backgroundColor: '#b45309', color: '#ffffff' };
+    }
     return { ...statusPillStyle, backgroundColor: '#166534', color: '#ffffff' };
   }
 
   function getFeedbackStatusBadgeStyle(status?: string | null) {
     const normalized = String(status || '').toLowerCase();
-    if (normalized === 'closed') return { ...statusPillStyle, backgroundColor: '#166534', color: '#ffffff' };
-    if (normalized === 'in progress') return { ...statusPillStyle, backgroundColor: '#1d4ed8', color: '#ffffff' };
+    if (normalized === 'closed') {
+      return { ...statusPillStyle, backgroundColor: '#166534', color: '#ffffff' };
+    }
+    if (normalized === 'in progress') {
+      return { ...statusPillStyle, backgroundColor: '#1d4ed8', color: '#ffffff' };
+    }
     return { ...statusPillStyle, backgroundColor: '#475569', color: '#ffffff' };
   }
 
@@ -752,7 +772,7 @@ function ReportsSupabase() {
                 onClick={() => setIsAgentPickerOpen((prev) => !prev)}
                 style={pickerButtonStyle}
               >
-                <span style={{ color: selectedAgent ? '#e5eefb' : '#94a3b8' }}>
+                <span style={{ color: selectedAgent ? 'var(--screen-field-text)' : 'var(--screen-muted)' }}>
                   {selectedAgent
                     ? getAgentLabel(selectedAgent)
                     : 'Select agent'}
@@ -965,8 +985,6 @@ function ReportsSupabase() {
                 <div style={activityCellCaseStyle}>Case Type</div>
                 <div style={activityCellReferenceStyle}>Reference</div>
                 <div style={activityCellQualityStyle}>Quality</div>
-                <div style={activityCellReleaseStyle}>Release</div>
-                <div style={activityCellCommentsStyle}>Comments</div>
               </div>
 
               {filteredAudits.slice(0, 10).map((item) => (
@@ -998,17 +1016,6 @@ function ReportsSupabase() {
 
                     <div style={activityCellQualityStyle}>
                       <span style={scorePillStyle}>{Number(item.quality_score).toFixed(2)}%</span>
-                    </div>
-
-                    <div style={activityCellReleaseStyle}>
-                      <span style={getShareBadgeStyle(item.shared_with_agent)}>
-                        {item.shared_with_agent ? 'Shared' : 'Hidden'}
-                      </span>
-                      <div style={secondaryCellTextStyle}>{item.shared_at || '-'}</div>
-                    </div>
-
-                    <div style={activityCellCommentsStyle}>
-                      <div style={primaryCellTextStyle}>{item.comments || '-'}</div>
                     </div>
                   </div>
                 </div>
@@ -1360,7 +1367,7 @@ const activityTableWrapStyle = {
 };
 
 const auditsTableStyle = {
-  minWidth: '1520px',
+  minWidth: '1180px',
 };
 
 const requestsTableStyle = {
@@ -1390,7 +1397,7 @@ const activityHeaderRowStyle = {
 const auditsRowStyle = {
   display: 'grid',
   gridTemplateColumns:
-    '220px 130px 170px minmax(240px,1.35fr) 110px 180px minmax(260px,1.4fr)',
+    '220px 130px 170px minmax(260px,1.45fr) 110px',
   gap: '14px',
   alignItems: 'center',
   padding: '14px 16px',
@@ -1456,8 +1463,6 @@ const activityCellDateStyle = {};
 const activityCellCaseStyle = {};
 const activityCellReferenceStyle = {};
 const activityCellQualityStyle = {};
-const activityCellReleaseStyle = {};
-const activityCellCommentsStyle = {};
 const activityCellTeamStyle = {};
 const activityCellPriorityStyle = {};
 const activityCellTypeStyle = {};
