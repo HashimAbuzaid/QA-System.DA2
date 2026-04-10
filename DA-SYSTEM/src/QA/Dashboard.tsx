@@ -117,10 +117,10 @@ function getMonthRange(monthValue: string) {
   const start = new Date(year, (month || 1) - 1, 1);
   const end = new Date(year, month || 1, 0);
 
-  const startDate = start.toISOString().slice(0, 10);
-  const endDate = end.toISOString().slice(0, 10);
-
-  return { startDate, endDate };
+  return {
+    startDate: start.toISOString().slice(0, 10),
+    endDate: end.toISOString().slice(0, 10),
+  };
 }
 
 function matchesDateRange(
@@ -271,8 +271,7 @@ function Dashboard() {
     const normalizedName = normalizeAgentName(agentName);
 
     const matchedProfile = profiles.find((profile) => {
-      const profileTeamMatches = profile.team === (team || null);
-      if (!profileTeamMatches) return false;
+      if (profile.team !== (team || null)) return false;
 
       const profileId = normalizeAgentId(profile.agent_id);
       const profileName = normalizeAgentName(profile.agent_name);
