@@ -43,7 +43,6 @@ function AgentFeedbackSupabase() {
   >('Coaching');
   const [subject, setSubject] = useState('');
   const [feedbackNote, setFeedbackNote] = useState('');
-  const [actionPlan, setActionPlan] = useState('');
   const [dueDate, setDueDate] = useState('');
 
   const agentPickerRef = useRef<HTMLDivElement | null>(null);
@@ -149,7 +148,6 @@ function AgentFeedbackSupabase() {
     setFeedbackType('Coaching');
     setSubject('');
     setFeedbackNote('');
-    setActionPlan('');
     setDueDate('');
   }
 
@@ -173,7 +171,6 @@ function AgentFeedbackSupabase() {
       feedback_type: feedbackType,
       subject,
       feedback_note: feedbackNote,
-      action_plan: actionPlan || null,
       due_date: dueDate || null,
       status: 'Open',
     });
@@ -408,17 +405,6 @@ function AgentFeedbackSupabase() {
           </div>
 
           <div>
-            <label style={labelStyle}>Action Plan</label>
-            <textarea
-              value={actionPlan}
-              onChange={(e) => setActionPlan(e.target.value)}
-              rows={4}
-              style={fieldStyle}
-              placeholder="Optional action plan"
-            />
-          </div>
-
-          <div>
             <label style={labelStyle}>Due Date</label>
             <input
               type="date"
@@ -486,9 +472,6 @@ function AgentFeedbackSupabase() {
                   </p>
                   <p>
                     <strong>Feedback:</strong> {item.feedback_note}
-                  </p>
-                  <p>
-                    <strong>Action Plan:</strong> {item.action_plan || '-'}
                   </p>
                   <p>
                     <strong>Due Date:</strong> {item.due_date || '-'}
