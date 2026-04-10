@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 
 type AuditItem = {
@@ -79,6 +79,61 @@ type AgentFeedback = {
   due_date?: string | null;
 };
 
+
+function openNativeDatePicker(target: HTMLInputElement) {
+  const input = target as HTMLInputElement & { showPicker?: () => void };
+  input.showPicker?.();
+}
+
+function getThemeVars(): Record<string, string> {
+  const themeMode =
+    typeof document !== 'undefined'
+      ? (
+          document.body.dataset.theme ||
+          document.documentElement.dataset.theme ||
+          window.localStorage.getItem('detroit-axle-theme-mode') ||
+          window.sessionStorage.getItem('detroit-axle-theme-mode') ||
+          window.localStorage.getItem('detroit-axle-theme') ||
+          window.sessionStorage.getItem('detroit-axle-theme') ||
+          ''
+        ).toLowerCase()
+      : '';
+
+  const isLight = themeMode === 'light' || themeMode === 'white';
+
+  return {
+    '--screen-text': isLight ? '#334155' : '#e5eefb',
+    '--screen-heading': isLight ? '#0f172a' : '#f8fafc',
+    '--screen-muted': isLight ? '#7c8ca8' : '#94a3b8',
+    '--screen-subtle': isLight ? '#64748b' : '#64748b',
+    '--screen-accent': isLight ? '#2563eb' : '#60a5fa',
+    '--screen-panel-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(247,250,255,0.97) 100%)'
+      : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    '--screen-card-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(248,250,255,0.98) 100%)'
+      : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    '--screen-card-soft-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,255,0.97) 100%)'
+      : 'rgba(15,23,42,0.52)',
+    '--screen-field-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(250,252,255,0.99) 100%)'
+      : 'rgba(15,23,42,0.7)',
+    '--screen-field-text': isLight ? '#334155' : '#e5eefb',
+    '--screen-border': isLight ? 'rgba(203,213,225,0.92)' : 'rgba(148,163,184,0.14)',
+    '--screen-border-strong': isLight ? 'rgba(191, 211, 237, 0.95)' : 'rgba(148,163,184,0.18)',
+    '--screen-table-head-bg': isLight ? 'rgba(13, 27, 57, 0.98)' : 'rgba(2,6,23,0.92)',
+    '--screen-pill-bg': isLight ? 'rgba(248,250,252,0.98)' : 'rgba(15,23,42,0.56)',
+    '--screen-secondary-btn-bg': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.78)',
+    '--screen-secondary-btn-text': isLight ? '#475569' : '#e5eefb',
+    '--screen-menu-bg': isLight ? 'rgba(255,255,255,0.99)' : 'rgba(15,23,42,0.96)',
+    '--screen-shadow': isLight ? '0 18px 40px rgba(15,23,42,0.10)' : '0 18px 40px rgba(2,6,23,0.35)',
+    '--screen-score-pill-bg': isLight ? 'rgba(37,99,235,0.10)' : 'rgba(37,99,235,0.18)',
+    '--screen-score-pill-border': isLight ? 'rgba(59,130,246,0.34)' : 'rgba(96,165,250,0.26)',
+    '--screen-score-pill-text': isLight ? '#1d4ed8' : '#dbeafe',
+  };
+}
+
 function ReportsSupabase() {
   const [audits, setAudits] = useState<AuditItem[]>([]);
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
@@ -99,6 +154,7 @@ function ReportsSupabase() {
   const [isAgentPickerOpen, setIsAgentPickerOpen] = useState(false);
 
   const agentPickerRef = useRef<HTMLDivElement | null>(null);
+  const themeVars = getThemeVars();
 
   useEffect(() => {
     void loadReportsData();
@@ -191,6 +247,29 @@ function ReportsSupabase() {
     return profile.display_name
       ? `${profile.agent_name} - ${profile.display_name}`
       : `${profile.agent_name} - ${profile.agent_id}`;
+  }
+
+  function formatDateOnly(value?: string | null) {
+    if (!value) return '-';
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString();
+  }
+
+  function getAuditReference(item: AuditItem) {
+    if (item.team === 'Tickets') {
+      return `Ticket ID: ${item.ticket_id || '-'}`;
+    }
+
+    return `Order #: ${item.order_number || '-'} | Phone: ${item.phone_number || '-'}`;
+  }
+
+  function getShareBadgeStyle(shared?: boolean) {
+    return {
+      ...statusPillStyle,
+      backgroundColor: shared ? '#166534' : '#475569',
+      color: '#ffffff',
+    };
   }
 
   function normalizeAgentId(value?: string | null) {
@@ -619,16 +698,16 @@ function ReportsSupabase() {
   }
 
   if (loading) {
-    return <div style={{ color: '#e5eefb' }}>Loading reports...</div>;
+    return <div style={{ color: 'var(--screen-text)', ...(themeVars as CSSProperties) }}>Loading reports...</div>;
   }
 
   return (
-    <div style={{ color: '#e5eefb' }}>
+    <div data-no-theme-invert="true" style={{ color: 'var(--screen-text)', ...(themeVars as CSSProperties) }}>
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Reporting</div>
-          <h2 style={{ margin: 0 }}>Reports</h2>
-          <p style={{ margin: '10px 0 0 0', color: '#94a3b8' }}>
+          <h2 style={{ margin: 0, color: 'var(--screen-heading)' }}>Reports</h2>
+          <p style={{ margin: '10px 0 0 0', color: 'var(--screen-muted)' }}>
             Filter by date, team, and agent to build detailed performance
             reports.
           </p>
@@ -643,6 +722,8 @@ function ReportsSupabase() {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
+              onClick={(e) => openNativeDatePicker(e.currentTarget)}
+              onFocus={(e) => openNativeDatePicker(e.currentTarget)}
               style={fieldStyle}
             />
           </div>
@@ -653,6 +734,8 @@ function ReportsSupabase() {
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
+              onClick={(e) => openNativeDatePicker(e.currentTarget)}
+              onFocus={(e) => openNativeDatePicker(e.currentTarget)}
               style={fieldStyle}
             />
           </div>
@@ -682,7 +765,7 @@ function ReportsSupabase() {
                 onClick={() => setIsAgentPickerOpen((prev) => !prev)}
                 style={pickerButtonStyle}
               >
-                <span style={{ color: selectedAgent ? '#e5eefb' : '#94a3b8' }}>
+                <span style={{ color: selectedAgent ? 'var(--screen-heading)' : 'var(--screen-muted)' }}>
                   {selectedAgent
                     ? getAgentLabel(selectedAgent)
                     : 'Select agent'}
@@ -883,54 +966,60 @@ function ReportsSupabase() {
         </Section>
       )}
 
+
       <Section title="Recent Audits">
         {filteredAudits.length === 0 ? (
           <p>No audits in this range.</p>
         ) : (
-          <div style={{ display: 'grid', gap: '12px' }}>
-            {filteredAudits.slice(0, 10).map((item) => (
-              <div key={item.id} style={contentCardStyle}>
-                <p>
-                  <strong>Agent:</strong> {item.agent_name}
-                </p>
-                <p>
-                  <strong>Display Name:</strong>{' '}
-                  {getDisplayName(item.agent_id, item.agent_name, item.team) ||
-                    '-'}
-                </p>
-                <p>
-                  <strong>Team:</strong> {item.team}
-                </p>
-                <p>
-                  <strong>Case Type:</strong> {item.case_type}
-                </p>
-                <p>
-                  <strong>Date:</strong> {item.audit_date}
-                </p>
-
-                {(item.team === 'Calls' || item.team === 'Sales') && (
-                  <>
-                    <p>
-                      <strong>Order Number:</strong> {item.order_number || '-'}
-                    </p>
-                    <p>
-                      <strong>Phone Number:</strong> {item.phone_number || '-'}
-                    </p>
-                  </>
-                )}
-
-                {item.team === 'Tickets' && (
-                  <p>
-                    <strong>Ticket ID:</strong> {item.ticket_id || '-'}
-                  </p>
-                )}
-
-                <p>
-                  <strong>Quality:</strong>{' '}
-                  {Number(item.quality_score).toFixed(2)}%
-                </p>
+          <div style={auditTableWrapStyle}>
+            <div style={auditTableStyle}>
+              <div style={{ ...auditRowStyle, ...auditHeaderRowStyle }}>
+                <div style={auditCellAgentStyle}>Agent</div>
+                <div style={auditCellDateStyle}>Audit Date</div>
+                <div style={auditCellCaseStyle}>Case Type</div>
+                <div style={auditCellReferenceStyle}>Reference</div>
+                <div style={auditCellScoreStyle}>Quality</div>
+                <div style={auditCellReleaseStyle}>Release</div>
+                <div style={auditCellCommentsStyle}>Comments</div>
               </div>
-            ))}
+
+              {filteredAudits.slice(0, 10).map((item) => (
+                <div key={item.id} style={auditEntryStyle}>
+                  <div style={auditRowStyle}>
+                    <div style={auditCellAgentStyle}>
+                      <div style={primaryCellTextStyle}>{item.agent_name}</div>
+                      <div style={secondaryCellTextStyle}>
+                        {getDisplayName(item.agent_id, item.agent_name, item.team) || '-'} • {item.agent_id} • {item.team}
+                      </div>
+                    </div>
+
+                    <div style={auditCellDateStyle}>
+                      <div style={primaryCellTextStyle}>{formatDateOnly(item.audit_date)}</div>
+                    </div>
+
+                    <div style={auditCellCaseStyle}>
+                      <div style={primaryCellTextStyle}>{item.case_type}</div>
+                    </div>
+
+                    <div style={auditCellReferenceStyle}>
+                      <div style={primaryCellTextStyle}>{getAuditReference(item)}</div>
+                    </div>
+
+                    <div style={auditCellScoreStyle}>
+                      <span style={scorePillStyle}>{Number(item.quality_score).toFixed(2)}%</span>
+                    </div>
+
+                    <div style={auditCellReleaseStyle}>
+                      <span style={getShareBadgeStyle(item.shared_with_agent)}>{item.shared_with_agent ? 'Shared' : 'Hidden'}</span>
+                    </div>
+
+                    <div style={auditCellCommentsStyle}>
+                      <div style={primaryCellTextStyle}>{item.comments?.trim() || '-'}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </Section>
@@ -1046,12 +1135,12 @@ const sectionEyebrow = {
 };
 
 const filterPanelStyle = {
-  background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
-  border: '1px solid rgba(148,163,184,0.14)',
+  background: 'var(--screen-panel-bg)',
+  border: '1px solid var(--screen-border)',
   borderRadius: '20px',
   padding: '20px',
   marginBottom: '22px',
+  boxShadow: 'var(--screen-shadow)',
 };
 
 const filterGridStyle = {
@@ -1063,7 +1152,7 @@ const filterGridStyle = {
 const labelStyle = {
   display: 'block',
   marginBottom: '8px',
-  color: '#cbd5e1',
+  color: 'var(--screen-heading)',
   fontWeight: 700,
   fontSize: '13px',
 };
@@ -1072,23 +1161,23 @@ const fieldStyle = {
   width: '100%',
   padding: '12px 14px',
   borderRadius: '12px',
-  border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.7)',
-  color: '#e5eefb',
+  border: '1px solid var(--screen-border-strong)',
+  background: 'var(--screen-field-bg)',
+  color: 'var(--screen-field-text)',
 };
 
 const pickerButtonStyle = {
   width: '100%',
   padding: '12px 14px',
   borderRadius: '12px',
-  border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.7)',
+  border: '1px solid var(--screen-border-strong)',
+  background: 'var(--screen-field-bg)',
   textAlign: 'left' as const,
   cursor: 'pointer',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  color: '#e5eefb',
+  color: 'var(--screen-field-text)',
 };
 
 const pickerMenuStyle = {
@@ -1096,10 +1185,10 @@ const pickerMenuStyle = {
   top: 'calc(100% + 8px)',
   left: 0,
   right: 0,
-  background: 'rgba(15,23,42,0.96)',
-  border: '1px solid rgba(148,163,184,0.16)',
+  background: 'var(--screen-menu-bg)',
+  border: '1px solid var(--screen-border-strong)',
   borderRadius: '16px',
-  boxShadow: '0 10px 30px rgba(0,0,0,0.22)',
+  boxShadow: 'var(--screen-shadow)',
   zIndex: 20,
   overflow: 'hidden',
 };
@@ -1115,19 +1204,19 @@ const pickerListStyle = {
 const pickerInfoStyle = {
   padding: '12px',
   borderRadius: '8px',
-  backgroundColor: 'rgba(15,23,42,0.68)',
-  color: '#94a3b8',
+  backgroundColor: 'var(--screen-card-soft-bg)',
+  color: 'var(--screen-muted)',
 };
 
 const pickerOptionStyle = {
   padding: '12px',
   borderRadius: '8px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  backgroundColor: 'rgba(15,23,42,0.6)',
+  border: '1px solid var(--screen-border)',
+  backgroundColor: 'var(--screen-card-soft-bg)',
   textAlign: 'left' as const,
   cursor: 'pointer',
   fontWeight: 500,
-  color: '#e5eefb',
+  color: 'var(--screen-text)',
 };
 
 const pickerOptionActiveStyle = {
@@ -1161,9 +1250,9 @@ const primaryButton = {
 
 const secondaryButton = {
   padding: '10px 14px',
-  backgroundColor: 'rgba(15,23,42,0.9)',
-  color: 'white',
-  border: '1px solid rgba(148,163,184,0.16)',
+  backgroundColor: 'var(--screen-secondary-btn-bg)',
+  color: 'var(--screen-secondary-btn-text)',
+  border: '1px solid var(--screen-border-strong)',
   borderRadius: '10px',
   cursor: 'pointer',
   fontWeight: 700,
@@ -1178,27 +1267,27 @@ const summaryGridStyle = {
 };
 
 const summaryCardStyle = {
-  background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
-  border: '1px solid rgba(148,163,184,0.14)',
+  background: 'var(--screen-card-bg)',
+  border: '1px solid var(--screen-border)',
   borderRadius: '16px',
   padding: '20px',
+  boxShadow: 'var(--screen-shadow)',
 };
 
 const summaryCardTitleStyle = {
   fontSize: '14px',
-  color: '#94a3b8',
+  color: 'var(--screen-muted)',
   marginBottom: '8px',
 };
 
 const summaryCardValueStyle = {
   fontSize: '28px',
   fontWeight: 800,
-  color: '#f8fafc',
+  color: 'var(--screen-heading)',
 };
 
 const sectionTitleStyle = {
-  color: '#f8fafc',
+  color: 'var(--screen-heading)',
   marginBottom: '14px',
 };
 
@@ -1210,16 +1299,16 @@ const detailGridStyle = {
 };
 
 const detailCardStyle = {
-  background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
-  border: '1px solid rgba(148,163,184,0.14)',
+  background: 'var(--screen-card-bg)',
+  border: '1px solid var(--screen-border)',
   borderRadius: '16px',
   padding: '18px',
-  color: '#e5eefb',
+  color: 'var(--screen-text)',
+  boxShadow: 'var(--screen-shadow)',
 };
 
 const detailLabelStyle = {
-  color: '#93c5fd',
+  color: 'var(--screen-accent)',
   fontSize: '12px',
   fontWeight: 800,
   letterSpacing: '0.12em',
@@ -1228,12 +1317,99 @@ const detailLabelStyle = {
 };
 
 const contentCardStyle = {
-  background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
-  border: '1px solid rgba(148,163,184,0.14)',
+  background: 'var(--screen-card-bg)',
+  border: '1px solid var(--screen-border)',
   borderRadius: '16px',
   padding: '18px',
-  color: '#e5eefb',
+  color: 'var(--screen-text)',
+  boxShadow: 'var(--screen-shadow)',
+};
+
+
+const auditTableWrapStyle = {
+  marginTop: '16px',
+  overflowX: 'auto' as const,
+  borderRadius: '20px',
+  border: '1px solid var(--screen-border)',
+  background: 'var(--screen-card-bg)',
+  boxShadow: 'var(--screen-shadow)',
+};
+
+const auditTableStyle = {
+  minWidth: '1380px',
+};
+
+const auditEntryStyle = {
+  borderBottom: '1px solid var(--screen-border)',
+};
+
+const auditRowStyle = {
+  display: 'grid',
+  gridTemplateColumns:
+    '220px 130px 170px minmax(260px,1.4fr) 120px 170px minmax(280px,1.8fr)',
+  gap: '14px',
+  alignItems: 'center',
+  padding: '14px 16px',
+};
+
+const auditHeaderRowStyle = {
+  position: 'sticky' as const,
+  top: 0,
+  zIndex: 1,
+  background: 'var(--screen-table-head-bg)',
+  color: '#93c5fd',
+  fontSize: '12px',
+  fontWeight: 800,
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.12em',
+};
+
+const auditCellAgentStyle = {};
+const auditCellDateStyle = {};
+const auditCellCaseStyle = {};
+const auditCellReferenceStyle = {};
+const auditCellScoreStyle = {};
+const auditCellReleaseStyle = {};
+const auditCellCommentsStyle = {};
+
+const primaryCellTextStyle = {
+  color: 'var(--screen-heading)',
+  fontSize: '14px',
+  fontWeight: 600,
+  lineHeight: 1.45,
+};
+
+const secondaryCellTextStyle = {
+  marginTop: '4px',
+  color: 'var(--screen-subtle)',
+  fontSize: '12px',
+  fontWeight: 600,
+  lineHeight: 1.4,
+};
+
+const scorePillStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: '84px',
+  padding: '8px 10px',
+  borderRadius: '999px',
+  background: 'var(--screen-score-pill-bg)',
+  border: '1px solid var(--screen-score-pill-border)',
+  color: 'var(--screen-score-pill-text)',
+  fontSize: '13px',
+  fontWeight: 800,
+};
+
+const statusPillStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: '64px',
+  padding: '8px 10px',
+  borderRadius: '999px',
+  fontSize: '12px',
+  fontWeight: 800,
 };
 
 export default ReportsSupabase;
