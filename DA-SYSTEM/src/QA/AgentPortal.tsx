@@ -85,10 +85,12 @@ type AgentFeedback = {
   feedback_type: 'Coaching' | 'Audit Feedback' | 'Warning' | 'Follow-up';
   subject: string;
   feedback_note: string;
-  action_plan: string | null;
+  action_plan?: string | null;
   due_date: string | null;
   status: 'Open' | 'In Progress' | 'Closed';
   created_at: string;
+  acknowledged_by_agent?: boolean;
+  acknowledged_at?: string | null;
 };
 
 type MonitoringItem = {
@@ -371,6 +373,37 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
       setRefreshing(false);
     }
   }
+
+  async function handleAcknowledgeFeedback(feedbackId: string) {
+    setErrorMessage('');
+
+    const acknowledgedAt = new Date().toISOString();
+    const { error } = await supabase
+      .from('agent_feedback')
+      .update({
+        acknowledged_by_agent: true,
+        acknowledged_at: acknowledgedAt,
+      })
+      .eq('id', feedbackId);
+
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+
+    setFeedbackItems((prev) =>
+      prev.map((item) =>
+        item.id === feedbackId
+          ? {
+              ...item,
+              acknowledged_by_agent: true,
+              acknowledged_at: acknowledgedAt,
+            }
+          : item
+      )
+    );
+  }
+
   const filteredAudits = useMemo(() => {
     return audits.filter((audit) => {
       const matchesFrom = auditDateFrom
@@ -517,10 +550,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
         <div>
           <div style={sectionEyebrow}>Agent Portal</div>
           <h2 style={{ marginBottom: '8px', color: 'var(--screen-heading)' }}>My Profile</h2>
-          <p style={{ margin: 0, color: 'var(--screen-muted)' }}>
-            This portal is linked to the logged-in agent account. You only see
-            audits released to you by QA/Admin.
-          </p>
         </div>
 
         <div style={pageHeaderActionsStyle}>
@@ -613,51 +642,167 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
         {feedbackItems.length === 0 ? (
           <p>No feedback found.</p>
         ) : (
-          <div style={{ display: 'grid', gap: '12px' }}>
-            {feedbackItems.map((item) => (
-              <div key={item.id} style={cardStyle}>
-                <p>
-                  <strong>Type:</strong>{' '}
-                  <span
-                    style={{
-                      ...pillStyle,
-                      backgroundColor: getTypeColor(item.feedback_type),
-                    }}
-                  >
-                    {item.feedback_type}
-                  </span>
-                </p>
-                <p>
-                  <strong>Subject:</strong> {item.subject}
-                </p>
-                <p>
-                  <strong>From QA:</strong> {item.qa_name}
-                </p>
-                <p>
-                  <strong>Feedback:</strong> {item.feedback_note}
-                </p>
-                <p>
-                  <strong>Action Plan:</strong> {item.action_plan || '-'}
-                </p>
-                <p>
-                  <strong>Due Date:</strong> {item.due_date || '-'}
-                </p>
-                <p>
-                  <strong>Status:</strong>{' '}
-                  <span
-                    style={{
-                      ...pillStyle,
-                      backgroundColor: getStatusColor(item.status),
-                    }}
-                  >
-                    {item.status}
-                  </span>
-                </p>
-                <p>
-                  <strong>Created At:</strong> {formatDate(item.created_at)}
-                </p>
+          <div style={feedbackTableWrapStyle}>
+            <div style={feedbackTableStyle}>
+              <div style={{ ...feedbackRowStyle, ...feedbackHeaderRowStyle }}>
+                <div style={feedbackCellTypeStyle}>Type</div>
+                <div style={feedbackCellSubjectStyle}>Subject</div>
+                <div style={feedbackCellFromStyle}>From QA</div>
+                <div style={feedbackCellDueDateStyle}>Due Date</div>
+                <div style={feedbackCellStatusStyle}>Status</div>
+                <div style={feedbackCellAckStyle}>Acknowledged</div>
+                <div style={feedbackCellActionsStyle}>Actions</div>
               </div>
-            ))}
+
+              {feedbackItems.map((item) => {
+                const isExpanded = expandedId === `feedback-${item.id}`;
+
+                return (
+                  <div key={item.id} style={auditEntryStyle}>
+                    <div style={feedbackRowStyle}>
+                      <div style={feedbackCellTypeStyle}>
+                        <span
+                          style={{
+                            ...pillStyle,
+                            backgroundColor: getTypeColor(item.feedback_type),
+                          }}
+                        >
+                          {item.feedback_type}
+                        </span>
+                      </div>
+
+                      <div style={feedbackCellSubjectStyle}>
+                        <div style={primaryCellTextStyle}>{item.subject}</div>
+                      </div>
+
+                      <div style={feedbackCellFromStyle}>
+                        <div style={primaryCellTextStyle}>{item.qa_name}</div>
+                      </div>
+
+                      <div style={feedbackCellDueDateStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {item.due_date || '-'}
+                        </div>
+                      </div>
+
+                      <div style={feedbackCellStatusStyle}>
+                        <span
+                          style={{
+                            ...pillStyle,
+                            backgroundColor: getStatusColor(item.status),
+                          }}
+                        >
+                          {item.status}
+                        </span>
+                      </div>
+
+                      <div style={feedbackCellAckStyle}>
+                        {item.acknowledged_by_agent ? (
+                          <div style={{ display: 'grid', gap: '4px' }}>
+                            <span
+                              style={{
+                                ...pillStyle,
+                                backgroundColor: '#166534',
+                              }}
+                            >
+                              Acknowledged
+                            </span>
+                            <div style={secondaryCellTextStyle}>
+                              {formatDate(item.acknowledged_at)}
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => void handleAcknowledgeFeedback(item.id)}
+                            style={miniSecondaryButton}
+                          >
+                            Acknowledge
+                          </button>
+                        )}
+                      </div>
+
+                      <div style={feedbackCellActionsStyle}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedId(
+                              expandedId === `feedback-${item.id}`
+                                ? null
+                                : `feedback-${item.id}`
+                            )
+                          }
+                          style={miniSecondaryButton}
+                        >
+                          {isExpanded ? 'Hide' : 'Details'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {isExpanded ? (
+                      <div style={auditExpandedRowStyle}>
+                        <div style={expandedPanelStyle}>
+                          <div style={detailInfoGridStyle}>
+                            <div style={detailInfoCardStyle}>
+                              <div style={detailLabelStyle}>Type</div>
+                              <div style={detailValueStyle}>
+                                {item.feedback_type}
+                              </div>
+                            </div>
+
+                            <div style={detailInfoCardStyle}>
+                              <div style={detailLabelStyle}>From QA</div>
+                              <div style={detailValueStyle}>{item.qa_name}</div>
+                            </div>
+
+                            <div style={detailInfoCardStyle}>
+                              <div style={detailLabelStyle}>Due Date</div>
+                              <div style={detailValueStyle}>
+                                {item.due_date || '-'}
+                              </div>
+                            </div>
+
+                            <div style={detailInfoCardStyle}>
+                              <div style={detailLabelStyle}>Created At</div>
+                              <div style={detailValueStyle}>
+                                {formatDate(item.created_at)}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={fullCommentCardStyle}>
+                            <div style={detailLabelStyle}>Subject</div>
+                            <div style={fullCommentTextStyle}>{item.subject}</div>
+                          </div>
+
+                          <div style={fullCommentCardStyle}>
+                            <div style={detailLabelStyle}>Feedback</div>
+                            <div style={fullCommentTextStyle}>
+                              {item.feedback_note || '-'}
+                            </div>
+                          </div>
+
+                          <div style={detailInfoGridStyle}>
+                            <div style={detailInfoCardStyle}>
+                              <div style={detailLabelStyle}>Status</div>
+                              <div style={detailValueStyle}>{item.status}</div>
+                            </div>
+                            <div style={detailInfoCardStyle}>
+                              <div style={detailLabelStyle}>Acknowledged</div>
+                              <div style={detailValueStyle}>
+                                {item.acknowledged_by_agent
+                                  ? formatDate(item.acknowledged_at)
+                                  : 'Not yet'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </Section>
@@ -1233,6 +1378,51 @@ const metricNoteTextStyle = {
   fontSize: '13px',
   lineHeight: 1.55,
   whiteSpace: 'pre-wrap' as const,
+};
+
+const feedbackTableWrapStyle = {
+  marginTop: '16px',
+  overflowX: 'auto' as const,
+  borderRadius: '18px',
+  border: '1px solid var(--screen-border)',
+  background: 'var(--screen-card-bg)',
+  boxShadow: 'var(--screen-shadow)',
+};
+
+const feedbackTableStyle = {
+  minWidth: '980px',
+};
+
+const feedbackRowStyle = {
+  display: 'grid',
+  gridTemplateColumns: '140px minmax(220px, 1.5fr) 160px 140px 120px 170px 100px',
+  gap: '14px',
+  alignItems: 'center',
+  padding: '14px 16px',
+};
+
+const feedbackHeaderRowStyle = {
+  position: 'sticky' as const,
+  top: 0,
+  zIndex: 1,
+  background: 'var(--screen-table-head-bg)',
+  color: '#93c5fd',
+  fontSize: '12px',
+  fontWeight: 800,
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.12em',
+};
+
+const feedbackCellTypeStyle = {};
+const feedbackCellSubjectStyle = {};
+const feedbackCellFromStyle = {};
+const feedbackCellDueDateStyle = {};
+const feedbackCellStatusStyle = {};
+const feedbackCellAckStyle = {};
+const feedbackCellActionsStyle = {
+  display: 'flex',
+  gap: '8px',
+  flexWrap: 'wrap' as const,
 };
 
 const miniSecondaryButton = {
