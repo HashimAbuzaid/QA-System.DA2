@@ -271,6 +271,7 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
       .select('*')
       .eq('agent_id', currentUser.agent_id)
       .eq('team', currentUser.team)
+      .neq('status', 'Closed')
       .order('created_at', { ascending: false });
 
     const monitoringPromise = supabase
