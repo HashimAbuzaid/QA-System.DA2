@@ -430,10 +430,6 @@ function SupervisorRequestsSupabase({
         <div>
           <div style={sectionEyebrow}>Supervisor Requests</div>
           <h2 style={{ marginBottom: '8px' }}>Supervisor Requests</h2>
-          <p style={{ margin: 0, color: 'var(--da-subtle-text, #94a3b8)' }}>
-            Requests now use a compact list. Press Details to expand the full
-            request.
-          </p>
         </div>
 
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
