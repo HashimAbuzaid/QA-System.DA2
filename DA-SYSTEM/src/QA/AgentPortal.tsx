@@ -382,7 +382,9 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
       .update({
         acknowledged_by_agent: true,
       })
-      .eq('id', feedbackId);
+      .eq('id', feedbackId)
+      .select('id, acknowledged_by_agent')
+      .single();
 
     if (error) {
       setErrorMessage(error.message);
@@ -399,6 +401,8 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           : item
       )
     );
+
+    void loadAgentData({ force: true, background: true });
   }
 
   const filteredAudits = useMemo(() => {
@@ -1314,11 +1318,13 @@ const errorBanner = {
 };
 
 const pillStyle = {
-  color: 'var(--screen-text)',
-  padding: '4px 8px',
+  color: '#ffffff',
+  padding: '4px 10px',
   borderRadius: '999px',
   fontSize: '12px',
-  fontWeight: 'bold',
+  fontWeight: 800,
+  border: '1px solid rgba(15,23,42,0.08)',
+  boxShadow: '0 6px 14px rgba(15,23,42,0.10)',
 };
 
 const auditExpandedRowStyle = { padding: '0 16px 16px 16px' };
@@ -1417,13 +1423,13 @@ const feedbackAcknowledgeButtonStyle = {
   minWidth: '118px',
   padding: '10px 14px',
   borderRadius: '12px',
-  border: '1px solid rgba(96,165,250,0.34)',
+  border: '1px solid rgba(37,99,235,0.42)',
   background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
   color: '#ffffff',
   cursor: 'pointer',
   fontWeight: 800,
   fontSize: '13px',
-  boxShadow: '0 10px 22px rgba(37,99,235,0.18)',
+  boxShadow: '0 10px 22px rgba(37,99,235,0.22)',
 };
 
 const feedbackAcknowledgedPillStyle = {
@@ -1433,8 +1439,8 @@ const feedbackAcknowledgedPillStyle = {
   minWidth: '118px',
   padding: '10px 14px',
   borderRadius: '999px',
-  border: '1px solid rgba(74,222,128,0.24)',
-  background: 'rgba(22,101,52,0.16)',
+  border: '1px solid rgba(22,101,52,0.22)',
+  background: 'rgba(22,101,52,0.14)',
   color: '#166534',
   fontWeight: 800,
   fontSize: '13px',
