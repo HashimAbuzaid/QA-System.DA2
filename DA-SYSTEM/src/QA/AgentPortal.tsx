@@ -126,6 +126,31 @@ type AgentPortalCachePayload = {
 const AGENT_PORTAL_CACHE_TTL_MS = 1000 * 60 * 3;
 const HIDDEN_AGENT_METRICS = new Set(['Issue was resolved']);
 
+function normalizeAgentId(value?: string | null) {
+  return String(value || '').trim().replace(/\.0+$/, '');
+}
+
+function normalizeAgentName(value?: string | null) {
+  return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function matchesDateRange(
+  startDate?: string | null,
+  endDate?: string | null,
+  filterFrom?: string,
+  filterTo?: string
+) {
+  const recordStart = String(startDate || '').slice(0, 10);
+  const recordEnd = String(endDate || startDate || '').slice(0, 10);
+
+  if (!recordStart) return false;
+
+  const effectiveFrom = filterFrom || '0001-01-01';
+  const effectiveTo = filterTo || '9999-12-31';
+
+  return recordEnd >= effectiveFrom && recordStart <= effectiveTo;
+}
+
 function openNativeDatePicker(target: HTMLInputElement) {
   const input = target as HTMLInputElement & { showPicker?: () => void };
   input.showPicker?.();
@@ -381,6 +406,24 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
     });
   }, [audits, auditDateFrom, auditDateTo]);
 
+  const filteredCallsRecords = useMemo(() => {
+    return callsRecords.filter((record) =>
+      matchesDateRange(record.call_date, record.date_to || null, auditDateFrom, auditDateTo)
+    );
+  }, [callsRecords, auditDateFrom, auditDateTo]);
+
+  const filteredTicketsRecords = useMemo(() => {
+    return ticketsRecords.filter((record) =>
+      matchesDateRange(record.ticket_date, record.date_to || null, auditDateFrom, auditDateTo)
+    );
+  }, [ticketsRecords, auditDateFrom, auditDateTo]);
+
+  const filteredSalesRecords = useMemo(() => {
+    return salesRecords.filter((record) =>
+      matchesDateRange(record.sale_date, record.date_to || null, auditDateFrom, auditDateTo)
+    );
+  }, [salesRecords, auditDateFrom, auditDateTo]);
+
   const averageQuality =
     filteredAudits.length > 0
       ? (
@@ -391,15 +434,15 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
         ).toFixed(2)
       : '0.00';
 
-  const totalCalls = callsRecords.reduce(
+  const totalCalls = filteredCallsRecords.reduce(
     (sum, item) => sum + Number(item.calls_count),
     0
   );
-  const totalTickets = ticketsRecords.reduce(
+  const totalTickets = filteredTicketsRecords.reduce(
     (sum, item) => sum + Number(item.tickets_count),
     0
   );
-  const totalSales = salesRecords.reduce(
+  const totalSales = filteredSalesRecords.reduce(
     (sum, item) => sum + Number(item.amount),
     0
   );
@@ -555,21 +598,21 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           <SummaryCard
             title="Total Calls"
             value={String(totalCalls)}
-            subtitle="Production records"
+            subtitle="Synced with audit dates"
           />
         )}
         {currentUser.team === 'Tickets' && (
           <SummaryCard
             title="Total Tickets"
             value={String(totalTickets)}
-            subtitle="Production records"
+            subtitle="Synced with audit dates"
           />
         )}
         {currentUser.team === 'Sales' && (
           <SummaryCard
             title="Total Sales"
             value={`$${totalSales.toFixed(2)}`}
-            subtitle="Production records"
+            subtitle="Synced with audit dates"
           />
         )}
       </div>
@@ -833,11 +876,11 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
 
       {currentUser.team === 'Calls' && (
         <Section title="My Calls Records">
-          {callsRecords.length === 0 ? (
-            <p>No calls records found.</p>
+          {filteredCallsRecords.length === 0 ? (
+            <p>No calls records found for the selected audit dates.</p>
           ) : (
             <div style={{ display: 'grid', gap: '12px' }}>
-              {callsRecords.map((record) => (
+              {filteredCallsRecords.map((record) => (
                 <div key={record.id} style={cardStyle}>
                   <p>
                     <strong>Date From:</strong> {record.call_date}
@@ -860,11 +903,11 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
 
       {currentUser.team === 'Tickets' && (
         <Section title="My Tickets Records">
-          {ticketsRecords.length === 0 ? (
-            <p>No tickets records found.</p>
+          {filteredTicketsRecords.length === 0 ? (
+            <p>No tickets records found for the selected audit dates.</p>
           ) : (
             <div style={{ display: 'grid', gap: '12px' }}>
-              {ticketsRecords.map((record) => (
+              {filteredTicketsRecords.map((record) => (
                 <div key={record.id} style={cardStyle}>
                   <p>
                     <strong>Date From:</strong> {record.ticket_date}
@@ -887,11 +930,11 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
 
       {currentUser.team === 'Sales' && (
         <Section title="My Sales Records">
-          {salesRecords.length === 0 ? (
-            <p>No sales records found.</p>
+          {filteredSalesRecords.length === 0 ? (
+            <p>No sales records found for the selected audit dates.</p>
           ) : (
             <div style={{ display: 'grid', gap: '12px' }}>
-              {salesRecords.map((record) => (
+              {filteredSalesRecords.map((record) => (
                 <div key={record.id} style={cardStyle}>
                   <p>
                     <strong>Date From:</strong> {record.sale_date}
