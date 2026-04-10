@@ -13,6 +13,8 @@ type AuditItem = {
   ticket_id: string | null;
   quality_score: number;
   comments: string | null;
+  shared_with_agent?: boolean;
+  shared_at?: string | null;
 };
 
 type AgentProfile = {
