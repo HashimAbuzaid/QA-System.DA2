@@ -1410,6 +1410,36 @@ const feedbackCellActionsStyle = {
   flexWrap: 'wrap' as const,
 };
 
+const feedbackAcknowledgeButtonStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: '118px',
+  padding: '10px 14px',
+  borderRadius: '12px',
+  border: '1px solid rgba(96,165,250,0.34)',
+  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+  color: '#ffffff',
+  cursor: 'pointer',
+  fontWeight: 800,
+  fontSize: '13px',
+  boxShadow: '0 10px 22px rgba(37,99,235,0.18)',
+};
+
+const feedbackAcknowledgedPillStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: '118px',
+  padding: '10px 14px',
+  borderRadius: '999px',
+  border: '1px solid rgba(74,222,128,0.24)',
+  background: 'rgba(22,101,52,0.16)',
+  color: '#166534',
+  fontWeight: 800,
+  fontSize: '13px',
+};
+
 const miniSecondaryButton = {
   padding: '8px 10px',
   background: 'var(--screen-secondary-btn-bg)',
