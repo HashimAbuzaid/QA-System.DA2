@@ -377,12 +377,10 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
   async function handleAcknowledgeFeedback(feedbackId: string) {
     setErrorMessage('');
 
-    const acknowledgedAt = new Date().toISOString();
     const { error } = await supabase
       .from('agent_feedback')
       .update({
         acknowledged_by_agent: true,
-        acknowledged_at: acknowledgedAt,
       })
       .eq('id', feedbackId);
 
@@ -397,7 +395,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           ? {
               ...item,
               acknowledged_by_agent: true,
-              acknowledged_at: acknowledgedAt,
             }
           : item
       )
@@ -698,24 +695,14 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
 
                       <div style={feedbackCellAckStyle}>
                         {item.acknowledged_by_agent ? (
-                          <div style={{ display: 'grid', gap: '4px' }}>
-                            <span
-                              style={{
-                                ...pillStyle,
-                                backgroundColor: '#166534',
-                              }}
-                            >
-                              Acknowledged
-                            </span>
-                            <div style={secondaryCellTextStyle}>
-                              {formatDate(item.acknowledged_at)}
-                            </div>
-                          </div>
+                          <span style={feedbackAcknowledgedPillStyle}>
+                            Acknowledged
+                          </span>
                         ) : (
                           <button
                             type="button"
                             onClick={() => void handleAcknowledgeFeedback(item.id)}
-                            style={miniSecondaryButton}
+                            style={feedbackAcknowledgeButtonStyle}
                           >
                             Acknowledge
                           </button>
@@ -790,9 +777,7 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
                             <div style={detailInfoCardStyle}>
                               <div style={detailLabelStyle}>Acknowledged</div>
                               <div style={detailValueStyle}>
-                                {item.acknowledged_by_agent
-                                  ? formatDate(item.acknowledged_at)
-                                  : 'Not yet'}
+                                {item.acknowledged_by_agent ? 'Yes' : 'Not yet'}
                               </div>
                             </div>
                           </div>
