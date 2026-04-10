@@ -1047,14 +1047,15 @@ const requestSummarySideStyle = {
 };
 
 const requestTitleStyle = {
-  color: '#f8fafc',
+  color: 'var(--da-title, #0f172a)',
   fontSize: '16px',
   fontWeight: 800,
 };
 
 const requestMetaStyle = {
-  color: '#94a3b8',
+  color: 'var(--da-subtle-text, #64748b)',
   fontSize: '13px',
+  fontWeight: 600,
 };
 
 const pillStyle = {
@@ -1077,7 +1078,7 @@ const detailsGridStyle = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
   gap: '12px',
-  color: '#cbd5e1',
+  color: 'var(--da-page-text, #334155)',
 };
 
 const noteBlockStyle = {
@@ -1088,7 +1089,7 @@ const noteBlockStyle = {
 };
 
 const noteLabelStyle = {
-  color: '#93c5fd',
+  color: 'var(--da-accent-text, #2563eb)',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
