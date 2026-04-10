@@ -116,6 +116,13 @@ function getCurrentDateValue() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function getMonthStartValue() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1)
+    .toISOString()
+    .slice(0, 10);
+}
+
 function matchesDateRange(
   startDate?: string | null,
   endDate?: string | null,
@@ -142,7 +149,8 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [selectedDate, setSelectedDate] = useState(getCurrentDateValue());
+  const [dateFrom, setDateFrom] = useState(getMonthStartValue());
+  const [dateTo, setDateTo] = useState(getCurrentDateValue());
   const [lastLoadedAt, setLastLoadedAt] = useState('');
 
   useEffect(() => {
@@ -299,35 +307,35 @@ function Dashboard() {
     return `${normalizedId}|${normalizedName}`;
   }
 
-  function matchesSelectedDate(
+  function matchesSelectedRange(
     dateValue?: string | null,
     dateToValue?: string | null
   ) {
-    if (!selectedDate) return true;
-    return matchesDateRange(dateValue, dateToValue, selectedDate, selectedDate);
+    if (!dateFrom && !dateTo) return true;
+    return matchesDateRange(dateValue, dateToValue, dateFrom, dateTo);
   }
 
   const filteredAudits = useMemo(() => {
-    return audits.filter((item) => matchesSelectedDate(item.audit_date));
-  }, [audits, selectedDate]);
+    return audits.filter((item) => matchesSelectedRange(item.audit_date));
+  }, [audits, dateFrom, dateTo]);
 
   const filteredCalls = useMemo(() => {
     return callsRecords.filter((item) =>
-      matchesSelectedDate(item.call_date, item.date_to || null)
+      matchesSelectedRange(item.call_date, item.date_to || null)
     );
-  }, [callsRecords, selectedDate]);
+  }, [callsRecords, dateFrom, dateTo]);
 
   const filteredTickets = useMemo(() => {
     return ticketsRecords.filter((item) =>
-      matchesSelectedDate(item.ticket_date, item.date_to || null)
+      matchesSelectedRange(item.ticket_date, item.date_to || null)
     );
-  }, [ticketsRecords, selectedDate]);
+  }, [ticketsRecords, dateFrom, dateTo]);
 
   const filteredSales = useMemo(() => {
     return salesRecords.filter((item) =>
-      matchesSelectedDate(item.sale_date, item.date_to || null)
+      matchesSelectedRange(item.sale_date, item.date_to || null)
     );
-  }, [salesRecords, selectedDate]);
+  }, [salesRecords, dateFrom, dateTo]);
 
   const filteredCallsAudits = useMemo(
     () => filteredAudits.filter((item) => item.team === 'Calls'),
@@ -727,28 +735,49 @@ function Dashboard() {
             <div style={metaPillStyle}>Quality Source: Audits</div>
             <div style={metaPillStyle}>Quantity Source: Uploads</div>
             <div style={metaPillStyle}>
-              Scope: {selectedDate || 'All Time'}
+              Scope: {dateFrom || 'Any'} to {dateTo || 'Any'}
             </div>
           </div>
         </div>
 
         <div style={heroActionWrapStyle}>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            style={fieldStyle}
-          />
+          <div style={dateRangeWrapStyle}>
+            <label style={dateFieldWrapStyle}>
+              <span style={dateFieldLabelStyle}>Date From</span>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                style={fieldStyle}
+              />
+            </label>
+
+            <label style={dateFieldWrapStyle}>
+              <span style={dateFieldLabelStyle}>Date To</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                style={fieldStyle}
+              />
+            </label>
+          </div>
           <button
             type="button"
-            onClick={() => setSelectedDate(getCurrentDateValue())}
+            onClick={() => {
+              setDateFrom(getMonthStartValue());
+              setDateTo(getCurrentDateValue());
+            }}
             style={secondaryButton}
           >
-            Today
+            This Month
           </button>
           <button
             type="button"
-            onClick={() => setSelectedDate('')}
+            onClick={() => {
+              setDateFrom('');
+              setDateTo('');
+            }}
             style={secondaryButton}
           >
             All Time
@@ -1188,6 +1217,24 @@ const heroActionWrapStyle = {
   gap: '10px',
   flexWrap: 'wrap' as const,
   alignItems: 'center',
+};
+
+const dateRangeWrapStyle = {
+  display: 'flex',
+  gap: '10px',
+  flexWrap: 'wrap' as const,
+  alignItems: 'flex-end',
+};
+
+const dateFieldWrapStyle = {
+  display: 'grid',
+  gap: '6px',
+};
+
+const dateFieldLabelStyle = {
+  color: 'var(--da-muted-text, #475569)',
+  fontSize: '12px',
+  fontWeight: 700,
 };
 
 const eyebrowStyle = {
