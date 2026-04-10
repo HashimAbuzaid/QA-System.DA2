@@ -457,6 +457,12 @@ function ReportsSupabase() {
         ).toFixed(2)
       : '0.00';
 
+  const effectiveTeamFilter = selectedAgent?.team || teamFilter || '';
+  const showCallsMetrics = !effectiveTeamFilter || effectiveTeamFilter === 'Calls';
+  const showTicketsMetrics =
+    !effectiveTeamFilter || effectiveTeamFilter === 'Tickets';
+  const showSalesMetrics = !effectiveTeamFilter || effectiveTeamFilter === 'Sales';
+
   const selectedAgentFeedbackByType = useMemo(() => {
     const grouped = new Map<string, number>();
 
@@ -858,9 +864,15 @@ function ReportsSupabase() {
           value={String(filteredAudits.length)}
         />
         <SummaryCard title="Average Quality" value={`${averageQuality}%`} />
-        <SummaryCard title="Total Calls" value={String(totalCalls)} />
-        <SummaryCard title="Total Tickets" value={String(totalTickets)} />
-        <SummaryCard title="Total Sales" value={`$${totalSales.toFixed(2)}`} />
+        {showCallsMetrics ? (
+          <SummaryCard title="Total Calls" value={String(totalCalls)} />
+        ) : null}
+        {showTicketsMetrics ? (
+          <SummaryCard title="Total Tickets" value={String(totalTickets)} />
+        ) : null}
+        {showSalesMetrics ? (
+          <SummaryCard title="Total Sales" value={`$${totalSales.toFixed(2)}`} />
+        ) : null}
         <SummaryCard
           title="Open Supervisor Requests"
           value={String(openRequests)}
@@ -878,9 +890,18 @@ function ReportsSupabase() {
 
       <h3 style={sectionTitleStyle}>Team Breakdown</h3>
       <div style={summaryGridStyle}>
-        <SummaryCard title="Calls Avg Quality" value={`${callsAverage}%`} />
-        <SummaryCard title="Tickets Avg Quality" value={`${ticketsAverage}%`} />
-        <SummaryCard title="Sales Avg Quality" value={`${salesAverage}%`} />
+        {showCallsMetrics ? (
+          <SummaryCard title="Calls Avg Quality" value={`${callsAverage}%`} />
+        ) : null}
+        {showTicketsMetrics ? (
+          <SummaryCard
+            title="Tickets Avg Quality"
+            value={`${ticketsAverage}%`}
+          />
+        ) : null}
+        {showSalesMetrics ? (
+          <SummaryCard title="Sales Avg Quality" value={`${salesAverage}%`} />
+        ) : null}
       </div>
 
       {selectedAgent && (
