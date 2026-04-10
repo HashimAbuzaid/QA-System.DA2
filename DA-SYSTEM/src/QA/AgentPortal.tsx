@@ -176,9 +176,8 @@ function getThemeVars(): Record<string, string> {
     '--screen-select-option-text': isLight ? '#0f172a' : '#e5eefb',
     '--screen-menu-bg': isLight ? 'rgba(255,255,255,0.99)' : 'rgba(15, 23, 42, 0.96)',
     '--screen-shadow': isLight ? '0 18px 40px rgba(15,23,42,0.10)' : '0 18px 40px rgba(2,6,23,0.35)',
-    '--screen-score-pill-bg': isLight ? 'rgba(37,99,235,0.16)' : 'rgba(37,99,235,0.18)',
-    '--screen-score-pill-border': isLight ? 'rgba(37,99,246,0.34)' : 'rgba(96,165,250,0.26)',
-    '--screen-score-pill-text': isLight ? '#1d4ed8' : '#dbeafe',
+    '--screen-score-pill-bg': isLight ? 'rgba(37,99,235,0.10)' : 'rgba(37,99,235,0.18)',
+    '--screen-score-pill-border': isLight ? 'rgba(59,130,246,0.24)' : 'rgba(96,165,250,0.26)',
     '--screen-soft-fill': isLight ? 'rgba(248,250,252,0.98)' : 'rgba(15,23,42,0.48)',
     '--screen-soft-fill-2': isLight ? 'rgba(241,245,249,0.98)' : 'rgba(15,23,42,0.62)',
     '--screen-note-bg': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.52)',
@@ -915,7 +914,14 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
 
       <MonitoringWidget
         count={monitoringItems.length}
-        onClick={() => setMonitoringOpen(true)}
+        onClick={() => {
+          setMonitoringOpen(true);
+          if (typeof window !== 'undefined') {
+            window.requestAnimationFrame(() => {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+          }
+        }}
       />
       <MonitoringDrawer
         open={monitoringOpen}
@@ -1102,10 +1108,9 @@ const scorePillStyle = {
   borderRadius: '999px',
   background: 'var(--screen-score-pill-bg)',
   border: '1px solid var(--screen-score-pill-border)',
-  color: 'var(--screen-score-pill-text)',
+  color: 'var(--screen-heading)',
   fontSize: '13px',
   fontWeight: 800,
-  boxShadow: '0 10px 20px rgba(37,99,235,0.10)',
 };
 
 const labelStyle = {
@@ -1144,17 +1149,11 @@ const errorBanner = {
 };
 
 const pillStyle = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  minWidth: '58px',
-  padding: '6px 12px',
+  color: 'var(--screen-text)',
+  padding: '4px 8px',
   borderRadius: '999px',
-  color: '#ffffff',
   fontSize: '12px',
-  fontWeight: 800,
-  letterSpacing: '0.02em',
-  boxShadow: '0 8px 18px rgba(15,23,42,0.14)',
+  fontWeight: 'bold',
 };
 
 const auditExpandedRowStyle = { padding: '0 16px 16px 16px' };
