@@ -148,6 +148,8 @@ function ReportsSupabase() {
   const [isAgentPickerOpen, setIsAgentPickerOpen] = useState(false);
 
   const agentPickerRef = useRef<HTMLDivElement | null>(null);
+  const dateFromInputRef = useRef<HTMLInputElement | null>(null);
+  const dateToInputRef = useRef<HTMLInputElement | null>(null);
   const themeVars = getThemeVars();
 
   useEffect(() => {
@@ -255,6 +257,22 @@ function ReportsSupabase() {
     const afterFrom = dateFrom ? dateValue >= dateFrom : true;
     const beforeTo = dateTo ? dateValue <= dateTo : true;
     return afterFrom && beforeTo;
+  }
+
+  function openNativeDatePicker(
+    input: HTMLInputElement | null | undefined
+  ) {
+    if (!input) return;
+
+    input.focus();
+
+    const inputWithPicker = input as HTMLInputElement & {
+      showPicker?: () => void;
+    };
+
+    if (typeof inputWithPicker.showPicker === 'function') {
+      inputWithPicker.showPicker();
+    }
   }
 
   function matchesSelectedAgent(
@@ -744,9 +762,12 @@ function ReportsSupabase() {
           <div>
             <label style={labelStyle}>Date From</label>
             <input
+              ref={dateFromInputRef}
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
+              onClick={() => openNativeDatePicker(dateFromInputRef.current)}
+              onFocus={() => openNativeDatePicker(dateFromInputRef.current)}
               style={fieldStyle}
             />
           </div>
@@ -754,9 +775,12 @@ function ReportsSupabase() {
           <div>
             <label style={labelStyle}>Date To</label>
             <input
+              ref={dateToInputRef}
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
+              onClick={() => openNativeDatePicker(dateToInputRef.current)}
+              onFocus={() => openNativeDatePicker(dateToInputRef.current)}
               style={fieldStyle}
             />
           </div>
