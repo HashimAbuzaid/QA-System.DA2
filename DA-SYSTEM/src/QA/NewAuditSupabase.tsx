@@ -281,7 +281,11 @@ function openNativeDatePicker(target: HTMLInputElement) {
 
 function getThemeVars(): Record<string, string> {
   const isLight =
-    typeof document !== 'undefined' && document.body.dataset.theme === 'light';
+    typeof document !== 'undefined' &&
+    (document.body.dataset.theme === 'light' ||
+      document.body.dataset.theme === 'white' ||
+      window.localStorage.getItem('detroit-axle-theme-mode') === 'light' ||
+      window.localStorage.getItem('detroit-axle-theme-mode') === 'white');
 
   return {
     '--screen-text': isLight ? '#334155' : '#e5eefb',
@@ -289,13 +293,13 @@ function getThemeVars(): Record<string, string> {
     '--screen-muted': isLight ? '#64748b' : '#94a3b8',
     '--screen-accent': isLight ? '#2563eb' : '#60a5fa',
     '--screen-panel-bg': isLight
-      ? 'linear-gradient(180deg, rgba(80, 90, 112, 0.96) 0%, rgba(95, 105, 126, 0.96) 100%)'
+      ? 'linear-gradient(180deg, rgba(98, 109, 129, 0.96) 0%, rgba(118, 128, 148, 0.96) 100%)'
       : 'linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%)',
     '--screen-card-soft-bg': isLight
-      ? 'linear-gradient(180deg, rgba(73, 84, 106, 0.96) 0%, rgba(65, 75, 96, 0.96) 100%)'
+      ? 'linear-gradient(180deg, rgba(84, 95, 116, 0.96) 0%, rgba(74, 85, 106, 0.96) 100%)'
       : 'rgba(15, 23, 42, 0.5)',
     '--screen-field-bg': isLight
-      ? 'linear-gradient(180deg, rgba(29, 39, 67, 0.98) 0%, rgba(31, 43, 73, 0.98) 100%)'
+      ? 'linear-gradient(180deg, rgba(24, 35, 63, 0.98) 0%, rgba(29, 41, 71, 0.98) 100%)'
       : 'rgba(15, 23, 42, 0.7)',
     '--screen-border': isLight ? 'rgba(203, 213, 225, 0.38)' : 'rgba(148, 163, 184, 0.14)',
     '--screen-border-strong': isLight ? 'rgba(203, 213, 225, 0.44)' : 'rgba(148, 163, 184, 0.16)',
@@ -763,7 +767,7 @@ function NewAuditSupabase() {
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Audit Workspace</div>
-          <h2 style={{ margin: 0, fontSize: '30px' }}>New Audit</h2>
+          <h2 style={{ margin: 0, fontSize: '30px', color: 'var(--screen-heading)' }}>New Audit</h2>
           <p style={{ margin: '10px 0 0 0', color: 'var(--screen-muted)' }}>
             Create Detroit Axle audits using the live agent directory from
             profiles.
