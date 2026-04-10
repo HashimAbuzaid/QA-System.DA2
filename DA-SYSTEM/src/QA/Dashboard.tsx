@@ -393,10 +393,11 @@ function Dashboard() {
     allowedKeys: Set<string>
   ) {
     const grouped = new Map<string, QuantityLeader>();
+    const restrictToAuditedAgents = allowedKeys.size > 0;
 
     records.forEach((record) => {
       const key = getAgentKey(record.agent_id, record.agent_name);
-      if (!allowedKeys.has(key)) return;
+      if (restrictToAuditedAgents && !allowedKeys.has(key)) return;
 
       const quantity = getQuantity(record);
       const existing = grouped.get(key);
@@ -860,7 +861,7 @@ function Dashboard() {
       <div style={rankingGridStyle}>
         <LeaderboardCard
           title="Top Calls Quantity"
-          subtitle="Uploads only, limited to agents that appear in audits this month"
+          subtitle="Uploads in the selected date range"
           items={callsQuantityTop}
           formatValue={(value) => `${value}`}
           contextLabel="calls"
@@ -868,7 +869,7 @@ function Dashboard() {
 
         <LeaderboardCard
           title="Top Tickets Quantity"
-          subtitle="Uploads only, limited to agents that appear in audits this month"
+          subtitle="Uploads in the selected date range"
           items={ticketsQuantityTop}
           formatValue={(value) => `${value}`}
           contextLabel="tickets"
