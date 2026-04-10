@@ -823,10 +823,11 @@ function App() {
     if (isAdmin) {
       baseItems.push(
         { key: 'accounts', label: 'Accounts' },
-        { key: 'supervisorRequests', label: 'Supervisor Requests' },
-        { key: 'reports', label: 'Reports' }
+        { key: 'supervisorRequests', label: 'Supervisor Requests' }
       );
     }
+
+    baseItems.push({ key: 'reports', label: 'Reports' });
 
     baseItems.push({
       key: 'profile',
@@ -861,7 +862,7 @@ function App() {
           <SupervisorRequestsSupabase currentUser={profile} />
         ) : null;
       case 'reports':
-        return isAdmin ? <ReportsSupabase /> : null;
+        return isStaff ? <ReportsSupabase /> : null;
       case 'profile':
         return (
           <div style={styles.profilePanel}>
