@@ -439,7 +439,7 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
   }
 
   return (
-    <div style={{ color: 'var(--da-page-text, #e5eefb)' }}>
+    <div data-no-theme-invert="true" style={{ color: 'var(--da-page-text, #e5eefb)' }}>
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Supervisor Portal</div>
@@ -1018,9 +1018,10 @@ const activeTabButtonStyle = {
 const panelStyle = {
   background:
     'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
-  border: '1px solid rgba(148,163,184,0.14)',
+  border: 'var(--da-panel-border, 1px solid rgba(148,163,184,0.14))',
   borderRadius: '20px',
   padding: '20px',
+  boxShadow: 'var(--da-panel-shadow, 0 8px 24px rgba(2,6,23,0.2))',
 };
 
 const filterGridStyle = {
@@ -1032,7 +1033,7 @@ const filterGridStyle = {
 const labelStyle = {
   display: 'block',
   marginBottom: '8px',
-  color: 'var(--da-muted-text, #cbd5e1)',
+  color: 'var(--da-muted-text, #475569)',
   fontWeight: 700,
   fontSize: '13px',
 };
@@ -1041,23 +1042,23 @@ const fieldStyle = {
   width: '100%',
   padding: '12px 14px',
   borderRadius: '12px',
-  border: '1px solid rgba(148,163,184,0.16)',
-  background: 'var(--da-surface-bg, rgba(15,23,42,0.7))',
-  color: 'var(--da-page-text, #e5eefb)',
+  border: 'var(--da-field-border, 1px solid rgba(148,163,184,0.16))',
+  background: 'var(--da-field-bg, rgba(15,23,42,0.7))',
+  color: 'var(--da-field-text, #e5eefb)',
 };
 
 const pickerButtonStyle = {
   width: '100%',
   padding: '12px 14px',
   borderRadius: '12px',
-  border: '1px solid rgba(148,163,184,0.16)',
-  background: 'var(--da-surface-bg, rgba(15,23,42,0.7))',
+  border: 'var(--da-field-border, 1px solid rgba(148,163,184,0.16))',
+  background: 'var(--da-field-bg, rgba(15,23,42,0.7))',
   textAlign: 'left' as const,
   cursor: 'pointer',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  color: 'var(--da-page-text, #e5eefb)',
+  color: 'var(--da-field-text, #e5eefb)',
 };
 
 const pickerMenuStyle = {
@@ -1066,9 +1067,9 @@ const pickerMenuStyle = {
   left: 0,
   right: 0,
   background: 'var(--da-menu-bg, rgba(15,23,42,0.96))',
-  border: '1px solid rgba(148,163,184,0.16)',
+  border: 'var(--da-field-border, 1px solid rgba(148,163,184,0.16))',
   borderRadius: '16px',
-  boxShadow: '0 10px 30px rgba(0,0,0,0.22)',
+  boxShadow: 'var(--da-panel-shadow, 0 10px 30px rgba(0,0,0,0.22))',
   zIndex: 20,
   overflow: 'hidden',
 };
@@ -1089,7 +1090,7 @@ const pickerListStyle = {
 const pickerInfoStyle = {
   padding: '12px',
   borderRadius: '8px',
-  backgroundColor: 'var(--da-surface-bg, rgba(15,23,42,0.68))',
+  backgroundColor: 'var(--da-card-bg, rgba(15,23,42,0.68))',
   color: 'var(--da-subtle-text, #94a3b8)',
 };
 
@@ -1097,11 +1098,11 @@ const pickerOptionStyle = {
   padding: '12px',
   borderRadius: '8px',
   border: '1px solid rgba(148,163,184,0.12)',
-  backgroundColor: 'var(--da-surface-bg, rgba(15,23,42,0.6))',
+  backgroundColor: 'var(--da-option-bg, rgba(15,23,42,0.6))',
   textAlign: 'left' as const,
   cursor: 'pointer',
   fontWeight: 500,
-  color: 'var(--da-page-text, #e5eefb)',
+  color: 'var(--da-field-text, #e5eefb)',
 };
 
 const pickerOptionActiveStyle = {
@@ -1120,19 +1121,20 @@ const summaryGridStyle = {
 const cardStyle = {
   background:
     'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
-  border: '1px solid rgba(148,163,184,0.14)',
+  border: 'var(--da-panel-border, 1px solid rgba(148,163,184,0.14))',
   borderRadius: '18px',
   padding: '20px',
-  boxShadow: '0 8px 24px rgba(2,6,23,0.2)',
+  boxShadow: 'var(--da-panel-shadow, 0 8px 24px rgba(2,6,23,0.2))',
 };
 
 const secondaryButton = {
-  backgroundColor: 'var(--da-field-bg, rgba(15,23,42,0.78))',
-  color: 'white',
-  border: '1px solid rgba(148,163,184,0.18)',
+  backgroundColor: 'var(--da-secondary-bg, rgba(15,23,42,0.78))',
+  color: 'var(--da-secondary-text, #e5eefb)',
+  border: 'var(--da-secondary-border, 1px solid rgba(148,163,184,0.18))',
   padding: '10px 14px',
   borderRadius: '10px',
   cursor: 'pointer',
+  fontWeight: 700,
 };
 
 const errorBanner = {
@@ -1220,7 +1222,7 @@ const scorePillStyle = {
   borderRadius: '999px',
   background: 'rgba(37, 99, 235, 0.14)',
   border: '1px solid rgba(96,165,250,0.32)',
-  color: 'var(--da-title, #0f172a)',
+  color: 'var(--da-accent-text, #2563eb)',
   fontSize: '13px',
   fontWeight: 800,
 };
@@ -1238,9 +1240,9 @@ const pillStyle = {
 
 const miniSecondaryButton = {
   padding: '8px 10px',
-  background: 'var(--da-field-bg, rgba(15,23,42,0.78))',
-  color: 'var(--da-page-text, #e5eefb)',
-  border: '1px solid rgba(148,163,184,0.18)',
+  background: 'var(--da-secondary-bg, rgba(15,23,42,0.78))',
+  color: 'var(--da-secondary-text, #e5eefb)',
+  border: 'var(--da-secondary-border, 1px solid rgba(148,163,184,0.18))',
   borderRadius: '10px',
   cursor: 'pointer',
   fontWeight: 700,
@@ -1344,10 +1346,10 @@ const recordsTableWrapStyle = {
   marginTop: '16px',
   overflowX: 'auto' as const,
   borderRadius: '18px',
-  border: '1px solid rgba(148,163,184,0.14)',
+  border: 'var(--da-panel-border, 1px solid rgba(148,163,184,0.14))',
   background:
     'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
-  boxShadow: '0 8px 24px rgba(2,6,23,0.2)',
+  boxShadow: 'var(--da-panel-shadow, 0 8px 24px rgba(2,6,23,0.2))',
 };
 
 const recordsTableStyle = {
