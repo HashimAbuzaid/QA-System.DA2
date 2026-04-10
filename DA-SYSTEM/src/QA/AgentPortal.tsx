@@ -176,8 +176,11 @@ function getThemeVars(): Record<string, string> {
     '--screen-select-option-text': isLight ? '#0f172a' : '#e5eefb',
     '--screen-menu-bg': isLight ? 'rgba(255,255,255,0.99)' : 'rgba(15, 23, 42, 0.96)',
     '--screen-shadow': isLight ? '0 18px 40px rgba(15,23,42,0.10)' : '0 18px 40px rgba(2,6,23,0.35)',
-    '--screen-score-pill-bg': isLight ? 'rgba(37,99,235,0.10)' : 'rgba(37,99,235,0.18)',
-    '--screen-score-pill-border': isLight ? 'rgba(59,130,246,0.24)' : 'rgba(96,165,250,0.26)',
+    '--screen-score-pill-bg': isLight ? 'rgba(37,99,235,0.16)' : 'rgba(37,99,235,0.18)',
+    '--screen-score-pill-border': isLight ? 'rgba(59,130,246,0.32)' : 'rgba(96,165,250,0.26)',
+    '--screen-score-pill-text': isLight ? '#1d4ed8' : '#dbeafe',
+    '--screen-status-pill-text': '#ffffff',
+    '--screen-status-pill-shadow': isLight ? '0 8px 18px rgba(15,23,42,0.10)' : 'none',
     '--screen-soft-fill': isLight ? 'rgba(248,250,252,0.98)' : 'rgba(15,23,42,0.48)',
     '--screen-soft-fill-2': isLight ? 'rgba(241,245,249,0.98)' : 'rgba(15,23,42,0.62)',
     '--screen-note-bg': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.52)',
@@ -1096,14 +1099,15 @@ const scorePillStyle = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  minWidth: '84px',
-  padding: '8px 10px',
+  minWidth: '88px',
+  padding: '8px 12px',
   borderRadius: '999px',
   background: 'var(--screen-score-pill-bg)',
   border: '1px solid var(--screen-score-pill-border)',
-  color: 'var(--screen-heading)',
+  color: 'var(--screen-score-pill-text)',
   fontSize: '13px',
   fontWeight: 800,
+  letterSpacing: '0.01em',
 };
 
 const labelStyle = {
@@ -1142,11 +1146,17 @@ const errorBanner = {
 };
 
 const pillStyle = {
-  color: 'var(--screen-text)',
-  padding: '4px 8px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: '60px',
+  padding: '6px 10px',
   borderRadius: '999px',
+  color: 'var(--screen-status-pill-text)',
   fontSize: '12px',
-  fontWeight: 'bold',
+  fontWeight: 800,
+  letterSpacing: '0.01em',
+  boxShadow: 'var(--screen-status-pill-shadow)',
 };
 
 const auditExpandedRowStyle = { padding: '0 16px 16px 16px' };
