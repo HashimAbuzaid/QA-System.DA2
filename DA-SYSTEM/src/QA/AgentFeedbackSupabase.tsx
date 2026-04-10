@@ -14,6 +14,8 @@ type AgentFeedback = {
   due_date: string | null;
   status: 'Open' | 'In Progress' | 'Closed';
   created_at: string;
+  acknowledged_by_agent?: boolean;
+  acknowledged_at?: string | null;
 };
 
 type AgentProfile = {
@@ -33,6 +35,7 @@ function AgentFeedbackSupabase() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [expandedFeedbackId, setExpandedFeedbackId] = useState<string | null>(null);
 
   const [selectedAgentProfileId, setSelectedAgentProfileId] = useState('');
   const [agentSearch, setAgentSearch] = useState('');
@@ -250,6 +253,13 @@ function AgentFeedbackSupabase() {
     return '#166534';
   }
 
+  function formatDate(dateValue?: string | null) {
+    if (!dateValue) return '-';
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleString();
+  }
+
   return (
     <div style={{ color: 'var(--da-page-text, #e5eefb)' }}>
       <div style={pageHeaderStyle}>
@@ -441,78 +451,145 @@ function AgentFeedbackSupabase() {
         ) : feedbackItems.length === 0 ? (
           <p style={{ color: 'var(--da-subtle-text, #94a3b8)' }}>No feedback items found.</p>
         ) : (
-          <div style={{ display: 'grid', gap: '16px' }}>
-            {feedbackItems.map((item) => (
-              <div key={item.id} style={savedCardStyle}>
-                <div style={savedCardHeaderStyle}>
-                  <div>
-                    <div style={savedCardTitleStyle}>{item.agent_name}</div>
-                    <div style={savedCardMetaStyle}>
-                      {getFeedbackDisplayName(item)} • {item.agent_id} •{' '}
-                      {item.team}
-                    </div>
-                  </div>
-
-                  <div style={badgeRowStyle}>
-                    <span style={statusPill(getTypeColor(item.feedback_type))}>
-                      {item.feedback_type}
-                    </span>
-                    <span style={statusPill(getStatusColor(item.status))}>
-                      {item.status}
-                    </span>
-                  </div>
-                </div>
-
-                <div style={savedGridStyle}>
-                  <p>
-                    <strong>QA Name:</strong> {item.qa_name}
-                  </p>
-                  <p>
-                    <strong>Subject:</strong> {item.subject}
-                  </p>
-                  <p>
-                    <strong>Feedback:</strong> {item.feedback_note}
-                  </p>
-                  <p>
-                    <strong>Due Date:</strong> {item.due_date || '-'}
-                  </p>
-                  <p>
-                    <strong>Created At:</strong>{' '}
-                    {new Date(item.created_at).toLocaleString()}
-                  </p>
-                </div>
-
-                <div style={savedActionRowStyle}>
-                  <button
-                    onClick={() => handleStatusChange(item.id, 'Open')}
-                    style={secondaryButton}
-                  >
-                    Mark Open
-                  </button>
-
-                  <button
-                    onClick={() => handleStatusChange(item.id, 'In Progress')}
-                    style={secondaryButton}
-                  >
-                    In Progress
-                  </button>
-
-                  <button
-                    onClick={() => handleStatusChange(item.id, 'Closed')}
-                    style={secondaryButton}
-                  >
-                    Close
-                  </button>
-
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    style={dangerButton}
-                  >
-                    {pendingDeleteId === item.id ? 'Confirm Delete' : 'Delete'}
-                  </button>
-                </div>
+          <div style={feedbackTableWrapStyle}>
+            <div style={feedbackTableStyle}>
+              <div style={{ ...feedbackRowStyle, ...feedbackHeaderRowStyle }}>
+                <div style={feedbackCellAgentStyle}>Agent</div>
+                <div style={feedbackCellTypeStyle}>Type</div>
+                <div style={feedbackCellSubjectStyle}>Subject</div>
+                <div style={feedbackCellDueDateStyle}>Due Date</div>
+                <div style={feedbackCellStatusStyle}>Status</div>
+                <div style={feedbackCellAckStyle}>Acknowledged</div>
+                <div style={feedbackCellActionsStyle}>Actions</div>
               </div>
-            ))}
+
+              {feedbackItems.map((item) => {
+                const isExpanded = expandedFeedbackId === item.id;
+
+                return (
+                  <div key={item.id} style={feedbackEntryStyle}>
+                    <div style={feedbackRowStyle}>
+                      <div style={feedbackCellAgentStyle}>
+                        <div style={primaryCellTextStyle}>{item.agent_name}</div>
+                        <div style={secondaryCellTextStyle}>
+                          {getFeedbackDisplayName(item)} • {item.agent_id} • {item.team}
+                        </div>
+                      </div>
+
+                      <div style={feedbackCellTypeStyle}>
+                        <span style={{ ...statusPill(getTypeColor(item.feedback_type)), ...solidPillTextStyle }}>
+                          {item.feedback_type}
+                        </span>
+                      </div>
+
+                      <div style={feedbackCellSubjectStyle}>
+                        <div style={primaryCellTextStyle}>{item.subject}</div>
+                      </div>
+
+                      <div style={feedbackCellDueDateStyle}>
+                        <div style={primaryCellTextStyle}>{item.due_date || '-'}</div>
+                      </div>
+
+                      <div style={feedbackCellStatusStyle}>
+                        <span style={{ ...statusPill(getStatusColor(item.status)), ...solidPillTextStyle }}>
+                          {item.status}
+                        </span>
+                      </div>
+
+                      <div style={feedbackCellAckStyle}>
+                        {item.acknowledged_by_agent ? (
+                          <span style={acknowledgedPillStyle}>Acknowledged</span>
+                        ) : (
+                          <span style={notAcknowledgedPillStyle}>Not yet</span>
+                        )}
+                      </div>
+
+                      <div style={feedbackCellActionsStyle}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedFeedbackId(isExpanded ? null : item.id)
+                          }
+                          style={secondaryMiniButton}
+                        >
+                          {isExpanded ? 'Hide' : 'Details'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {isExpanded ? (
+                      <div style={expandedFeedbackWrapStyle}>
+                        <div style={expandedFeedbackPanelStyle}>
+                          <div style={feedbackDetailGridStyle}>
+                            <div style={feedbackDetailCardStyle}>
+                              <div style={feedbackDetailLabelStyle}>QA Name</div>
+                              <div style={feedbackDetailValueStyle}>{item.qa_name}</div>
+                            </div>
+                            <div style={feedbackDetailCardStyle}>
+                              <div style={feedbackDetailLabelStyle}>Created At</div>
+                              <div style={feedbackDetailValueStyle}>{formatDate(item.created_at)}</div>
+                            </div>
+                            <div style={feedbackDetailCardStyle}>
+                              <div style={feedbackDetailLabelStyle}>Due Date</div>
+                              <div style={feedbackDetailValueStyle}>{item.due_date || '-'}</div>
+                            </div>
+                            <div style={feedbackDetailCardStyle}>
+                              <div style={feedbackDetailLabelStyle}>Acknowledged</div>
+                              <div style={feedbackDetailValueStyle}>
+                                {item.acknowledged_by_agent
+                                  ? item.acknowledged_at
+                                    ? formatDate(item.acknowledged_at)
+                                    : 'Yes'
+                                  : 'Not yet'}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={feedbackNoteCardStyle}>
+                            <div style={feedbackDetailLabelStyle}>Feedback</div>
+                            <div style={feedbackNoteTextStyle}>{item.feedback_note}</div>
+                          </div>
+
+                          <div style={expandedActionRowStyle}>
+                            <button
+                              type="button"
+                              onClick={() => handleStatusChange(item.id, 'Open')}
+                              style={secondaryButton}
+                            >
+                              Mark Open
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleStatusChange(item.id, 'In Progress')}
+                              style={secondaryButton}
+                            >
+                              In Progress
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleStatusChange(item.id, 'Closed')}
+                              style={secondaryButton}
+                            >
+                              Close
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(item.id)}
+                              style={dangerButton}
+                            >
+                              {pendingDeleteId === item.id ? 'Confirm Delete' : 'Delete'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
@@ -776,6 +853,181 @@ const savedActionRowStyle = {
   gap: '10px',
   flexWrap: 'wrap' as const,
   marginTop: '14px',
+};
+
+
+const feedbackTableWrapStyle = {
+  marginTop: '16px',
+  overflowX: 'auto' as const,
+  borderRadius: '18px',
+  border: '1px solid rgba(148, 163, 184, 0.14)',
+  background:
+    'linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(248,250,255,0.98) 100%)',
+  boxShadow: '0 18px 40px rgba(15, 23, 42, 0.08)',
+};
+
+const feedbackTableStyle = {
+  minWidth: '1120px',
+};
+
+const feedbackEntryStyle = {
+  borderBottom: '1px solid rgba(203, 213, 225, 0.8)',
+};
+
+const feedbackRowStyle = {
+  display: 'grid',
+  gridTemplateColumns:
+    '280px 140px minmax(220px, 1.4fr) 140px 130px 160px 110px',
+  gap: '14px',
+  alignItems: 'center',
+  padding: '14px 16px',
+};
+
+const feedbackHeaderRowStyle = {
+  position: 'sticky' as const,
+  top: 0,
+  zIndex: 1,
+  background: 'rgba(13, 27, 57, 0.98)',
+  color: '#93c5fd',
+  fontSize: '12px',
+  fontWeight: 800,
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.12em',
+};
+
+const feedbackCellAgentStyle = {};
+const feedbackCellTypeStyle = {};
+const feedbackCellSubjectStyle = {};
+const feedbackCellDueDateStyle = {};
+const feedbackCellStatusStyle = {};
+const feedbackCellAckStyle = {};
+const feedbackCellActionsStyle = {
+  display: 'flex',
+  gap: '8px',
+  flexWrap: 'wrap' as const,
+};
+
+const primaryCellTextStyle = {
+  color: '#0f172a',
+  fontSize: '14px',
+  fontWeight: 700,
+  lineHeight: 1.4,
+};
+
+const secondaryCellTextStyle = {
+  marginTop: '4px',
+  color: '#64748b',
+  fontSize: '12px',
+  fontWeight: 600,
+  lineHeight: 1.4,
+};
+
+const solidPillTextStyle = {
+  color: '#ffffff',
+  border: '1px solid rgba(15, 23, 42, 0.06)',
+  boxShadow: '0 6px 14px rgba(15, 23, 42, 0.08)',
+};
+
+const acknowledgedPillStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: '118px',
+  padding: '8px 12px',
+  borderRadius: '999px',
+  background: 'rgba(22, 101, 52, 0.14)',
+  border: '1px solid rgba(22, 101, 52, 0.18)',
+  color: '#166534',
+  fontSize: '12px',
+  fontWeight: 800,
+};
+
+const notAcknowledgedPillStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: '118px',
+  padding: '8px 12px',
+  borderRadius: '999px',
+  background: 'rgba(148, 163, 184, 0.12)',
+  border: '1px solid rgba(148, 163, 184, 0.18)',
+  color: '#475569',
+  fontSize: '12px',
+  fontWeight: 800,
+};
+
+const secondaryMiniButton = {
+  padding: '8px 12px',
+  borderRadius: '10px',
+  border: '1px solid rgba(148, 163, 184, 0.24)',
+  background: '#ffffff',
+  color: '#475569',
+  fontWeight: 700,
+  cursor: 'pointer',
+};
+
+const expandedFeedbackWrapStyle = {
+  padding: '0 16px 16px 16px',
+};
+
+const expandedFeedbackPanelStyle = {
+  borderRadius: '18px',
+  border: '1px solid rgba(203, 213, 225, 0.92)',
+  background:
+    'linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(248,250,255,0.98) 100%)',
+  padding: '18px',
+};
+
+const feedbackDetailGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+  gap: '12px',
+  marginBottom: '16px',
+};
+
+const feedbackDetailCardStyle = {
+  borderRadius: '14px',
+  border: '1px solid rgba(203, 213, 225, 0.92)',
+  background: '#ffffff',
+  padding: '14px 16px',
+};
+
+const feedbackDetailLabelStyle = {
+  color: '#94a3b8',
+  fontSize: '12px',
+  fontWeight: 700,
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.08em',
+  marginBottom: '8px',
+};
+
+const feedbackDetailValueStyle = {
+  color: '#0f172a',
+  fontSize: '14px',
+  fontWeight: 700,
+  lineHeight: 1.5,
+};
+
+const feedbackNoteCardStyle = {
+  borderRadius: '14px',
+  border: '1px solid rgba(203, 213, 225, 0.92)',
+  background: '#ffffff',
+  padding: '14px 16px',
+  marginBottom: '16px',
+};
+
+const feedbackNoteTextStyle = {
+  color: '#334155',
+  fontSize: '14px',
+  lineHeight: 1.7,
+  whiteSpace: 'pre-wrap' as const,
+  wordBreak: 'break-word' as const,
+};
+
+const expandedActionRowStyle = {
+  display: 'flex',
+  gap: '10px',
+  flexWrap: 'wrap' as const,
 };
 
 export default AgentFeedbackSupabase;
