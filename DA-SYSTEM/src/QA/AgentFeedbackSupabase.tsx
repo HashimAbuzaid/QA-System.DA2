@@ -36,6 +36,8 @@ function AgentFeedbackSupabase() {
   const [successMessage, setSuccessMessage] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [expandedFeedbackId, setExpandedFeedbackId] = useState<string | null>(null);
+  const [savedAgentFilter, setSavedAgentFilter] = useState('');
+  const [savedStatusFilter, setSavedStatusFilter] = useState<'All' | 'Open' | 'In Progress' | 'Closed'>('All');
 
   const [selectedAgentProfileId, setSelectedAgentProfileId] = useState('');
   const [agentSearch, setAgentSearch] = useState('');
@@ -136,6 +138,37 @@ function AgentFeedbackSupabase() {
 
     return matchedProfile?.display_name || '-';
   }
+
+  function getFeedbackAgentKey(item: AgentFeedback) {
+    return `${item.agent_id}||${item.agent_name}||${item.team}`;
+  }
+
+  const savedAgentOptions = useMemo(() => {
+    const seen = new Set<string>();
+    return feedbackItems
+      .filter((item) => {
+        const key = getFeedbackAgentKey(item);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map((item) => ({
+        key: getFeedbackAgentKey(item),
+        label: `${item.agent_name} - ${getFeedbackDisplayName(item)} • ${item.agent_id} • ${item.team}`,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [feedbackItems, profiles]);
+
+  const filteredFeedbackItems = useMemo(() => {
+    return feedbackItems.filter((item) => {
+      const matchesAgent =
+        !savedAgentFilter || getFeedbackAgentKey(item) === savedAgentFilter;
+      const matchesStatus =
+        savedStatusFilter === 'All' || item.status === savedStatusFilter;
+
+      return matchesAgent && matchesStatus;
+    });
+  }, [feedbackItems, savedAgentFilter, savedStatusFilter]);
 
   function handleSelectAgent(profile: AgentProfile) {
     setSelectedAgentProfileId(profile.id);
@@ -446,10 +479,66 @@ function AgentFeedbackSupabase() {
 
       <div style={{ marginTop: '32px' }}>
         <div style={sectionEyebrow}>Saved Feedback Items</div>
+
+        {!loading && feedbackItems.length > 0 ? (
+          <div style={savedFilterBarStyle}>
+            <div style={savedFilterGridStyle}>
+              <div>
+                <label style={labelStyle}>Filter by Agent</label>
+                <select
+                  value={savedAgentFilter}
+                  onChange={(e) => setSavedAgentFilter(e.target.value)}
+                  style={fieldStyle}
+                >
+                  <option value="">All Agents</option>
+                  {savedAgentOptions.map((option) => (
+                    <option key={option.key} value={option.key}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Filter by Status</label>
+                <select
+                  value={savedStatusFilter}
+                  onChange={(e) =>
+                    setSavedStatusFilter(
+                      e.target.value as 'All' | 'Open' | 'In Progress' | 'Closed'
+                    )
+                  }
+                  style={fieldStyle}
+                >
+                  <option value="All">All Statuses</option>
+                  <option value="Open">Open</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Closed">Closed</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSavedAgentFilter('');
+                setSavedStatusFilter('All');
+              }}
+              style={secondaryButton}
+            >
+              Clear Filters
+            </button>
+          </div>
+        ) : null}
+
         {loading ? (
           <p style={{ color: 'var(--da-subtle-text, #94a3b8)' }}>Loading feedback...</p>
         ) : feedbackItems.length === 0 ? (
           <p style={{ color: 'var(--da-subtle-text, #94a3b8)' }}>No feedback items found.</p>
+        ) : filteredFeedbackItems.length === 0 ? (
+          <p style={{ color: 'var(--da-subtle-text, #94a3b8)' }}>
+            No feedback items found for the current filters.
+          </p>
         ) : (
           <div style={feedbackTableWrapStyle}>
             <div style={feedbackTableStyle}>
@@ -463,7 +552,7 @@ function AgentFeedbackSupabase() {
                 <div style={feedbackCellActionsStyle}>Actions</div>
               </div>
 
-              {feedbackItems.map((item) => {
+              {filteredFeedbackItems.map((item) => {
                 const isExpanded = expandedFeedbackId === item.id;
 
                 return (
@@ -973,6 +1062,23 @@ const expandedActionRowStyle = {
   display: 'flex',
   gap: '10px',
   flexWrap: 'wrap' as const,
+};
+
+
+const savedFilterBarStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: '14px',
+  alignItems: 'flex-end',
+  flexWrap: 'wrap' as const,
+  margin: '12px 0 18px 0',
+};
+
+const savedFilterGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 320px))',
+  gap: '14px',
+  flex: 1,
 };
 
 export default AgentFeedbackSupabase;
