@@ -31,6 +31,7 @@ type CallsRecord = {
   agent_name: string;
   calls_count: number;
   call_date: string;
+  date_to?: string | null;
   notes: string | null;
 };
 
@@ -40,6 +41,7 @@ type TicketsRecord = {
   agent_name: string;
   tickets_count: number;
   ticket_date: string;
+  date_to?: string | null;
   notes: string | null;
 };
 
@@ -49,6 +51,7 @@ type SalesRecord = {
   agent_name: string;
   amount: number;
   sale_date: string;
+  date_to?: string | null;
   notes: string | null;
 };
 
@@ -259,6 +262,21 @@ function ReportsSupabase() {
     return afterFrom && beforeTo;
   }
 
+  function matchesDateRange(
+    startDate?: string | null,
+    endDate?: string | null
+  ) {
+    const recordStart = String(startDate || '').slice(0, 10);
+    const recordEnd = String(endDate || startDate || '').slice(0, 10);
+
+    if (!recordStart) return false;
+
+    const effectiveFrom = dateFrom || '0001-01-01';
+    const effectiveTo = dateTo || '9999-12-31';
+
+    return recordEnd >= effectiveFrom && recordStart <= effectiveTo;
+  }
+
   function openNativeDatePicker(
     input: HTMLInputElement | null | undefined
   ) {
@@ -356,7 +374,7 @@ function ReportsSupabase() {
         item.agent_name,
         'Calls'
       );
-      return matchesTeam && matchesAgent && matchesDate(item.call_date);
+      return matchesTeam && matchesAgent && matchesDateRange(item.call_date, item.date_to || null);
     });
   }, [callsRecords, teamFilter, dateFrom, dateTo, selectedAgentProfileId]);
 
@@ -368,7 +386,7 @@ function ReportsSupabase() {
         item.agent_name,
         'Tickets'
       );
-      return matchesTeam && matchesAgent && matchesDate(item.ticket_date);
+      return matchesTeam && matchesAgent && matchesDateRange(item.ticket_date, item.date_to || null);
     });
   }, [ticketsRecords, teamFilter, dateFrom, dateTo, selectedAgentProfileId]);
 
@@ -380,7 +398,7 @@ function ReportsSupabase() {
         item.agent_name,
         'Sales'
       );
-      return matchesTeam && matchesAgent && matchesDate(item.sale_date);
+      return matchesTeam && matchesAgent && matchesDateRange(item.sale_date, item.date_to || null);
     });
   }, [salesRecords, teamFilter, dateFrom, dateTo, selectedAgentProfileId]);
 
