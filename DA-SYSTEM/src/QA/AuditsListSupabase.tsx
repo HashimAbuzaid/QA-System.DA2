@@ -133,40 +133,58 @@ const salesMetrics: Metric[] = [
 ];
 
 function getThemeVars(): Record<string, string> {
-  const isLight =
-    typeof document !== 'undefined' &&
-    (document.body.dataset.theme === 'light' ||
-      document.body.dataset.theme === 'white' ||
-      window.localStorage.getItem('detroit-axle-theme-mode') === 'light' ||
-      window.localStorage.getItem('detroit-axle-theme-mode') === 'white');
+  const themeMode =
+    typeof document !== 'undefined'
+      ? (
+          document.body.dataset.theme ||
+          document.documentElement.dataset.theme ||
+          window.localStorage.getItem('detroit-axle-theme-mode') ||
+          window.sessionStorage.getItem('detroit-axle-theme-mode') ||
+          window.localStorage.getItem('detroit-axle-theme') ||
+          window.sessionStorage.getItem('detroit-axle-theme') ||
+          ''
+        ).toLowerCase()
+      : '';
+
+  const isLight = themeMode === 'light' || themeMode === 'white';
 
   return {
     '--screen-text': isLight ? '#334155' : '#e5eefb',
-    '--screen-heading': isLight ? '#334155' : '#f8fafc',
-    '--screen-muted': isLight ? '#64748b' : '#94a3b8',
+    '--screen-heading': isLight ? '#0f172a' : '#f8fafc',
+    '--screen-muted': isLight ? '#8a98b3' : '#94a3b8',
     '--screen-subtle': isLight ? '#64748b' : '#64748b',
     '--screen-accent': isLight ? '#2563eb' : '#60a5fa',
     '--screen-panel-bg': isLight
-      ? 'linear-gradient(180deg, rgba(98, 109, 129, 0.96) 0%, rgba(118, 128, 148, 0.96) 100%)'
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(247,250,255,0.96) 100%)'
+      : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    '--screen-card-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(248,250,255,0.97) 100%)'
       : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
     '--screen-card-soft-bg': isLight
-      ? 'linear-gradient(180deg, rgba(84, 95, 116, 0.96) 0%, rgba(74, 85, 106, 0.96) 100%)'
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(245,248,253,0.96) 100%)'
       : 'rgba(15,23,42,0.52)',
     '--screen-field-bg': isLight
-      ? 'linear-gradient(180deg, rgba(24, 35, 63, 0.98) 0%, rgba(29, 41, 71, 0.98) 100%)'
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(250,252,255,0.98) 100%)'
       : 'rgba(15,23,42,0.7)',
-    '--screen-border': isLight ? 'rgba(203,213,225,0.36)' : 'rgba(148,163,184,0.12)',
-    '--screen-border-strong': isLight ? 'rgba(203,213,225,0.44)' : 'rgba(148,163,184,0.16)',
-    '--screen-table-head-bg': isLight ? 'rgba(10, 18, 36, 0.98)' : 'rgba(2,6,23,0.94)',
-    '--screen-secondary-btn-bg': isLight ? 'rgba(248,250,252,0.96)' : 'rgba(15,23,42,0.74)',
-    '--screen-secondary-btn-text': isLight ? '#334155' : '#e5eefb',
+    '--screen-field-text': isLight ? '#334155' : '#e5eefb',
+    '--screen-border': isLight ? 'rgba(203,213,225,0.92)' : 'rgba(148,163,184,0.14)',
+    '--screen-border-strong': isLight ? 'rgba(203,213,225,1)' : 'rgba(148,163,184,0.18)',
+    '--screen-table-head-bg': isLight ? 'rgba(13, 27, 57, 0.98)' : 'rgba(2,6,23,0.92)',
+    '--screen-pill-bg': isLight ? 'rgba(248,250,252,0.98)' : 'rgba(15,23,42,0.56)',
+    '--screen-secondary-btn-bg': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.78)',
+    '--screen-secondary-btn-text': isLight ? '#475569' : '#e5eefb',
     '--screen-select-option-bg': isLight ? '#ffffff' : '#0f172a',
     '--screen-select-option-text': isLight ? '#0f172a' : '#e5eefb',
-    '--screen-field-text': isLight ? '#e2e8f0' : '#e5eefb',
-    '--screen-menu-bg': isLight ? 'rgba(29, 39, 67, 0.98)' : 'rgba(15, 23, 42, 0.96)',
-    '--screen-shadow': isLight ? '0 18px 40px rgba(15,23,42,0.16)' : '0 18px 40px rgba(2,6,23,0.35)',
-    '--screen-score-pill-bg': isLight ? 'rgba(29, 78, 216, 0.14)' : 'rgba(37,99,235,0.18)',
-    '--screen-score-pill-border': isLight ? 'rgba(59,130,246,0.32)' : 'rgba(96,165,250,0.26)',
+    '--screen-menu-bg': isLight ? 'rgba(255,255,255,0.99)' : 'rgba(15, 23, 42, 0.96)',
+    '--screen-shadow': isLight ? '0 18px 40px rgba(15,23,42,0.10)' : '0 18px 40px rgba(2,6,23,0.35)',
+    '--screen-score-pill-bg': isLight ? 'rgba(37,99,235,0.10)' : 'rgba(37,99,235,0.18)',
+    '--screen-score-pill-border': isLight ? 'rgba(59,130,246,0.24)' : 'rgba(96,165,250,0.26)',
+    '--screen-soft-fill': isLight ? 'rgba(248,250,252,0.98)' : 'rgba(15,23,42,0.48)',
+    '--screen-soft-fill-2': isLight ? 'rgba(241,245,249,0.98)' : 'rgba(15,23,42,0.62)',
+    '--screen-note-bg': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.52)',
+    '--screen-highlight-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(247,250,255,0.98) 100%)'
+      : 'linear-gradient(135deg, rgba(30,64,175,0.22) 0%, rgba(15,23,42,0.5) 100%)',
   };
 }
 
@@ -1937,8 +1955,7 @@ const auditExpandedRowStyle = { padding: '0 16px 16px 16px' };
 const expandedPanelStyle = {
   borderRadius: '18px',
   border: '1px solid var(--screen-border)',
-  background:
-    'linear-gradient(180deg, rgba(15,23,42,0.78) 0%, rgba(15,23,42,0.6) 100%)',
+  background: 'var(--screen-panel-bg)',
   padding: '18px',
 };
 const editGridStyle = {
@@ -2031,14 +2048,14 @@ const pickerListStyle = {
 const pickerInfoStyle = {
   padding: '12px',
   borderRadius: '12px',
-  backgroundColor: 'rgba(15,23,42,0.68)',
+  backgroundColor: 'var(--screen-soft-fill)',
   color: 'var(--screen-muted)',
 };
 const pickerOptionStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
   border: '1px solid var(--screen-border)',
-  backgroundColor: 'rgba(15,23,42,0.6)',
+  backgroundColor: 'var(--screen-soft-fill)',
   textAlign: 'left' as const,
   cursor: 'pointer',
   color: 'var(--screen-text)',
