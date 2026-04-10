@@ -243,6 +243,14 @@ function ReportsSupabase() {
       : `${profile.agent_name} - ${profile.agent_id}`;
   }
 
+  function normalizeAgentId(value?: string | null) {
+    return String(value || '').trim().replace(/\.0+$/, '');
+  }
+
+  function normalizeAgentName(value?: string | null) {
+    return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
   function matchesDate(dateValue: string) {
     const afterFrom = dateFrom ? dateValue >= dateFrom : true;
     const beforeTo = dateTo ? dateValue <= dateTo : true;
@@ -256,11 +264,19 @@ function ReportsSupabase() {
   ) {
     if (!selectedAgent) return true;
 
-    const idMatches = (itemAgentId || '') === (selectedAgent.agent_id || '');
-    const nameMatches = (itemAgentName || '') === selectedAgent.agent_name;
-    const teamMatches = (itemTeam || '') === (selectedAgent.team || '');
+    const teamMatches = !selectedAgent.team || (itemTeam || '') === selectedAgent.team;
+    if (!teamMatches) {
+      return false;
+    }
 
-    return idMatches && nameMatches && teamMatches;
+    const selectedId = normalizeAgentId(selectedAgent.agent_id);
+    const recordId = normalizeAgentId(itemAgentId);
+
+    if (selectedId && recordId) {
+      return selectedId === recordId;
+    }
+
+    return normalizeAgentName(itemAgentName) === normalizeAgentName(selectedAgent.agent_name);
   }
 
   const visibleAgentProfiles = useMemo(() => {
