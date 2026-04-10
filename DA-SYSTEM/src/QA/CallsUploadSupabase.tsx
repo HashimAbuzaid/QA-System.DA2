@@ -18,6 +18,24 @@ type CallsDraft = {
   notes: string;
 };
 
+type CsvRow = {
+  rowNumber: number;
+  agentName: string;
+  agentId: string;
+  handled: string;
+};
+
+type CsvImportSummary = {
+  importedCount: number;
+  skippedCount: number;
+  skippedRows: Array<{
+    rowNumber: number;
+    agentName: string;
+    agentId: string;
+    reason: string;
+  }>;
+};
+
 const TEAM_NAME = 'Calls';
 
 const emptyDraft: CallsDraft = {
@@ -29,6 +47,86 @@ const emptyDraft: CallsDraft = {
   notes: '',
 };
 
+function normalizeAgentId(value: string | null | undefined) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  return raw.replace(/\.0+$/, '').trim();
+}
+
+function normalizeAgentName(value: string | null | undefined) {
+  return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function parseCsvLine(line: string) {
+  const values: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const next = line[index + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === ',' && !inQuotes) {
+      values.push(current);
+      current = '';
+      continue;
+    }
+
+    current += char;
+  }
+
+  values.push(current);
+  return values.map((item) => item.trim());
+}
+
+function parseCallsCsv(text: string): CsvRow[] {
+  const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+  if (!normalizedText) {
+    return [];
+  }
+
+  const lines = normalizedText
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) {
+    return [];
+  }
+
+  const headers = parseCsvLine(lines[0]).map((header) => header.toLowerCase());
+  const agentNameIndex = headers.indexOf('agent name');
+  const agentIdIndex = headers.indexOf('agent id');
+  const handledIndex = headers.indexOf('handled');
+
+  if (agentNameIndex === -1 || agentIdIndex === -1 || handledIndex === -1) {
+    throw new Error(
+      'CSV must contain these columns: Agent name, Agent Id, Handled.'
+    );
+  }
+
+  return lines.slice(1).map((line, rowIndex) => {
+    const values = parseCsvLine(line);
+
+    return {
+      rowNumber: rowIndex + 2,
+      agentName: values[agentNameIndex] || '',
+      agentId: normalizeAgentId(values[agentIdIndex] || ''),
+      handled: String(values[handledIndex] || '').trim(),
+    };
+  });
+}
+
 function CallsUploadSupabase() {
   const [draft, setDraft] = usePersistentState<CallsDraft>(
     'detroit-axle-calls-upload-draft',
@@ -36,12 +134,18 @@ function CallsUploadSupabase() {
   );
 
   const [saving, setSaving] = useState(false);
+  const [csvSaving, setCsvSaving] = useState(false);
   const [loadingAgents, setLoadingAgents] = useState(true);
   const [agentLoadError, setAgentLoadError] = useState('');
   const [agentProfiles, setAgentProfiles] = useState<AgentProfile[]>([]);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isAgentPickerOpen, setIsAgentPickerOpen] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvDateFrom, setCsvDateFrom] = useState('');
+  const [csvDateTo, setCsvDateTo] = useState('');
+  const [csvNotes, setCsvNotes] = useState('');
+  const [csvSummary, setCsvSummary] = useState<CsvImportSummary | null>(null);
 
   const agentPickerRef = useRef<HTMLDivElement | null>(null);
 
@@ -128,9 +232,18 @@ function CallsUploadSupabase() {
     setIsAgentPickerOpen(false);
   }
 
+  function resetCsvForm() {
+    setCsvFile(null);
+    setCsvDateFrom('');
+    setCsvDateTo('');
+    setCsvNotes('');
+    setCsvSummary(null);
+  }
+
   async function handleSave() {
     setErrorMessage('');
     setSuccessMessage('');
+    setCsvSummary(null);
 
     if (!selectedAgent) {
       setErrorMessage('Please choose an agent.');
@@ -174,13 +287,143 @@ function CallsUploadSupabase() {
     setSuccessMessage('Calls record saved successfully. Draft cleared.');
   }
 
+  async function handleCsvImport() {
+    setErrorMessage('');
+    setSuccessMessage('');
+    setCsvSummary(null);
+
+    if (!csvFile) {
+      setErrorMessage('Please choose a CSV file.');
+      return;
+    }
+
+    if (!csvDateFrom || !csvDateTo) {
+      setErrorMessage('Please fill Date From and Date To for the CSV import.');
+      return;
+    }
+
+    if (csvDateTo < csvDateFrom) {
+      setErrorMessage('CSV Date To cannot be earlier than Date From.');
+      return;
+    }
+
+    if (agentProfiles.length === 0) {
+      setErrorMessage('No Calls team profiles are available for matching.');
+      return;
+    }
+
+    setCsvSaving(true);
+
+    try {
+      const csvText = await csvFile.text();
+      const parsedRows = parseCallsCsv(csvText);
+
+      if (parsedRows.length === 0) {
+        throw new Error('The CSV file does not contain any data rows.');
+      }
+
+      const agentIdMap = new Map<string, AgentProfile>();
+      const agentNameMap = new Map<string, AgentProfile>();
+
+      agentProfiles.forEach((profile) => {
+        if (profile.agent_id) {
+          agentIdMap.set(normalizeAgentId(profile.agent_id), profile);
+        }
+        agentNameMap.set(normalizeAgentName(profile.agent_name), profile);
+      });
+
+      const rowsToInsert: Array<{
+        agent_id: string;
+        agent_name: string;
+        calls_count: number;
+        call_date: string;
+        date_to: string;
+        notes: string;
+      }> = [];
+
+      const skippedRows: CsvImportSummary['skippedRows'] = [];
+
+      parsedRows.forEach((row) => {
+        const matchedById = row.agentId ? agentIdMap.get(row.agentId) : null;
+        const matchedByName = agentNameMap.get(normalizeAgentName(row.agentName));
+        const matchedProfile = matchedById || matchedByName || null;
+
+        const handledCount = Number(String(row.handled || '').replace(/,/g, ''));
+
+        if (!matchedProfile || !matchedProfile.agent_id) {
+          skippedRows.push({
+            rowNumber: row.rowNumber,
+            agentName: row.agentName,
+            agentId: row.agentId,
+            reason: 'No Calls team profile match found.',
+          });
+          return;
+        }
+
+        if (!Number.isFinite(handledCount)) {
+          skippedRows.push({
+            rowNumber: row.rowNumber,
+            agentName: row.agentName,
+            agentId: row.agentId,
+            reason: 'Handled value is not a valid number.',
+          });
+          return;
+        }
+
+        rowsToInsert.push({
+          agent_id: matchedProfile.agent_id,
+          agent_name: matchedProfile.agent_name,
+          calls_count: handledCount,
+          call_date: csvDateFrom,
+          date_to: csvDateTo,
+          notes: csvNotes,
+        });
+      });
+
+      if (rowsToInsert.length === 0) {
+        setCsvSummary({
+          importedCount: 0,
+          skippedCount: skippedRows.length,
+          skippedRows,
+        });
+        throw new Error(
+          'No rows were imported. All CSV rows were skipped because they did not match Calls team profiles or had invalid Handled values.'
+        );
+      }
+
+      const { error } = await supabase.from('calls_records').insert(rowsToInsert);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      setCsvSummary({
+        importedCount: rowsToInsert.length,
+        skippedCount: skippedRows.length,
+        skippedRows,
+      });
+      setSuccessMessage(
+        `CSV imported successfully. Imported ${rowsToInsert.length} row(s)${
+          skippedRows.length > 0 ? ` and skipped ${skippedRows.length}.` : '.'
+        }`
+      );
+      resetCsvForm();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : 'CSV import failed.'
+      );
+    } finally {
+      setCsvSaving(false);
+    }
+  }
+
   return (
-    <div style={{ color: 'var(--da-page-text, #e5eefb)' }}>
+    <div style={{ color: '#e5eefb' }}>
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Operations Upload</div>
           <h2 style={{ margin: 0, fontSize: '30px' }}>Calls Upload</h2>
-          <p style={{ margin: '10px 0 0 0', color: 'var(--da-subtle-text, #94a3b8)' }}>
+          <p style={{ margin: '10px 0 0 0', color: '#94a3b8' }}>
             Upload calls production using the live Calls agent directory from
             profiles.
           </p>
@@ -203,7 +446,34 @@ function CallsUploadSupabase() {
         <div style={successBannerStyle}>{successMessage}</div>
       ) : null}
 
+      {csvSummary ? (
+        <div style={summaryCardStyle}>
+          <div style={infoCardTitleStyle}>CSV Import Summary</div>
+          <p style={infoLineStyle}>
+            <strong>Imported:</strong> {csvSummary.importedCount}
+          </p>
+          <p style={infoLineStyle}>
+            <strong>Skipped:</strong> {csvSummary.skippedCount}
+          </p>
+
+          {csvSummary.skippedRows.length > 0 ? (
+            <div style={{ marginTop: '12px' }}>
+              <div style={summarySubTitleStyle}>Skipped Rows</div>
+              <div style={skippedListStyle}>
+                {csvSummary.skippedRows.map((row) => (
+                  <div key={`${row.rowNumber}-${row.agentId}-${row.agentName}`} style={skippedItemStyle}>
+                    Row {row.rowNumber} • {row.agentName || '-'} • {row.agentId || '-'} • {row.reason}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       <div style={panelStyle}>
+        <div style={sectionMiniTitleStyle}>Manual Upload</div>
+
         <div style={formGridStyle}>
           <div style={wideFieldStyle}>
             <label style={labelStyle}>Agent</label>
@@ -213,7 +483,7 @@ function CallsUploadSupabase() {
                 onClick={() => setIsAgentPickerOpen((prev) => !prev)}
                 style={pickerButtonStyle}
               >
-                <span style={{ color: selectedAgent ? 'var(--da-title, #f8fafc)' : 'var(--da-subtle-text, #94a3b8)' }}>
+                <span style={{ color: selectedAgent ? '#f8fafc' : '#94a3b8' }}>
                   {selectedAgent
                     ? getAgentLabel(selectedAgent)
                     : 'Select agent'}
@@ -371,6 +641,90 @@ function CallsUploadSupabase() {
           Clear Draft
         </button>
       </div>
+
+      <div style={{ ...panelStyle, marginTop: '26px' }}>
+        <div style={sectionMiniTitleStyle}>CSV Import</div>
+        <p style={sectionSupportTextStyle}>
+          Upload your calls CSV, enter Date From and Date To once for the whole
+          batch, and only rows that match profiles in the Calls team will be
+          imported. All other rows will be ignored.
+        </p>
+
+        <div style={formGridStyle}>
+          <div style={wideFieldStyle}>
+            <label style={labelStyle}>CSV File</label>
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(event) =>
+                setCsvFile(event.target.files?.[0] || null)
+              }
+              style={fileInputStyle}
+            />
+            <div style={helperTextStyle}>
+              Required columns: Agent name, Agent Id, Handled
+            </div>
+            {csvFile ? (
+              <div style={helperTextStyle}>Selected file: {csvFile.name}</div>
+            ) : null}
+          </div>
+
+          <div>
+            <label style={labelStyle}>Date From</label>
+            <input
+              type="date"
+              value={csvDateFrom}
+              onChange={(event) => setCsvDateFrom(event.target.value)}
+              style={fieldStyle}
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Date To</label>
+            <input
+              type="date"
+              value={csvDateTo}
+              onChange={(event) => setCsvDateTo(event.target.value)}
+              style={fieldStyle}
+            />
+          </div>
+
+          <div style={wideFieldStyle}>
+            <label style={labelStyle}>Notes</label>
+            <textarea
+              value={csvNotes}
+              onChange={(event) => setCsvNotes(event.target.value)}
+              rows={4}
+              style={fieldStyle}
+              placeholder="Optional notes for this whole CSV import batch"
+            />
+          </div>
+        </div>
+
+        <div style={actionRowStyle}>
+          <button
+            type="button"
+            onClick={handleCsvImport}
+            disabled={csvSaving}
+            style={primaryButton}
+          >
+            {csvSaving ? 'Importing CSV...' : 'Import CSV'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              resetCsvForm();
+              setErrorMessage('');
+              setSuccessMessage('CSV import form cleared.');
+            }}
+            disabled={csvSaving}
+            style={secondaryButton}
+          >
+            Clear CSV Form
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -385,7 +739,7 @@ const pageHeaderStyle = {
 };
 
 const sectionEyebrow = {
-  color: 'var(--da-accent-text, #60a5fa)',
+  color: '#60a5fa',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -393,23 +747,72 @@ const sectionEyebrow = {
   marginBottom: '12px',
 };
 
+const sectionMiniTitleStyle = {
+  color: '#93c5fd',
+  fontSize: '13px',
+  fontWeight: 800,
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.12em',
+  marginBottom: '10px',
+};
+
+const sectionSupportTextStyle = {
+  color: '#94a3b8',
+  marginTop: 0,
+  marginBottom: '18px',
+  lineHeight: 1.6,
+};
+
 const teamBadgeStyle = {
   padding: '12px 14px',
   borderRadius: '14px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'var(--da-surface-bg, rgba(15, 23, 42, 0.62))',
-  color: 'var(--da-muted-text, #cbd5e1)',
+  background: 'rgba(15, 23, 42, 0.62)',
+  color: '#cbd5e1',
   fontWeight: 700,
 };
 
 const panelStyle = {
   background:
-    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
+    'linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%)',
   border: '1px solid rgba(148, 163, 184, 0.14)',
   borderRadius: '24px',
   padding: '22px',
   boxShadow: '0 18px 40px rgba(2, 6, 23, 0.35)',
   backdropFilter: 'blur(14px)',
+};
+
+const summaryCardStyle = {
+  marginBottom: '20px',
+  borderRadius: '20px',
+  border: '1px solid rgba(96, 165, 250, 0.18)',
+  background:
+    'linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(10, 16, 32, 0.88) 100%)',
+  padding: '18px',
+};
+
+const summarySubTitleStyle = {
+  color: '#93c5fd',
+  fontSize: '12px',
+  fontWeight: 800,
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.12em',
+  marginBottom: '10px',
+};
+
+const skippedListStyle = {
+  display: 'grid',
+  gap: '8px',
+};
+
+const skippedItemStyle = {
+  padding: '10px 12px',
+  borderRadius: '12px',
+  backgroundColor: 'rgba(15, 23, 42, 0.62)',
+  border: '1px solid rgba(148, 163, 184, 0.12)',
+  color: '#cbd5e1',
+  fontSize: '13px',
+  lineHeight: 1.5,
 };
 
 const formGridStyle = {
@@ -426,8 +829,14 @@ const labelStyle = {
   display: 'block',
   marginBottom: '8px',
   fontSize: '13px',
-  color: 'var(--da-muted-text, #cbd5e1)',
+  color: '#cbd5e1',
   fontWeight: 700,
+};
+
+const helperTextStyle = {
+  marginTop: '8px',
+  color: '#94a3b8',
+  fontSize: '12px',
 };
 
 const fieldStyle = {
@@ -435,8 +844,13 @@ const fieldStyle = {
   padding: '14px 16px',
   borderRadius: '16px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'var(--da-surface-bg, rgba(15, 23, 42, 0.7))',
-  color: 'var(--da-page-text, #e5eefb)',
+  background: 'rgba(15, 23, 42, 0.7)',
+  color: '#e5eefb',
+};
+
+const fileInputStyle = {
+  ...fieldStyle,
+  padding: '12px 14px',
 };
 
 const pickerButtonStyle = {
@@ -444,8 +858,8 @@ const pickerButtonStyle = {
   padding: '14px 16px',
   borderRadius: '16px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'var(--da-surface-bg, rgba(15, 23, 42, 0.7))',
-  color: 'var(--da-page-text, #e5eefb)',
+  background: 'rgba(15, 23, 42, 0.7)',
+  color: '#e5eefb',
   textAlign: 'left' as const,
   cursor: 'pointer',
   display: 'flex',
@@ -458,7 +872,7 @@ const pickerMenuStyle = {
   top: 'calc(100% + 8px)',
   left: 0,
   right: 0,
-  background: 'var(--da-menu-bg, rgba(15, 23, 42, 0.96))',
+  background: 'rgba(15, 23, 42, 0.96)',
   border: '1px solid rgba(148, 163, 184, 0.16)',
   borderRadius: '18px',
   boxShadow: '0 18px 44px rgba(2, 6, 23, 0.45)',
@@ -483,32 +897,32 @@ const pickerListStyle = {
 const pickerInfoStyle = {
   padding: '12px',
   borderRadius: '12px',
-  backgroundColor: 'var(--da-surface-bg, rgba(15, 23, 42, 0.68))',
-  color: 'var(--da-subtle-text, #94a3b8)',
+  backgroundColor: 'rgba(15, 23, 42, 0.68)',
+  color: '#94a3b8',
 };
 
 const pickerErrorStyle = {
   padding: '12px',
   borderRadius: '12px',
-  backgroundColor: 'var(--da-error-bg, rgba(127, 29, 29, 0.24))',
-  color: 'var(--da-error-text, #fecaca)',
-  border: 'var(--da-error-border, 1px solid rgba(248, 113, 113, 0.22))',
+  backgroundColor: 'rgba(127, 29, 29, 0.24)',
+  color: '#fecaca',
+  border: '1px solid rgba(248, 113, 113, 0.22)',
 };
 
 const pickerOptionStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
   border: '1px solid rgba(148, 163, 184, 0.12)',
-  backgroundColor: 'var(--da-surface-bg, rgba(15, 23, 42, 0.6))',
+  backgroundColor: 'rgba(15, 23, 42, 0.6)',
   textAlign: 'left' as const,
   cursor: 'pointer',
   fontWeight: 600,
-  color: 'var(--da-page-text, #e5eefb)',
+  color: '#e5eefb',
 };
 
 const pickerOptionActiveStyle = {
   border: '1px solid rgba(96, 165, 250, 0.36)',
-  backgroundColor: 'var(--da-active-option-bg, rgba(30, 64, 175, 0.32))',
+  backgroundColor: 'rgba(30, 64, 175, 0.32)',
 };
 
 const infoCardStyle = {
@@ -516,11 +930,11 @@ const infoCardStyle = {
   borderRadius: '18px',
   padding: '18px',
   border: '1px solid rgba(148, 163, 184, 0.12)',
-  background: 'var(--da-card-bg, rgba(15, 23, 42, 0.5))',
+  background: 'rgba(15, 23, 42, 0.5)',
 };
 
 const infoCardTitleStyle = {
-  color: 'var(--da-accent-text, #93c5fd)',
+  color: '#93c5fd',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -530,7 +944,7 @@ const infoCardTitleStyle = {
 
 const infoLineStyle = {
   margin: '0 0 8px 0',
-  color: 'var(--da-muted-text, #cbd5e1)',
+  color: '#cbd5e1',
 };
 
 const actionRowStyle = {
@@ -555,8 +969,8 @@ const secondaryButton = {
   padding: '14px 18px',
   borderRadius: '16px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'var(--da-field-bg, rgba(15, 23, 42, 0.74))',
-  color: 'var(--da-page-text, #e5eefb)',
+  background: 'rgba(15, 23, 42, 0.74)',
+  color: '#e5eefb',
   fontWeight: 700,
   cursor: 'pointer',
 };
@@ -565,9 +979,9 @@ const errorBannerStyle = {
   marginBottom: '16px',
   padding: '14px 16px',
   borderRadius: '16px',
-  backgroundColor: 'var(--da-error-bg, rgba(127, 29, 29, 0.24))',
-  border: 'var(--da-warning-border, 1px solid rgba(252, 165, 165, 0.24))',
-  color: 'var(--da-error-text, #fecaca)',
+  backgroundColor: 'rgba(127, 29, 29, 0.24)',
+  border: '1px solid rgba(252, 165, 165, 0.24)',
+  color: '#fecaca',
   fontWeight: 700,
 };
 
@@ -577,7 +991,7 @@ const successBannerStyle = {
   borderRadius: '16px',
   backgroundColor: 'rgba(22, 101, 52, 0.24)',
   border: '1px solid rgba(134, 239, 172, 0.22)',
-  color: 'var(--da-success-text, #bbf7d0)',
+  color: '#bbf7d0',
   fontWeight: 700,
 };
 
