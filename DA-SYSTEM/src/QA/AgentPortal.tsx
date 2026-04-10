@@ -1013,23 +1013,43 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           {filteredCallsRecords.length === 0 ? (
             <p>No calls records found for this audit date range.</p>
           ) : (
-            <div style={{ display: 'grid', gap: '12px' }}>
-              {filteredCallsRecords.map((record) => (
-                <div key={record.id} style={cardStyle}>
-                  <p>
-                    <strong>Date From:</strong> {record.call_date}
-                  </p>
-                  <p>
-                    <strong>Date To:</strong> {record.date_to || '-'}
-                  </p>
-                  <p>
-                    <strong>Calls Count:</strong> {record.calls_count}
-                  </p>
-                  <p>
-                    <strong>Notes:</strong> {record.notes || '-'}
-                  </p>
+            <div style={recordsTableWrapStyle}>
+              <div style={recordsTableStyle}>
+                <div style={{ ...recordsRowStyle, ...recordsHeaderRowStyle }}>
+                  <div style={recordsCellDateFromStyle}>Date From</div>
+                  <div style={recordsCellDateToStyle}>Date To</div>
+                  <div style={recordsCellValueStyle}>Calls Count</div>
+                  <div style={recordsCellNotesStyle}>Notes</div>
                 </div>
-              ))}
+
+                {filteredCallsRecords.map((record) => (
+                  <div key={record.id} style={recordsEntryStyle}>
+                    <div style={recordsRowStyle}>
+                      <div style={recordsCellDateFromStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {formatDateOnly(record.call_date)}
+                        </div>
+                      </div>
+
+                      <div style={recordsCellDateToStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {record.date_to ? formatDateOnly(record.date_to) : '-'}
+                        </div>
+                      </div>
+
+                      <div style={recordsCellValueStyle}>
+                        <div style={primaryCellTextStyle}>{record.calls_count}</div>
+                      </div>
+
+                      <div style={recordsCellNotesStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {record.notes?.trim() || '-'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </Section>
@@ -1040,23 +1060,43 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           {filteredTicketsRecords.length === 0 ? (
             <p>No tickets records found for this audit date range.</p>
           ) : (
-            <div style={{ display: 'grid', gap: '12px' }}>
-              {filteredTicketsRecords.map((record) => (
-                <div key={record.id} style={cardStyle}>
-                  <p>
-                    <strong>Date From:</strong> {record.ticket_date}
-                  </p>
-                  <p>
-                    <strong>Date To:</strong> {record.date_to || '-'}
-                  </p>
-                  <p>
-                    <strong>Tickets Count:</strong> {record.tickets_count}
-                  </p>
-                  <p>
-                    <strong>Notes:</strong> {record.notes || '-'}
-                  </p>
+            <div style={recordsTableWrapStyle}>
+              <div style={recordsTableStyle}>
+                <div style={{ ...recordsRowStyle, ...recordsHeaderRowStyle }}>
+                  <div style={recordsCellDateFromStyle}>Date From</div>
+                  <div style={recordsCellDateToStyle}>Date To</div>
+                  <div style={recordsCellValueStyle}>Tickets Count</div>
+                  <div style={recordsCellNotesStyle}>Notes</div>
                 </div>
-              ))}
+
+                {filteredTicketsRecords.map((record) => (
+                  <div key={record.id} style={recordsEntryStyle}>
+                    <div style={recordsRowStyle}>
+                      <div style={recordsCellDateFromStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {formatDateOnly(record.ticket_date)}
+                        </div>
+                      </div>
+
+                      <div style={recordsCellDateToStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {record.date_to ? formatDateOnly(record.date_to) : '-'}
+                        </div>
+                      </div>
+
+                      <div style={recordsCellValueStyle}>
+                        <div style={primaryCellTextStyle}>{record.tickets_count}</div>
+                      </div>
+
+                      <div style={recordsCellNotesStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {record.notes?.trim() || '-'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </Section>
@@ -1067,23 +1107,45 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           {filteredSalesRecords.length === 0 ? (
             <p>No sales records found for this audit date range.</p>
           ) : (
-            <div style={{ display: 'grid', gap: '12px' }}>
-              {filteredSalesRecords.map((record) => (
-                <div key={record.id} style={cardStyle}>
-                  <p>
-                    <strong>Date From:</strong> {record.sale_date}
-                  </p>
-                  <p>
-                    <strong>Date To:</strong> {record.date_to || '-'}
-                  </p>
-                  <p>
-                    <strong>Amount:</strong> ${Number(record.amount).toFixed(2)}
-                  </p>
-                  <p>
-                    <strong>Notes:</strong> {record.notes || '-'}
-                  </p>
+            <div style={recordsTableWrapStyle}>
+              <div style={recordsTableStyle}>
+                <div style={{ ...recordsRowStyle, ...recordsHeaderRowStyle }}>
+                  <div style={recordsCellDateFromStyle}>Date From</div>
+                  <div style={recordsCellDateToStyle}>Date To</div>
+                  <div style={recordsCellValueStyle}>Amount</div>
+                  <div style={recordsCellNotesStyle}>Notes</div>
                 </div>
-              ))}
+
+                {filteredSalesRecords.map((record) => (
+                  <div key={record.id} style={recordsEntryStyle}>
+                    <div style={recordsRowStyle}>
+                      <div style={recordsCellDateFromStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {formatDateOnly(record.sale_date)}
+                        </div>
+                      </div>
+
+                      <div style={recordsCellDateToStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {record.date_to ? formatDateOnly(record.date_to) : '-'}
+                        </div>
+                      </div>
+
+                      <div style={recordsCellValueStyle}>
+                        <div style={primaryCellTextStyle}>
+                          ${Number(record.amount).toFixed(2)}
+                        </div>
+                      </div>
+
+                      <div style={recordsCellNotesStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {record.notes?.trim() || '-'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </Section>
@@ -1529,5 +1591,47 @@ const fullCommentTextStyle = {
   whiteSpace: 'pre-wrap' as const,
   wordBreak: 'break-word' as const,
 };
+
+const recordsTableWrapStyle = {
+  marginTop: '16px',
+  overflowX: 'auto' as const,
+  borderRadius: '18px',
+  border: '1px solid var(--screen-border)',
+  background: 'var(--screen-card-bg)',
+  boxShadow: 'var(--screen-shadow)',
+};
+
+const recordsTableStyle = {
+  minWidth: '820px',
+};
+
+const recordsEntryStyle = {
+  borderBottom: '1px solid rgba(148,163,184,0.08)',
+};
+
+const recordsRowStyle = {
+  display: 'grid',
+  gridTemplateColumns: '180px 180px 160px minmax(220px, 1.5fr)',
+  gap: '14px',
+  alignItems: 'center',
+  padding: '14px 16px',
+};
+
+const recordsHeaderRowStyle = {
+  position: 'sticky' as const,
+  top: 0,
+  zIndex: 1,
+  background: 'var(--screen-table-head-bg)',
+  color: '#93c5fd',
+  fontSize: '12px',
+  fontWeight: 800,
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.12em',
+};
+
+const recordsCellDateFromStyle = {};
+const recordsCellDateToStyle = {};
+const recordsCellValueStyle = {};
+const recordsCellNotesStyle = {};
 
 export default AgentPortal;
