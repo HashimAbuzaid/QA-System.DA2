@@ -425,7 +425,7 @@ function SupervisorRequestsSupabase({
   }
 
   return (
-    <div style={{ color: 'var(--da-page-text, #e5eefb)' }}>
+    <div data-no-theme-invert="true" style={{ color: 'var(--da-page-text, #e5eefb)' }}>
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Supervisor Requests</div>
@@ -497,7 +497,7 @@ function SupervisorRequestsSupabase({
                   style={pickerButtonStyle}
                 >
                   <span
-                    style={{ color: selectedAgent ? 'var(--da-page-text, #e5eefb)' : 'var(--da-subtle-text, #94a3b8)' }}
+                    style={{ color: selectedAgent ? 'var(--da-field-text, #e5eefb)' : 'var(--da-subtle-text, #94a3b8)' }}
                   >
                     {selectedAgent
                       ? getAgentLabel(selectedAgent)
@@ -832,7 +832,7 @@ const pageHeaderStyle = {
 };
 
 const sectionEyebrow = {
-  color: 'var(--da-accent-text, #60a5fa)',
+  color: '#60a5fa',
   fontSize: '12px',
   fontWeight: 800,
   letterSpacing: '0.18em',
@@ -842,10 +842,11 @@ const sectionEyebrow = {
 
 const panelStyle = {
   background:
-    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
-  border: '1px solid rgba(148,163,184,0.14)',
+    'var(--da-panel-bg, linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%))',
+  border: 'var(--da-panel-border, 1px solid rgba(148,163,184,0.14))',
   borderRadius: '20px',
   padding: '20px',
+  boxShadow: 'var(--da-panel-shadow, 0 10px 30px rgba(0,0,0,0.18))',
 };
 
 const formGridStyle = {
@@ -861,13 +862,13 @@ const scopeInfoStyle = {
   borderRadius: '12px',
   backgroundColor: 'var(--da-card-bg, rgba(15,23,42,0.5))',
   border: '1px solid rgba(148,163,184,0.12)',
-  color: 'var(--da-muted-text, #cbd5e1)',
+  color: 'var(--da-page-text, #cbd5e1)',
 };
 
 const labelStyle = {
   display: 'block',
   marginBottom: '8px',
-  color: 'var(--da-muted-text, #cbd5e1)',
+  color: 'var(--da-muted-text, #475569)',
   fontWeight: 700,
   fontSize: '13px',
 };
@@ -876,17 +877,17 @@ const fieldStyle = {
   width: '100%',
   padding: '12px 14px',
   borderRadius: '12px',
-  border: '1px solid rgba(148,163,184,0.16)',
-  background: 'var(--da-surface-bg, rgba(15,23,42,0.7))',
-  color: 'var(--da-page-text, #e5eefb)',
+  border: 'var(--da-field-border, 1px solid rgba(148,163,184,0.16))',
+  background: 'var(--da-field-bg, rgba(15,23,42,0.7))',
+  color: 'var(--da-field-text, #e5eefb)',
 };
 
 const compactFieldStyle = {
   padding: '10px 12px',
   borderRadius: '10px',
-  border: '1px solid rgba(148,163,184,0.16)',
+  border: 'var(--da-field-border, 1px solid rgba(148,163,184,0.16))',
   background: 'var(--da-field-bg, rgba(15,23,42,0.8))',
-  color: 'var(--da-page-text, #e5eefb)',
+  color: 'var(--da-field-text, #e5eefb)',
   minWidth: '220px',
 };
 
@@ -894,14 +895,14 @@ const pickerButtonStyle = {
   width: '100%',
   padding: '12px 14px',
   borderRadius: '12px',
-  border: '1px solid rgba(148,163,184,0.16)',
-  background: 'var(--da-surface-bg, rgba(15,23,42,0.7))',
+  border: 'var(--da-field-border, 1px solid rgba(148,163,184,0.16))',
+  background: 'var(--da-field-bg, rgba(15,23,42,0.7))',
   textAlign: 'left' as const,
   cursor: 'pointer',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  color: 'var(--da-page-text, #e5eefb)',
+  color: 'var(--da-field-text, #e5eefb)',
 };
 
 const pickerMenuStyle = {
@@ -910,9 +911,9 @@ const pickerMenuStyle = {
   left: 0,
   right: 0,
   background: 'var(--da-menu-bg, rgba(15,23,42,0.96))',
-  border: '1px solid rgba(148,163,184,0.16)',
+  border: 'var(--da-field-border, 1px solid rgba(148,163,184,0.16))',
   borderRadius: '16px',
-  boxShadow: '0 10px 30px rgba(0,0,0,0.22)',
+  boxShadow: 'var(--da-panel-shadow, 0 10px 30px rgba(0,0,0,0.22))',
   zIndex: 20,
   overflow: 'hidden',
 };
@@ -933,7 +934,7 @@ const pickerListStyle = {
 const pickerInfoStyle = {
   padding: '12px',
   borderRadius: '8px',
-  backgroundColor: 'var(--da-surface-bg, rgba(15,23,42,0.68))',
+  backgroundColor: 'var(--da-card-bg, rgba(15,23,42,0.68))',
   color: 'var(--da-subtle-text, #94a3b8)',
 };
 
@@ -941,7 +942,7 @@ const pickerErrorStyle = {
   padding: '12px',
   borderRadius: '8px',
   backgroundColor: 'rgba(127,29,29,0.24)',
-  color: 'var(--da-error-text, #fecaca)',
+  color: '#fecaca',
   border: '1px solid rgba(248,113,113,0.22)',
 };
 
@@ -949,16 +950,16 @@ const pickerOptionStyle = {
   padding: '12px',
   borderRadius: '8px',
   border: '1px solid rgba(148,163,184,0.12)',
-  backgroundColor: 'var(--da-surface-bg, rgba(15,23,42,0.6))',
+  backgroundColor: 'var(--da-option-bg, rgba(15,23,42,0.6))',
   textAlign: 'left' as const,
   cursor: 'pointer',
   fontWeight: 500,
-  color: 'var(--da-page-text, #e5eefb)',
+  color: 'var(--da-field-text, #e5eefb)',
 };
 
 const pickerOptionActiveStyle = {
   border: '1px solid #2563eb',
-  backgroundColor: 'var(--da-active-option-bg, rgba(37, 99, 235, 0.18))',
+  backgroundColor: 'rgba(37,99,235,0.18)',
 };
 
 const infoCardStyle = {
@@ -966,6 +967,7 @@ const infoCardStyle = {
   border: '1px solid rgba(148,163,184,0.12)',
   borderRadius: '12px',
   padding: '14px',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 
 const primaryButton = {
@@ -980,9 +982,9 @@ const primaryButton = {
 
 const secondaryButton = {
   padding: '12px 16px',
-  backgroundColor: 'var(--da-field-bg, rgba(15,23,42,0.9))',
-  color: 'white',
-  border: '1px solid rgba(148,163,184,0.16)',
+  backgroundColor: 'var(--da-secondary-bg, rgba(15,23,42,0.9))',
+  color: 'var(--da-secondary-text, #ffffff)',
+  border: 'var(--da-secondary-border, 1px solid rgba(148,163,184,0.16))',
   borderRadius: '10px',
   cursor: 'pointer',
   fontWeight: 700,
@@ -1008,19 +1010,20 @@ const countPillStyle = {
   alignItems: 'center',
   padding: '10px 14px',
   borderRadius: '999px',
-  backgroundColor: 'var(--da-surface-bg, rgba(15,23,42,0.62))',
-  border: '1px solid rgba(148,163,184,0.14)',
-  color: 'var(--da-muted-text, #cbd5e1)',
+  backgroundColor: 'var(--da-secondary-bg, rgba(15,23,42,0.62))',
+  border: 'var(--da-secondary-border, 1px solid rgba(148,163,184,0.14))',
+  color: 'var(--da-secondary-text, #cbd5e1)',
   fontSize: '13px',
   fontWeight: 700,
 };
 
 const requestCardStyle = {
-  border: '1px solid rgba(148,163,184,0.14)',
+  border: 'var(--da-panel-border, 1px solid rgba(148,163,184,0.14))',
   borderRadius: '16px',
   padding: '16px',
   background:
-    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
+    'var(--da-panel-bg, linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%))',
+  boxShadow: 'var(--da-panel-shadow, 0 8px 24px rgba(2,6,23,0.2))',
 };
 
 const requestSummaryRowStyle = {
@@ -1044,13 +1047,13 @@ const requestSummarySideStyle = {
 };
 
 const requestTitleStyle = {
-  color: 'var(--da-title, #f8fafc)',
+  color: '#f8fafc',
   fontSize: '16px',
   fontWeight: 800,
 };
 
 const requestMetaStyle = {
-  color: 'var(--da-subtle-text, #94a3b8)',
+  color: '#94a3b8',
   fontSize: '13px',
 };
 
@@ -1074,7 +1077,7 @@ const detailsGridStyle = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
   gap: '12px',
-  color: 'var(--da-muted-text, #cbd5e1)',
+  color: '#cbd5e1',
 };
 
 const noteBlockStyle = {
@@ -1085,7 +1088,7 @@ const noteBlockStyle = {
 };
 
 const noteLabelStyle = {
-  color: 'var(--da-accent-text, #93c5fd)',
+  color: '#93c5fd',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -1094,7 +1097,7 @@ const noteLabelStyle = {
 };
 
 const noteTextStyle = {
-  color: 'var(--da-title, #f8fafc)',
+  color: 'var(--da-page-text, #f8fafc)',
   lineHeight: 1.6,
 };
 
@@ -1108,9 +1111,9 @@ const statusActionWrapStyle = {
 const miniButtonStyle = {
   padding: '10px 12px',
   borderRadius: '10px',
-  border: '1px solid rgba(148,163,184,0.16)',
-  backgroundColor: 'var(--da-field-bg, rgba(15,23,42,0.82))',
-  color: '#ffffff',
+  border: 'var(--da-secondary-border, 1px solid rgba(148,163,184,0.16))',
+  backgroundColor: 'var(--da-secondary-bg, rgba(15,23,42,0.82))',
+  color: 'var(--da-secondary-text, #ffffff)',
   cursor: 'pointer',
   fontWeight: 700,
 };
@@ -1121,7 +1124,7 @@ const errorBanner = {
   borderRadius: '10px',
   backgroundColor: 'rgba(127,29,29,0.24)',
   border: '1px solid rgba(248,113,113,0.22)',
-  color: 'var(--da-error-text, #fecaca)',
+  color: '#fecaca',
 };
 
 const warningBanner = {
