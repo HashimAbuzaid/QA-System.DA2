@@ -34,6 +34,7 @@ type CallsRecord = {
   agent_name: string;
   calls_count: number;
   call_date: string;
+  date_to?: string | null;
   notes: string | null;
 };
 
@@ -43,6 +44,7 @@ type TicketsRecord = {
   agent_name: string;
   tickets_count: number;
   ticket_date: string;
+  date_to?: string | null;
   notes: string | null;
 };
 
@@ -52,6 +54,7 @@ type SalesRecord = {
   agent_name: string;
   amount: number;
   sale_date: string;
+  date_to?: string | null;
   notes: string | null;
 };
 
@@ -100,6 +103,42 @@ type DashboardCachePayload = {
 
 const DASHBOARD_CACHE_KEY = 'dashboard:datasets:v1';
 const DASHBOARD_CACHE_TTL_MS = 1000 * 60 * 5;
+
+function normalizeAgentId(value?: string | null) {
+  return String(value || '').trim().replace(/\.0+$/, '');
+}
+
+function normalizeAgentName(value?: string | null) {
+  return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function getMonthRange(monthValue: string) {
+  const [year, month] = monthValue.split('-').map(Number);
+  const start = new Date(year, (month || 1) - 1, 1);
+  const end = new Date(year, month || 1, 0);
+
+  const startDate = start.toISOString().slice(0, 10);
+  const endDate = end.toISOString().slice(0, 10);
+
+  return { startDate, endDate };
+}
+
+function matchesDateRange(
+  startDate?: string | null,
+  endDate?: string | null,
+  filterFrom?: string,
+  filterTo?: string
+) {
+  const recordStart = String(startDate || '').slice(0, 10);
+  const recordEnd = String(endDate || startDate || '').slice(0, 10);
+
+  if (!recordStart) return false;
+
+  const effectiveFrom = filterFrom || '0001-01-01';
+  const effectiveTo = filterTo || '9999-12-31';
+
+  return recordEnd >= effectiveFrom && recordStart <= effectiveTo;
+}
 
 function Dashboard() {
   const [audits, setAudits] = useState<AuditItem[]>([]);
@@ -228,12 +267,22 @@ function Dashboard() {
     agentName?: string | null,
     team?: string | null
   ) {
-    const matchedProfile = profiles.find(
-      (profile) =>
-        profile.agent_id === (agentId || null) &&
-        profile.agent_name === (agentName || '') &&
-        profile.team === (team || null)
-    );
+    const normalizedId = normalizeAgentId(agentId);
+    const normalizedName = normalizeAgentName(agentName);
+
+    const matchedProfile = profiles.find((profile) => {
+      const profileTeamMatches = profile.team === (team || null);
+      if (!profileTeamMatches) return false;
+
+      const profileId = normalizeAgentId(profile.agent_id);
+      const profileName = normalizeAgentName(profile.agent_name);
+
+      if (normalizedId && profileId) {
+        return profileId === normalizedId;
+      }
+
+      return profileName === normalizedName;
+    });
 
     return matchedProfile?.display_name || null;
   }
@@ -253,13 +302,15 @@ function Dashboard() {
   }
 
   function getAgentKey(agentId?: string | null, agentName?: string | null) {
-    return `${agentId || ''}|${agentName || ''}`;
+    const normalizedId = normalizeAgentId(agentId);
+    const normalizedName = normalizeAgentName(agentName);
+    return `${normalizedId}|${normalizedName}`;
   }
 
-  function matchesMonth(dateValue?: string | null) {
+  function matchesMonth(dateValue?: string | null, dateToValue?: string | null) {
     if (!selectedMonth) return true;
-    if (!dateValue) return false;
-    return dateValue.slice(0, 7) === selectedMonth;
+    const { startDate, endDate } = getMonthRange(selectedMonth);
+    return matchesDateRange(dateValue, dateToValue, startDate, endDate);
   }
 
   const filteredAudits = useMemo(() => {
@@ -267,15 +318,21 @@ function Dashboard() {
   }, [audits, selectedMonth]);
 
   const filteredCalls = useMemo(() => {
-    return callsRecords.filter((item) => matchesMonth(item.call_date));
+    return callsRecords.filter((item) =>
+      matchesMonth(item.call_date, item.date_to || null)
+    );
   }, [callsRecords, selectedMonth]);
 
   const filteredTickets = useMemo(() => {
-    return ticketsRecords.filter((item) => matchesMonth(item.ticket_date));
+    return ticketsRecords.filter((item) =>
+      matchesMonth(item.ticket_date, item.date_to || null)
+    );
   }, [ticketsRecords, selectedMonth]);
 
   const filteredSales = useMemo(() => {
-    return salesRecords.filter((item) => matchesMonth(item.sale_date));
+    return salesRecords.filter((item) =>
+      matchesMonth(item.sale_date, item.date_to || null)
+    );
   }, [salesRecords, selectedMonth]);
 
   const filteredCallsAudits = useMemo(
