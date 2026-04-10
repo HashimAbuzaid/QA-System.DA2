@@ -477,7 +477,7 @@ function AgentFeedbackSupabase() {
                       </div>
 
                       <div style={feedbackCellTypeStyle}>
-                        <span style={{ ...statusPill(getTypeColor(item.feedback_type)), ...solidPillTextStyle }}>
+                        <span style={statusPill(getTypeColor(item.feedback_type))}>
                           {item.feedback_type}
                         </span>
                       </div>
@@ -491,7 +491,7 @@ function AgentFeedbackSupabase() {
                       </div>
 
                       <div style={feedbackCellStatusStyle}>
-                        <span style={{ ...statusPill(getStatusColor(item.status)), ...solidPillTextStyle }}>
+                        <span style={statusPill(getStatusColor(item.status))}>
                           {item.status}
                         </span>
                       </div>
@@ -806,55 +806,6 @@ const dangerButton = {
   cursor: 'pointer',
 };
 
-const savedCardStyle = {
-  border: '1px solid rgba(148, 163, 184, 0.14)',
-  borderRadius: '20px',
-  padding: '20px',
-  background:
-    'linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.74)) 0%, var(--da-card-bg, rgba(15, 23, 42, 0.56)) 100%)',
-};
-
-const savedCardHeaderStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  gap: '16px',
-  alignItems: 'flex-start',
-  flexWrap: 'wrap' as const,
-  marginBottom: '14px',
-};
-
-const savedCardTitleStyle = {
-  color: 'var(--da-title, #f8fafc)',
-  fontSize: '18px',
-  fontWeight: 800,
-};
-
-const savedCardMetaStyle = {
-  color: 'var(--da-subtle-text, #94a3b8)',
-  fontSize: '13px',
-  marginTop: '6px',
-};
-
-const badgeRowStyle = {
-  display: 'flex',
-  gap: '8px',
-  flexWrap: 'wrap' as const,
-};
-
-const savedGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-  gap: '10px',
-  color: 'var(--da-muted-text, #cbd5e1)',
-};
-
-const savedActionRowStyle = {
-  display: 'flex',
-  gap: '10px',
-  flexWrap: 'wrap' as const,
-  marginTop: '14px',
-};
-
 
 const feedbackTableWrapStyle = {
   marginTop: '16px',
@@ -920,12 +871,6 @@ const secondaryCellTextStyle = {
   fontSize: '12px',
   fontWeight: 600,
   lineHeight: 1.4,
-};
-
-const solidPillTextStyle = {
-  color: '#ffffff',
-  border: '1px solid rgba(15, 23, 42, 0.06)',
-  boxShadow: '0 6px 14px rgba(15, 23, 42, 0.08)',
 };
 
 const acknowledgedPillStyle = {
