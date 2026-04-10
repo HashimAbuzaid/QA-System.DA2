@@ -446,10 +446,6 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
           <h2 style={{ marginBottom: '8px' }}>
             {currentUser.team || 'Team'} Supervisor Portal
           </h2>
-          <p style={{ margin: 0, color: 'var(--da-subtle-text, #94a3b8)' }}>
-            You can only see your own team data and can filter down to a single
-            agent.
-          </p>
         </div>
 
         <button
