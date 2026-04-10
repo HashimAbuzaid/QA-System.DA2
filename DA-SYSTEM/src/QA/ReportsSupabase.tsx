@@ -1422,16 +1422,6 @@ const detailLabelStyle = {
   marginBottom: '12px',
 };
 
-const contentCardStyle = {
-  background: 'var(--screen-card-bg)',
-  border: '1px solid var(--screen-border)',
-  borderRadius: '16px',
-  padding: '18px',
-  color: 'var(--screen-text)',
-  boxShadow: 'var(--screen-shadow)',
-};
-
-
 const auditTableWrapStyle = {
   marginTop: '16px',
   overflowX: 'auto' as const,
