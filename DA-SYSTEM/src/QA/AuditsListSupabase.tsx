@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 type ScoreDetail = {
   metric: string;
@@ -8,7 +8,6 @@ type ScoreDetail = {
   adjustedWeight: number;
   earned: number;
   counts_toward_score?: boolean;
-  metric_comment?: string | null;
 };
 type AuditItem = {
   id: string;
@@ -63,21 +62,8 @@ function countsTowardScore(metric: Metric) {
   return metric.countsTowardScore !== false;
 }
 
-function shouldShowMetricComment(result: string) {
-  return (
-    result === 'Borderline' || result === 'Fail' || result === 'Auto-Fail'
-  );
-}
-
-function openNativeDatePicker(target: HTMLInputElement) {
-  const input = target as HTMLInputElement & { showPicker?: () => void };
-  input.showPicker?.();
-}
-
-const ISSUE_WAS_RESOLVED_METRIC = 'Issue was resolved';
-
 const ISSUE_WAS_RESOLVED_QUESTION: Metric = {
-  name: ISSUE_WAS_RESOLVED_METRIC,
+  name: 'Issue was resolved',
   pass: 0,
   borderline: 0,
   countsTowardScore: false,
@@ -114,7 +100,6 @@ const ticketsMetrics: Metric[] = [
   { name: 'Refund Form', pass: 6, borderline: 3 },
   { name: 'Providing RL', pass: 5, borderline: 3 },
   { name: 'Ending', pass: 5, borderline: 3 },
-  ISSUE_WAS_RESOLVED_QUESTION,
 ];
 const salesMetrics: Metric[] = [
   { name: 'Greeting', pass: 2, borderline: 1 },
@@ -129,63 +114,85 @@ const salesMetrics: Metric[] = [
   { name: 'Refund Form', pass: 5, borderline: 3 },
   { name: 'Up-selling', pass: 8, borderline: 4 },
   { name: 'Ending', pass: 5, borderline: 3 },
-  ISSUE_WAS_RESOLVED_QUESTION,
 ];
 
-function getThemeVars(): Record<string, string> {
-  const themeMode =
-    typeof document !== 'undefined'
-      ? (
-          document.body.dataset.theme ||
-          document.documentElement.dataset.theme ||
-          window.localStorage.getItem('detroit-axle-theme-mode') ||
-          window.sessionStorage.getItem('detroit-axle-theme-mode') ||
-          window.localStorage.getItem('detroit-axle-theme') ||
-          window.sessionStorage.getItem('detroit-axle-theme') ||
-          ''
-        ).toLowerCase()
-      : '';
 
-  const isLight = themeMode === 'light' || themeMode === 'white';
+type ThemeMode = 'light' | 'dark';
 
-  return {
-    '--screen-text': isLight ? '#334155' : '#e5eefb',
-    '--screen-heading': isLight ? '#0f172a' : '#f8fafc',
-    '--screen-muted': isLight ? '#8a98b3' : '#94a3b8',
-    '--screen-subtle': isLight ? '#64748b' : '#64748b',
-    '--screen-accent': isLight ? '#2563eb' : '#60a5fa',
-    '--screen-panel-bg': isLight
-      ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(247,250,255,0.96) 100%)'
-      : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
-    '--screen-card-bg': isLight
-      ? 'linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(248,250,255,0.97) 100%)'
-      : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
-    '--screen-card-soft-bg': isLight
-      ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(245,248,253,0.96) 100%)'
-      : 'rgba(15,23,42,0.52)',
-    '--screen-field-bg': isLight
-      ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(250,252,255,0.98) 100%)'
-      : 'rgba(15,23,42,0.7)',
-    '--screen-field-text': isLight ? '#334155' : '#e5eefb',
-    '--screen-border': isLight ? 'rgba(203,213,225,0.92)' : 'rgba(148,163,184,0.14)',
-    '--screen-border-strong': isLight ? 'rgba(203,213,225,1)' : 'rgba(148,163,184,0.18)',
-    '--screen-table-head-bg': isLight ? 'rgba(13, 27, 57, 0.98)' : 'rgba(2,6,23,0.92)',
-    '--screen-pill-bg': isLight ? 'rgba(248,250,252,0.98)' : 'rgba(15,23,42,0.56)',
-    '--screen-secondary-btn-bg': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.78)',
-    '--screen-secondary-btn-text': isLight ? '#475569' : '#e5eefb',
-    '--screen-select-option-bg': isLight ? '#ffffff' : '#0f172a',
-    '--screen-select-option-text': isLight ? '#0f172a' : '#e5eefb',
-    '--screen-menu-bg': isLight ? 'rgba(255,255,255,0.99)' : 'rgba(15, 23, 42, 0.96)',
-    '--screen-shadow': isLight ? '0 18px 40px rgba(15,23,42,0.10)' : '0 18px 40px rgba(2,6,23,0.35)',
-    '--screen-score-pill-bg': isLight ? 'rgba(37,99,235,0.10)' : 'rgba(37,99,235,0.18)',
-    '--screen-score-pill-border': isLight ? 'rgba(59,130,246,0.24)' : 'rgba(96,165,250,0.26)',
-    '--screen-soft-fill': isLight ? 'rgba(248,250,252,0.98)' : 'rgba(15,23,42,0.48)',
-    '--screen-soft-fill-2': isLight ? 'rgba(241,245,249,0.98)' : 'rgba(15,23,42,0.62)',
-    '--screen-note-bg': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.52)',
-    '--screen-highlight-bg': isLight
-      ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(247,250,255,0.98) 100%)'
-      : 'linear-gradient(135deg, rgba(30,64,175,0.22) 0%, rgba(15,23,42,0.5) 100%)',
-  };
+function resolveThemeMode(): ThemeMode {
+  if (typeof document === 'undefined') return 'dark';
+
+  const attributeCandidates = [
+    document.documentElement.dataset.theme,
+    document.body.dataset.theme,
+    document.documentElement.getAttribute('data-color-theme') || undefined,
+    document.body.getAttribute('data-color-theme') || undefined,
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase());
+
+  if (attributeCandidates.some((value) => value === 'light' || value === 'white')) {
+    return 'light';
+  }
+
+  const classTokens = [
+    ...Array.from(document.documentElement.classList),
+    ...Array.from(document.body.classList),
+  ].map((value) => value.toLowerCase());
+
+  if (classTokens.some((value) => value.includes('light') || value.includes('white'))) {
+    return 'light';
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const storedTheme =
+        window.localStorage.getItem('detroit-axle-theme') ||
+        window.localStorage.getItem('theme') ||
+        window.sessionStorage.getItem('detroit-axle-theme') ||
+        window.sessionStorage.getItem('theme');
+
+      if (storedTheme && ['light', 'white'].includes(storedTheme.toLowerCase())) {
+        return 'light';
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  return 'dark';
+}
+
+function useResolvedThemeMode() {
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => resolveThemeMode());
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const update = () => setThemeMode(resolveThemeMode());
+    update();
+
+    const observer = new MutationObserver(update);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme', 'data-color-theme', 'class'],
+    });
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['data-theme', 'data-color-theme', 'class'],
+    });
+
+    window.addEventListener('storage', update);
+    window.addEventListener('focus', update);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('storage', update);
+      window.removeEventListener('focus', update);
+    };
+  }, []);
+
+  return themeMode;
 }
 
 function AuditsListSupabase() {
@@ -220,12 +227,75 @@ function AuditsListSupabase() {
     comments: '',
   });
   const [editScores, setEditScores] = useState<Record<string, string>>({});
-  const [editMetricComments, setEditMetricComments] = useState<
-    Record<string, string>
-  >({});
-  const themeVars = getThemeVars();
   const agentPickerRef = useRef<HTMLDivElement | null>(null);
   const isAdmin = currentProfile?.role === 'admin';
+  const isLightTheme = useResolvedThemeMode() === 'light';
+  const styles = useMemo(() => createThemeStyles(isLightTheme), [isLightTheme]);
+  const {
+    pageHeaderStyle,
+    sectionEyebrow,
+    panelStyle,
+    filterGridStyle,
+    labelStyle,
+    fieldStyle,
+    compactFieldStyle,
+    compactHelpTextStyle,
+    secondaryButton,
+    primaryButton,
+    dangerButton,
+    miniSecondaryButton,
+    miniPrimaryButton,
+    miniDangerButton,
+    errorBanner,
+    successBanner,
+    infoBanner,
+    auditTableWrapStyle,
+    auditTableStyle,
+    auditEntryStyle,
+    auditRowStyle,
+    auditHeaderRowStyle,
+    auditCellAgentStyle,
+    auditCellDateStyle,
+    auditCellCaseStyle,
+    auditCellReferenceStyle,
+    auditCellScoreStyle,
+    auditCellReleaseStyle,
+    auditCellCreatorStyle,
+    auditCellCommentsStyle,
+    auditCellActionsStyle,
+    primaryCellTextStyle,
+    secondaryCellTextStyle,
+    scorePillStyle,
+    pillStyle,
+    auditExpandedRowStyle,
+    expandedPanelStyle,
+    editGridStyle,
+    detailInfoGridStyle,
+    detailInfoCardStyle,
+    detailLabelStyle,
+    detailValueStyle,
+    detailSubValueStyle,
+    fullCommentCardStyle,
+    fullCommentTextStyle,
+    pickerButtonStyle,
+    pickerMenuStyle,
+    pickerSearchWrapStyle,
+    pickerListStyle,
+    pickerInfoStyle,
+    pickerOptionStyle,
+    pickerOptionActiveStyle,
+    scoreRowStyle,
+    editSummaryStyle,
+    summaryEyebrowStyle,
+    summaryScoreStyle,
+    detailRowStyle,
+    headingTextStyle,
+    subtleTextStyle,
+    statusHeadingStyle,
+    detailMetricTitleStyle,
+    detailMetricMetaStyle,
+    pickerPlaceholderTextStyle,
+  } = styles;
   useEffect(() => {
     void loadAuditsAndProfiles();
   }, []);
@@ -336,19 +406,9 @@ function AuditsListSupabase() {
     });
     return defaults;
   }
-
-  function buildMetricCommentsFromAudit(audit: AuditItem) {
-    const defaults: Record<string, string> = {};
-    (audit.score_details || []).forEach((item) => {
-      defaults[item.metric] = item.metric_comment || '';
-    });
-    return defaults;
-  }
-
   function getAdjustedScoreData(
     team: EditFormState['team'],
-    scores: Record<string, string>,
-    metricComments: Record<string, string>
+    scores: Record<string, string>
   ) {
     const metrics = getMetricsForTeam(team);
     const scoredMetrics = metrics.filter((item) => countsTowardScore(item));
@@ -385,10 +445,6 @@ function AuditsListSupabase() {
         adjustedWeight,
         earned,
         counts_toward_score: scored,
-        metric_comment:
-          scored && shouldShowMetricComment(result)
-            ? (metricComments[metric.name] || '').trim() || null
-            : null,
       };
     });
     const hasAutoFail = scoreDetails.some(
@@ -544,7 +600,6 @@ function AuditsListSupabase() {
       comments: audit.comments || '',
     });
     setEditScores(buildScoreMapFromAudit(audit));
-    setEditMetricComments(buildMetricCommentsFromAudit(audit));
   }
   function cancelEdit() {
     setEditingAuditId(null);
@@ -561,7 +616,6 @@ function AuditsListSupabase() {
       comments: '',
     });
     setEditScores({});
-    setEditMetricComments({});
   }
   function handleTeamChange(nextTeam: EditFormState['team']) {
     setEditForm((prev) => ({
@@ -575,7 +629,6 @@ function AuditsListSupabase() {
     setAgentSearch('');
     setIsAgentPickerOpen(false);
     setEditScores(createDefaultScores(nextTeam));
-    setEditMetricComments({});
   }
   function handleSelectAgent(profile: AgentProfile) {
     setSelectedAgentProfileId(profile.id);
@@ -585,23 +638,9 @@ function AuditsListSupabase() {
   function handleScoreChange(metricName: string, value: string) {
     if (LOCKED_NA_METRICS.has(metricName)) {
       setEditScores((prev) => ({ ...prev, [metricName]: 'N/A' }));
-      setEditMetricComments((prev) => ({ ...prev, [metricName]: '' }));
       return;
     }
-
     setEditScores((prev) => ({ ...prev, [metricName]: value }));
-
-    if (!shouldShowMetricComment(value)) {
-      setEditMetricComments((prev) => {
-        const next = { ...prev };
-        delete next[metricName];
-        return next;
-      });
-    }
-  }
-
-  function handleMetricCommentChange(metricName: string, value: string) {
-    setEditMetricComments((prev) => ({ ...prev, [metricName]: value }));
   }
   async function handleUpdate(auditId: string) {
     setErrorMessage('');
@@ -647,24 +686,7 @@ function AuditsListSupabase() {
       setErrorMessage('Selected agent does not have an Agent ID.');
       return;
     }
-    const missingMetricCommentLabels = getMetricsForTeam(editForm.team)
-      .filter((metric) => countsTowardScore(metric))
-      .filter((metric) =>
-        shouldShowMetricComment(getMetricStoredValue(metric, editScores))
-      )
-      .filter((metric) => !(editMetricComments[metric.name] || '').trim())
-      .map((metric) => metric.name);
-    if (missingMetricCommentLabels.length > 0) {
-      setErrorMessage(
-        `Please add a short QA note for: ${missingMetricCommentLabels.join(', ')}.`
-      );
-      return;
-    }
-    const adjustedData = getAdjustedScoreData(
-      editForm.team,
-      editScores,
-      editMetricComments
-    );
+    const adjustedData = getAdjustedScoreData(editForm.team, editScores);
     setSaving(true);
     const updatePayload = {
       agent_id: selectedAgent.agent_id,
@@ -867,28 +889,25 @@ function AuditsListSupabase() {
     setSuccessMessage('Audit deleted successfully.');
   }
   function getResultBadgeColor(result: string) {
-    if (result === 'Pass') return '#166534';
-    if (result === 'Borderline') return '#92400e';
-    if (result === 'Fail' || result === 'Auto-Fail') return '#991b1b';
-    if (result === 'N/A') return '#374151';
-    return '#1f2937';
+    if (result === 'Pass') return isLightTheme ? '#15803d' : '#166534';
+    if (result === 'Borderline') return isLightTheme ? '#b45309' : '#92400e';
+    if (result === 'Fail' || result === 'Auto-Fail') return isLightTheme ? '#b91c1c' : '#991b1b';
+    if (result === 'N/A') return isLightTheme ? '#64748b' : '#374151';
+    return isLightTheme ? '#334155' : '#1f2937';
   }
   if (loading) {
-    return <div style={{ color: 'var(--screen-text)' }}>Loading audits...</div>;
+    return <div style={{ color: isLightTheme ? '#64748b' : '#cbd5e1' }}>Loading audits...</div>;
   }
   return (
-    <div
-      data-no-theme-invert="true"
-      style={{ color: 'var(--screen-text)', ...(themeVars as CSSProperties) }}
-    >
+    <div style={{ color: isLightTheme ? '#334155' : '#e5eefb' }}>
       {' '}
       <div style={pageHeaderStyle}>
         {' '}
         <div>
           {' '}
           <div style={sectionEyebrow}>Audit Management</div>{' '}
-          <h2 style={{ marginBottom: '8px', color: 'var(--screen-heading)' }}>Audits List</h2>{' '}
-          <p style={{ margin: 0, color: 'var(--screen-muted)' }}>
+          <h2 style={{ ...headingTextStyle, marginBottom: '8px' }}>Audits List</h2>{' '}
+          <p style={{ ...subtleTextStyle, margin: 0 }}>
             {' '}
             QA can view audits and score details. Only admin can edit, delete,
             or release audits.{' '}
@@ -911,7 +930,7 @@ function AuditsListSupabase() {
         {' '}
         <div style={filterGridStyle}>
           {' '}
-          <div style={searchFilterFieldStyle}>
+          <div>
             {' '}
             <label style={labelStyle}>
               {' '}
@@ -924,13 +943,13 @@ function AuditsListSupabase() {
               style={fieldStyle}
             />{' '}
           </div>{' '}
-          <div style={standardFilterFieldStyle}>
+          <div>
             {' '}
             <label style={labelStyle}>Filter by Team</label>{' '}
             <select
               value={teamFilter}
               onChange={(e) => setTeamFilter(e.target.value)}
-              style={selectFieldStyle}
+              style={fieldStyle}
             >
               {' '}
               <option value="">All Teams</option>{' '}
@@ -939,13 +958,13 @@ function AuditsListSupabase() {
               <option value="Sales">Sales</option>{' '}
             </select>{' '}
           </div>{' '}
-          <div style={standardFilterFieldStyle}>
+          <div>
             {' '}
             <label style={labelStyle}>Filter by Case Type</label>{' '}
             <select
               value={caseTypeFilter}
               onChange={(e) => setCaseTypeFilter(e.target.value)}
-              style={selectFieldStyle}
+              style={fieldStyle}
             >
               {' '}
               <option value="">All Case Types</option>{' '}
@@ -957,27 +976,23 @@ function AuditsListSupabase() {
               ))}{' '}
             </select>{' '}
           </div>{' '}
-          <div style={dateFilterFieldStyle}>
+          <div>
             {' '}
             <label style={labelStyle}>Date From</label>{' '}
             <input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              onClick={(e) => openNativeDatePicker(e.currentTarget)}
-              onFocus={(e) => openNativeDatePicker(e.currentTarget)}
               style={fieldStyle}
             />{' '}
           </div>{' '}
-          <div style={dateFilterFieldStyle}>
+          <div>
             {' '}
             <label style={labelStyle}>Date To</label>{' '}
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              onClick={(e) => openNativeDatePicker(e.currentTarget)}
-              onFocus={(e) => openNativeDatePicker(e.currentTarget)}
               style={fieldStyle}
             />{' '}
           </div>{' '}
@@ -986,11 +1001,11 @@ function AuditsListSupabase() {
       {isAdmin ? (
         <div style={{ ...panelStyle, marginTop: '18px' }}>
           {' '}
-          <h3 style={{ marginTop: 0, color: 'var(--screen-heading)' }}>
+          <h3 style={{ ...statusHeadingStyle, marginTop: 0 }}>
             {' '}
             Weekly Release Controls{' '}
           </h3>{' '}
-          <p style={{ color: 'var(--screen-muted)' }}>
+          <p style={subtleTextStyle}>
             {' '}
             Use the filters above to choose the week, team, or case type, then
             share or hide filtered audits, or hide all audits at once.{' '}
@@ -1055,7 +1070,7 @@ function AuditsListSupabase() {
         </div>
       )}{' '}
       {filteredAudits.length === 0 ? (
-        <p style={{ color: 'var(--screen-muted)', marginTop: '18px' }}>No audits found.</p>
+        <p style={{ ...subtleTextStyle, marginTop: '18px' }}>No audits found.</p>
       ) : (
         <div style={auditTableWrapStyle}>
           {' '}
@@ -1077,11 +1092,7 @@ function AuditsListSupabase() {
               const isEditing = editingAuditId === audit.id;
               const isExpanded = expandedId === audit.id || isEditing;
               const adjustedEditData = isEditing
-                ? getAdjustedScoreData(
-                    editForm.team,
-                    editScores,
-                    editMetricComments
-                  )
+                ? getAdjustedScoreData(editForm.team, editScores)
                 : null;
               return (
                 <div key={audit.id} style={auditEntryStyle}>
@@ -1241,7 +1252,7 @@ function AuditsListSupabase() {
                                     e.target.value as EditFormState['team']
                                   )
                                 }
-                                style={selectFieldStyle}
+                                style={fieldStyle}
                               >
                                 {' '}
                                 <option value="">Select Team</option>{' '}
@@ -1269,8 +1280,8 @@ function AuditsListSupabase() {
                                   <span
                                     style={{
                                       color: selectedAgent
-                                        ? '#f8fafc'
-                                        : '#94a3b8',
+                                        ? pickerPlaceholderTextStyle.color
+                                        : subtleTextStyle.color,
                                     }}
                                   >
                                     {' '}
@@ -1354,8 +1365,6 @@ function AuditsListSupabase() {
                                     auditDate: e.target.value,
                                   }))
                                 }
-                                onClick={(e) => openNativeDatePicker(e.currentTarget)}
-                                onFocus={(e) => openNativeDatePicker(e.currentTarget)}
                                 style={fieldStyle}
                               />{' '}
                             </div>{' '}
@@ -1441,14 +1450,15 @@ function AuditsListSupabase() {
                               <div key={metric.name} style={scoreRowStyle}>
                                 {' '}
                                 <div
-                                  style={{ color: 'var(--screen-text)', fontWeight: 700 }}
+                                  style={{ color: labelStyle.color, fontWeight: 700 }}
                                 >
                                   {' '}
+                                  {metric.name}{' '}
                                   {countsTowardScore(metric)
-                                    ? `${metric.name} (${metric.pass} pts)`
-                                    : metric.name}{' '}
+                                    ? `(${metric.pass} pts)`
+                                    : '(No score)'}{' '}
                                 </div>{' '}
-                                <div style={{ display: 'grid', gap: '8px', minWidth: '230px' }}>
+                                <div style={{ display: 'grid', gap: '8px' }}>
                                   <select
                                     value={getMetricStoredValue(metric, editScores)}
                                     onChange={(e) =>
@@ -1458,36 +1468,23 @@ function AuditsListSupabase() {
                                       )
                                     }
                                     disabled={LOCKED_NA_METRICS.has(metric.name)}
-                                    style={compactSelectFieldStyle}
+                                    style={compactFieldStyle}
                                   >
                                     {' '}
                                     {getMetricOptions(metric).map((option) => (
                                       <option
                                         key={option || '__empty__'}
                                         value={option}
-                                        style={selectOptionStyle}
                                       >
                                         {' '}
                                         {option || 'Select answer'}{' '}
                                       </option>
                                     ))}{' '}
                                   </select>{' '}
-                                  {countsTowardScore(metric) &&
-                                  shouldShowMetricComment(
-                                    getMetricStoredValue(metric, editScores)
-                                  ) ? (
-                                    <textarea
-                                      value={editMetricComments[metric.name] || ''}
-                                      onChange={(e) =>
-                                        handleMetricCommentChange(
-                                          metric.name,
-                                          e.target.value
-                                        )
-                                      }
-                                      rows={2}
-                                      placeholder="Leave a short note explaining the result"
-                                      style={metricCommentFieldStyle}
-                                    />
+                                  {!countsTowardScore(metric) ? (
+                                    <div style={compactHelpTextStyle}>
+                                      This question is saved with the audit, but it does not change the score.
+                                    </div>
                                   ) : null}
                                 </div>
                               </div>
@@ -1609,7 +1606,7 @@ function AuditsListSupabase() {
                                   {' '}
                                   <div
                                     style={{
-                                      color: 'var(--screen-heading)',
+                                      ...detailMetricTitleStyle,
                                       fontWeight: 700,
                                     }}
                                   >
@@ -1618,24 +1615,15 @@ function AuditsListSupabase() {
                                   </div>{' '}
                                   <div
                                     style={{
-                                      color: 'var(--screen-muted)',
-                                      fontSize: '12px',
+                                      ...detailMetricMetaStyle,
                                       marginTop: '4px',
                                     }}
                                   >
                                     {' '}
                                     {isNoScoreDetail(detail)
-                                      ? 'Administrative question'
+                                      ? 'Yes / No question • No score'
                                       : `Pass ${detail.pass} • Borderline ${detail.borderline} • Adjusted ${detail.adjustedWeight.toFixed(2)}`}{' '}
                                   </div>{' '}
-                                  {detail.metric_comment ? (
-                                    <div style={metricNoteCardStyle}>
-                                      <div style={metricNoteLabelStyle}>QA Note</div>
-                                      <div style={metricNoteTextStyle}>
-                                        {detail.metric_comment}
-                                      </div>
-                                    </div>
-                                  ) : null}
                                 </div>{' '}
                                 <span
                                   style={{
@@ -1664,7 +1652,7 @@ function AuditsListSupabase() {
     </div>
   );
 }
-const pageHeaderStyle = {
+const sharedPageHeaderStyle = {
   display: 'flex',
   gap: '12px',
   justifyContent: 'space-between',
@@ -1672,439 +1660,433 @@ const pageHeaderStyle = {
   flexWrap: 'wrap' as const,
   marginBottom: '18px',
 };
-const sectionEyebrow = {
-  color: 'var(--screen-accent)',
-  fontSize: '12px',
-  fontWeight: 800,
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.16em',
-  marginBottom: '12px',
-};
-const panelStyle = {
-  background: 'var(--screen-panel-bg)',
-  border: '1px solid var(--screen-border)',
-  borderRadius: '24px',
-  padding: '22px',
-  boxShadow: 'var(--screen-shadow)',
-  backdropFilter: 'blur(14px)',
-};
-const filterGridStyle = {
-  display: 'flex',
-  flexWrap: 'wrap' as const,
-  gap: '14px',
-  alignItems: 'flex-end',
-};
 
-const searchFilterFieldStyle = {
-  flex: '1 1 320px',
-  minWidth: '300px',
-};
+function createThemeStyles(isLightTheme: boolean) {
+  const panelBackground = isLightTheme
+    ? '#ffffff'
+    : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)';
+  const cardBackground = isLightTheme ? '#f8fafc' : 'rgba(15,23,42,0.52)';
+  const panelBorder = isLightTheme
+    ? '1px solid rgba(191, 219, 254, 0.9)'
+    : '1px solid rgba(148,163,184,0.14)';
+  const softBorder = isLightTheme
+    ? '1px solid rgba(186, 200, 219, 0.9)'
+    : '1px solid rgba(148,163,184,0.12)';
+  const fieldBorder = isLightTheme
+    ? '1px solid rgba(186, 200, 219, 0.95)'
+    : '1px solid rgba(148,163,184,0.16)';
+  const shadow = isLightTheme
+    ? '0 16px 36px rgba(148, 163, 184, 0.16)'
+    : '0 18px 40px rgba(2,6,23,0.35)';
+  const tableBackground = isLightTheme
+    ? '#ffffff'
+    : 'linear-gradient(180deg, rgba(15,23,42,0.76) 0%, rgba(15,23,42,0.58) 100%)';
+  const headerBackground = isLightTheme ? '#ffffff' : 'rgba(2,6,23,0.94)';
+  const headerBorder = isLightTheme
+    ? '1px solid rgba(191, 219, 254, 0.9)'
+    : '1px solid rgba(148,163,184,0.12)';
+  const filterPanelBackground = isLightTheme ? '#ffffff' : panelBackground;
 
-const standardFilterFieldStyle = {
-  flex: '1 1 240px',
-  minWidth: '220px',
-};
+  return {
+    pageHeaderStyle: sharedPageHeaderStyle,
+    sectionEyebrow: {
+      color: isLightTheme ? '#2563eb' : '#60a5fa',
+      fontSize: '12px',
+      fontWeight: 800,
+      textTransform: 'uppercase' as const,
+      letterSpacing: '0.16em',
+      marginBottom: '12px',
+    },
+    headingTextStyle: {
+      color: isLightTheme ? '#0f172a' : '#f8fafc',
+    },
+    subtleTextStyle: {
+      color: isLightTheme ? '#7c8cab' : '#94a3b8',
+    },
+    statusHeadingStyle: {
+      color: isLightTheme ? '#1e293b' : '#f8fafc',
+    },
+    detailMetricTitleStyle: {
+      color: isLightTheme ? '#0f172a' : '#f8fafc',
+      fontWeight: 700,
+    },
+    detailMetricMetaStyle: {
+      color: isLightTheme ? '#64748b' : '#94a3b8',
+      fontSize: '12px',
+    },
+    pickerPlaceholderTextStyle: {
+      color: isLightTheme ? '#0f172a' : '#f8fafc',
+    },
+    panelStyle: {
+      background: filterPanelBackground,
+      border: panelBorder,
+      borderRadius: '24px',
+      padding: '22px',
+      boxShadow: shadow,
+      backdropFilter: isLightTheme ? 'none' : 'blur(14px)',
+    },
+    filterGridStyle: {
+      display: 'grid',
+      gap: '14px',
+      gridTemplateColumns: '1.35fr 1fr 1fr 0.82fr 0.82fr',
+      alignItems: 'end',
+    },
+    labelStyle: {
+      display: 'block',
+      marginBottom: '10px',
+      fontSize: '13px',
+      color: isLightTheme ? '#334155' : '#cbd5e1',
+      fontWeight: 700,
+    },
+    fieldStyle: {
+      width: '100%',
+      padding: '14px 16px',
+      borderRadius: '16px',
+      border: fieldBorder,
+      background: isLightTheme ? '#ffffff' : 'rgba(15,23,42,0.7)',
+      color: isLightTheme ? '#334155' : '#e5eefb',
+      boxSizing: 'border-box' as const,
+    },
+    compactFieldStyle: {
+      padding: '10px 12px',
+      borderRadius: '12px',
+      border: fieldBorder,
+      background: isLightTheme ? '#ffffff' : 'rgba(15,23,42,0.7)',
+      color: isLightTheme ? '#334155' : '#e5eefb',
+      minWidth: '170px',
+      boxSizing: 'border-box' as const,
+    },
+    compactHelpTextStyle: {
+      fontSize: '12px',
+      color: isLightTheme ? '#64748b' : '#94a3b8',
+      lineHeight: 1.45,
+    },
+    secondaryButton: {
+      padding: '12px 16px',
+      background: isLightTheme ? '#ffffff' : 'rgba(15,23,42,0.74)',
+      color: isLightTheme ? '#475569' : '#e5eefb',
+      border: isLightTheme
+        ? '1px solid rgba(186, 200, 219, 0.95)'
+        : '1px solid rgba(148,163,184,0.18)',
+      borderRadius: '14px',
+      cursor: 'pointer',
+      fontWeight: 700,
+      boxShadow: isLightTheme ? '0 6px 14px rgba(148, 163, 184, 0.08)' : 'none',
+    },
+    primaryButton: {
+      padding: '12px 16px',
+      background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+      color: '#ffffff',
+      border: '1px solid rgba(96,165,250,0.24)',
+      borderRadius: '14px',
+      cursor: 'pointer',
+      fontWeight: 700,
+      boxShadow: isLightTheme ? '0 10px 18px rgba(37, 99, 235, 0.18)' : 'none',
+    },
+    dangerButton: {
+      padding: '12px 16px',
+      background: 'linear-gradient(135deg, #b91c1c 0%, #991b1b 100%)',
+      color: '#ffffff',
+      border: '1px solid rgba(252,165,165,0.2)',
+      borderRadius: '14px',
+      cursor: 'pointer',
+      fontWeight: 700,
+    },
+    miniSecondaryButton: {
+      padding: '8px 10px',
+      background: isLightTheme ? '#ffffff' : 'rgba(15,23,42,0.82)',
+      color: isLightTheme ? '#475569' : '#e5eefb',
+      border: isLightTheme
+        ? '1px solid rgba(186, 200, 219, 0.95)'
+        : '1px solid rgba(148,163,184,0.18)',
+      borderRadius: '10px',
+      cursor: 'pointer',
+      fontWeight: 700,
+      fontSize: '12px',
+    },
+    miniPrimaryButton: {
+      padding: '8px 10px',
+      background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+      color: '#ffffff',
+      border: '1px solid rgba(96,165,250,0.24)',
+      borderRadius: '10px',
+      cursor: 'pointer',
+      fontWeight: 700,
+      fontSize: '12px',
+    },
+    miniDangerButton: {
+      padding: '8px 10px',
+      background: 'linear-gradient(135deg, #b91c1c 0%, #991b1b 100%)',
+      color: '#ffffff',
+      border: '1px solid rgba(252,165,165,0.2)',
+      borderRadius: '10px',
+      cursor: 'pointer',
+      fontWeight: 700,
+      fontSize: '12px',
+    },
+    errorBanner: {
+      marginBottom: '16px',
+      padding: '14px 16px',
+      borderRadius: '16px',
+      backgroundColor: isLightTheme ? 'rgba(254, 226, 226, 0.95)' : 'rgba(127,29,29,0.24)',
+      border: isLightTheme ? '1px solid rgba(252, 165, 165, 0.9)' : '1px solid rgba(252,165,165,0.24)',
+      color: isLightTheme ? '#991b1b' : '#fecaca',
+    },
+    successBanner: {
+      marginBottom: '16px',
+      padding: '14px 16px',
+      borderRadius: '16px',
+      backgroundColor: isLightTheme ? 'rgba(220, 252, 231, 0.95)' : 'rgba(22,101,52,0.24)',
+      border: isLightTheme ? '1px solid rgba(134, 239, 172, 0.85)' : '1px solid rgba(134,239,172,0.22)',
+      color: isLightTheme ? '#166534' : '#bbf7d0',
+    },
+    infoBanner: {
+      backgroundColor: isLightTheme ? 'rgba(219, 234, 254, 0.9)' : 'rgba(30,64,175,0.18)',
+      border: isLightTheme ? '1px solid rgba(147, 197, 253, 0.9)' : '1px solid rgba(147,197,253,0.22)',
+      borderRadius: '16px',
+      padding: '16px',
+      marginBottom: '24px',
+      color: isLightTheme ? '#1d4ed8' : '#bfdbfe',
+      marginTop: '18px',
+    },
+    auditTableWrapStyle: {
+      marginTop: '18px',
+      overflowX: 'auto' as const,
+      borderRadius: '20px',
+      border: headerBorder,
+      background: tableBackground,
+      boxShadow: isLightTheme ? '0 12px 24px rgba(148, 163, 184, 0.12)' : 'none',
+    },
+    auditTableStyle: { minWidth: '1800px' },
+    auditEntryStyle: { borderBottom: isLightTheme ? '1px solid rgba(226, 232, 240, 1)' : '1px solid rgba(148,163,184,0.08)' },
+    auditRowStyle: {
+      display: 'grid',
+      gridTemplateColumns:
+        '220px 130px 170px minmax(240px,1.35fr) 110px 180px 180px minmax(300px,1.8fr) 260px',
+      gap: '14px',
+      alignItems: 'center',
+      padding: '14px 16px',
+    },
+    auditHeaderRowStyle: {
+      position: 'sticky' as const,
+      top: 0,
+      zIndex: 1,
+      background: headerBackground,
+      color: isLightTheme ? '#2563eb' : '#93c5fd',
+      fontSize: '12px',
+      fontWeight: 800,
+      textTransform: 'uppercase' as const,
+      letterSpacing: '0.12em',
+      borderBottom: isLightTheme ? '1px solid rgba(226, 232, 240, 1)' : 'none',
+    },
+    auditCellAgentStyle: {},
+    auditCellDateStyle: {},
+    auditCellCaseStyle: {},
+    auditCellReferenceStyle: {},
+    auditCellScoreStyle: {},
+    auditCellReleaseStyle: {},
+    auditCellCreatorStyle: {},
+    auditCellCommentsStyle: {},
+    auditCellActionsStyle: {
+      display: 'flex',
+      gap: '8px',
+      flexWrap: 'wrap' as const,
+    },
+    primaryCellTextStyle: {
+      color: isLightTheme ? '#1e293b' : '#f8fafc',
+      fontSize: '14px',
+      fontWeight: 600,
+      lineHeight: 1.4,
+    },
+    secondaryCellTextStyle: {
+      marginTop: '4px',
+      color: isLightTheme ? '#64748b' : '#64748b',
+      fontSize: '12px',
+      fontWeight: 600,
+      lineHeight: 1.4,
+    },
+    scorePillStyle: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minWidth: '84px',
+      padding: '8px 12px',
+      borderRadius: '999px',
+      background: isLightTheme ? '#eff6ff' : 'rgba(37,99,235,0.18)',
+      border: isLightTheme ? '1px solid rgba(147, 197, 253, 0.9)' : '1px solid rgba(96,165,250,0.26)',
+      color: isLightTheme ? '#1d4ed8' : '#dbeafe',
+      fontSize: '13px',
+      fontWeight: 800,
+      boxShadow: isLightTheme ? 'inset 0 1px 0 rgba(255,255,255,0.85)' : 'none',
+    },
+    pillStyle: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '6px 10px',
+      borderRadius: '999px',
+      fontSize: '12px',
+      fontWeight: 800,
+      color: '#ffffff',
+      letterSpacing: '0.01em',
+    },
+    auditExpandedRowStyle: { padding: '0 16px 16px 16px' },
+    expandedPanelStyle: {
+      borderRadius: '18px',
+      border: softBorder,
+      background: isLightTheme ? '#ffffff' : 'linear-gradient(180deg, rgba(15,23,42,0.78) 0%, rgba(15,23,42,0.6) 100%)',
+      padding: '18px',
+      boxShadow: isLightTheme ? '0 10px 22px rgba(148, 163, 184, 0.10)' : 'none',
+    },
+    editGridStyle: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+      gap: '14px',
+    },
+    detailInfoGridStyle: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+      gap: '12px',
+      marginBottom: '18px',
+    },
+    detailInfoCardStyle: {
+      borderRadius: '14px',
+      border: softBorder,
+      background: cardBackground,
+      padding: '14px 16px',
+    },
+    detailLabelStyle: {
+      color: isLightTheme ? '#64748b' : '#94a3b8',
+      fontSize: '12px',
+      fontWeight: 700,
+      textTransform: 'uppercase' as const,
+      letterSpacing: '0.08em',
+      marginBottom: '8px',
+    },
+    detailValueStyle: {
+      color: isLightTheme ? '#0f172a' : '#f8fafc',
+      fontSize: '14px',
+      fontWeight: 700,
+      lineHeight: 1.5,
+    },
+    detailSubValueStyle: {
+      color: isLightTheme ? '#64748b' : '#64748b',
+      fontSize: '12px',
+      fontWeight: 600,
+      marginTop: '6px',
+    },
+    fullCommentCardStyle: {
+      borderRadius: '14px',
+      border: softBorder,
+      background: cardBackground,
+      padding: '14px 16px',
+    },
+    fullCommentTextStyle: {
+      color: isLightTheme ? '#1e293b' : '#f8fafc',
+      fontSize: '14px',
+      lineHeight: 1.7,
+      whiteSpace: 'pre-wrap' as const,
+      wordBreak: 'break-word' as const,
+    },
+    pickerButtonStyle: {
+      width: '100%',
+      padding: '14px 16px',
+      borderRadius: '16px',
+      border: fieldBorder,
+      background: isLightTheme ? '#ffffff' : 'rgba(15,23,42,0.7)',
+      color: isLightTheme ? '#334155' : '#e5eefb',
+      textAlign: 'left' as const,
+      cursor: 'pointer',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    pickerMenuStyle: {
+      position: 'absolute' as const,
+      top: 'calc(100% + 8px)',
+      left: 0,
+      right: 0,
+      background: isLightTheme ? '#ffffff' : 'rgba(15,23,42,0.96)',
+      border: fieldBorder,
+      borderRadius: '18px',
+      boxShadow: isLightTheme ? '0 18px 40px rgba(148, 163, 184, 0.18)' : '0 18px 44px rgba(2,6,23,0.45)',
+      zIndex: 20,
+      overflow: 'hidden',
+      backdropFilter: isLightTheme ? 'none' : 'blur(16px)',
+    },
+    pickerSearchWrapStyle: {
+      padding: '12px',
+      borderBottom: isLightTheme ? '1px solid rgba(226, 232, 240, 1)' : '1px solid rgba(148,163,184,0.12)',
+    },
+    pickerListStyle: {
+      maxHeight: '280px',
+      overflowY: 'auto' as const,
+      padding: '8px',
+      display: 'grid',
+      gap: '8px',
+    },
+    pickerInfoStyle: {
+      padding: '12px',
+      borderRadius: '12px',
+      backgroundColor: isLightTheme ? '#f8fafc' : 'rgba(15,23,42,0.68)',
+      color: isLightTheme ? '#64748b' : '#94a3b8',
+    },
+    pickerOptionStyle: {
+      padding: '12px 14px',
+      borderRadius: '12px',
+      border: softBorder,
+      backgroundColor: isLightTheme ? '#ffffff' : 'rgba(15,23,42,0.6)',
+      textAlign: 'left' as const,
+      cursor: 'pointer',
+      color: isLightTheme ? '#334155' : '#e5eefb',
+      fontWeight: 600,
+    },
+    pickerOptionActiveStyle: {
+      border: isLightTheme ? '1px solid rgba(96,165,250,0.65)' : '1px solid rgba(96,165,250,0.36)',
+      backgroundColor: isLightTheme ? 'rgba(219, 234, 254, 0.8)' : 'rgba(30,64,175,0.32)',
+    },
+    scoreRowStyle: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: '12px',
+      alignItems: 'center',
+      flexWrap: 'wrap' as const,
+      padding: '12px 14px',
+      borderRadius: '14px',
+      border: softBorder,
+      background: cardBackground,
+    },
+    editSummaryStyle: {
+      marginTop: '18px',
+      borderRadius: '18px',
+      padding: '18px',
+      border: isLightTheme ? '1px solid rgba(191, 219, 254, 0.95)' : '1px solid rgba(96,165,250,0.2)',
+      background: isLightTheme ? 'rgba(239, 246, 255, 0.95)' : 'linear-gradient(135deg, rgba(30,64,175,0.22) 0%, rgba(15,23,42,0.5) 100%)',
+    },
+    summaryEyebrowStyle: {
+      color: isLightTheme ? '#2563eb' : '#93c5fd',
+      fontWeight: 800,
+      textTransform: 'uppercase' as const,
+      fontSize: '12px',
+      letterSpacing: '0.12em',
+    },
+    summaryScoreStyle: {
+      fontSize: '32px',
+      fontWeight: 800,
+      color: isLightTheme ? '#0f172a' : '#f8fafc',
+      marginTop: '8px',
+    },
+    detailRowStyle: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: '12px',
+      alignItems: 'center',
+      padding: '12px 14px',
+      borderRadius: '14px',
+      border: softBorder,
+      background: cardBackground,
+    },
+  };
+}
 
-const dateFilterFieldStyle = {
-  flex: '0 1 220px',
-  minWidth: '200px',
-};
-const labelStyle = {
-  display: 'block',
-  marginBottom: '8px',
-  fontSize: '13px',
-  color: 'var(--screen-text)',
-  fontWeight: 700,
-};
-const fieldStyle = {
-  width: '100%',
-  padding: '14px 16px',
-  borderRadius: '16px',
-  border: '1px solid var(--screen-border-strong)',
-  background: 'var(--screen-field-bg)',
-  color: 'var(--screen-text)',
-};
-const selectFieldStyle = {
-  ...fieldStyle,
-  appearance: 'none' as const,
-  WebkitAppearance: 'none' as const,
-  MozAppearance: 'none' as const,
-  paddingRight: '44px',
-  backgroundImage:
-    'linear-gradient(45deg, transparent 50%, #cbd5e1 50%), linear-gradient(135deg, #cbd5e1 50%, transparent 50%)',
-  backgroundPosition: 'calc(100% - 22px) calc(50% - 3px), calc(100% - 16px) calc(50% - 3px)',
-  backgroundSize: '6px 6px, 6px 6px',
-  backgroundRepeat: 'no-repeat',
-  colorScheme: 'normal' as const,
-};
-const compactFieldStyle = {
-  padding: '10px 12px',
-  borderRadius: '12px',
-  border: '1px solid var(--screen-border-strong)',
-  background: 'var(--screen-field-bg)',
-  color: 'var(--screen-text)',
-  minWidth: '170px',
-};
-const compactSelectFieldStyle = {
-  ...compactFieldStyle,
-  appearance: 'none' as const,
-  WebkitAppearance: 'none' as const,
-  MozAppearance: 'none' as const,
-  paddingRight: '40px',
-  backgroundImage:
-    'linear-gradient(45deg, transparent 50%, #cbd5e1 50%), linear-gradient(135deg, #cbd5e1 50%, transparent 50%)',
-  backgroundPosition: 'calc(100% - 18px) calc(50% - 3px), calc(100% - 12px) calc(50% - 3px)',
-  backgroundSize: '6px 6px, 6px 6px',
-  backgroundRepeat: 'no-repeat',
-  colorScheme: 'normal' as const,
-};
-const selectOptionStyle = {
-  backgroundColor: 'var(--screen-select-option-bg)',
-  color: 'var(--screen-select-option-text)',
-};
-const metricCommentFieldStyle = {
-  width: '100%',
-  padding: '10px 12px',
-  borderRadius: '12px',
-  border: '1px solid var(--screen-border-strong)',
-  background: 'rgba(15,23,42,0.78)',
-  color: 'var(--screen-text)',
-  resize: 'vertical' as const,
-};
-const metricNoteCardStyle = {
-  marginTop: '10px',
-  borderRadius: '12px',
-  border: '1px solid var(--screen-border)',
-  background: 'var(--screen-card-soft-bg)',
-  padding: '10px 12px',
-};
-const metricNoteLabelStyle = {
-  color: '#93c5fd',
-  fontSize: '11px',
-  fontWeight: 800,
-  letterSpacing: '0.1em',
-  textTransform: 'uppercase' as const,
-  marginBottom: '6px',
-};
-const metricNoteTextStyle = {
-  color: 'var(--screen-text)',
-  fontSize: '13px',
-  lineHeight: 1.55,
-  whiteSpace: 'pre-wrap' as const,
-};
-const secondaryButton = {
-  padding: '12px 16px',
-  background: 'var(--screen-secondary-btn-bg)',
-  color: 'var(--screen-secondary-btn-text)',
-  border: '1px solid var(--screen-border-strong)',
-  borderRadius: '14px',
-  cursor: 'pointer',
-  fontWeight: 700,
-};
-const primaryButton = {
-  padding: '12px 16px',
-  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-  color: '#ffffff',
-  border: '1px solid rgba(96,165,250,0.24)',
-  borderRadius: '14px',
-  cursor: 'pointer',
-  fontWeight: 700,
-};
-const dangerButton = {
-  padding: '12px 16px',
-  background: 'linear-gradient(135deg, #b91c1c 0%, #991b1b 100%)',
-  color: '#ffffff',
-  border: '1px solid rgba(252,165,165,0.2)',
-  borderRadius: '14px',
-  cursor: 'pointer',
-  fontWeight: 700,
-};
-const miniSecondaryButton = {
-  padding: '8px 10px',
-  background: 'var(--screen-secondary-btn-bg)',
-  color: 'var(--screen-secondary-btn-text)',
-  border: '1px solid var(--screen-border-strong)',
-  borderRadius: '10px',
-  cursor: 'pointer',
-  fontWeight: 700,
-  fontSize: '12px',
-};
-const miniPrimaryButton = {
-  padding: '8px 10px',
-  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-  color: '#ffffff',
-  border: '1px solid rgba(96,165,250,0.24)',
-  borderRadius: '10px',
-  cursor: 'pointer',
-  fontWeight: 700,
-  fontSize: '12px',
-};
-const miniDangerButton = {
-  padding: '8px 10px',
-  background: 'linear-gradient(135deg, #b91c1c 0%, #991b1b 100%)',
-  color: '#ffffff',
-  border: '1px solid rgba(252,165,165,0.2)',
-  borderRadius: '10px',
-  cursor: 'pointer',
-  fontWeight: 700,
-  fontSize: '12px',
-};
-const errorBanner = {
-  marginBottom: '16px',
-  padding: '14px 16px',
-  borderRadius: '16px',
-  backgroundColor: 'rgba(127,29,29,0.24)',
-  border: '1px solid rgba(252,165,165,0.24)',
-  color: '#fecaca',
-};
-const successBanner = {
-  marginBottom: '16px',
-  padding: '14px 16px',
-  borderRadius: '16px',
-  backgroundColor: 'rgba(22,101,52,0.24)',
-  border: '1px solid rgba(134,239,172,0.22)',
-  color: '#bbf7d0',
-};
-const infoBanner = {
-  backgroundColor: 'rgba(30,64,175,0.18)',
-  border: '1px solid rgba(147,197,253,0.22)',
-  borderRadius: '16px',
-  padding: '16px',
-  marginBottom: '24px',
-  color: '#bfdbfe',
-  marginTop: '18px',
-};
-const auditTableWrapStyle = {
-  marginTop: '18px',
-  overflowX: 'auto' as const,
-  borderRadius: '20px',
-  border: '1px solid var(--screen-border)',
-  background: 'var(--screen-panel-bg)',
-};
-const auditTableStyle = { minWidth: '1800px' };
-const auditEntryStyle = { borderBottom: '1px solid rgba(148,163,184,0.08)' };
-const auditRowStyle = {
-  display: 'grid',
-  gridTemplateColumns:
-    '220px 130px 170px minmax(240px,1.35fr) 110px 180px 180px minmax(300px,1.8fr) 260px',
-  gap: '14px',
-  alignItems: 'center',
-  padding: '14px 16px',
-};
-const auditHeaderRowStyle = {
-  position: 'sticky' as const,
-  top: 0,
-  zIndex: 1,
-  background: 'var(--screen-table-head-bg)',
-  color: '#93c5fd',
-  fontSize: '12px',
-  fontWeight: 800,
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.12em',
-};
-const auditCellAgentStyle = {};
-const auditCellDateStyle = {};
-const auditCellCaseStyle = {};
-const auditCellReferenceStyle = {};
-const auditCellScoreStyle = {};
-const auditCellReleaseStyle = {};
-const auditCellCreatorStyle = {};
-const auditCellCommentsStyle = {};
-const auditCellActionsStyle = {
-  display: 'flex',
-  gap: '8px',
-  flexWrap: 'wrap' as const,
-};
-const primaryCellTextStyle = {
-  color: 'var(--screen-heading)',
-  fontSize: '14px',
-  fontWeight: 600,
-  lineHeight: 1.4,
-};
-const secondaryCellTextStyle = {
-  marginTop: '4px',
-  color: 'var(--screen-subtle)',
-  fontSize: '12px',
-  fontWeight: 600,
-  lineHeight: 1.4,
-};
-const scorePillStyle = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  minWidth: '84px',
-  padding: '8px 10px',
-  borderRadius: '999px',
-  background: 'var(--screen-score-pill-bg)',
-  border: '1px solid var(--screen-score-pill-border)',
-  color: '#dbeafe',
-  fontSize: '13px',
-  fontWeight: 800,
-};
-const pillStyle = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '6px 10px',
-  borderRadius: '999px',
-  fontSize: '12px',
-  fontWeight: 800,
-  color: '#ffffff',
-};
-const auditExpandedRowStyle = { padding: '0 16px 16px 16px' };
-const expandedPanelStyle = {
-  borderRadius: '18px',
-  border: '1px solid var(--screen-border)',
-  background: 'var(--screen-panel-bg)',
-  padding: '18px',
-};
-const editGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-  gap: '14px',
-};
-const detailInfoGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-  gap: '12px',
-  marginBottom: '18px',
-};
-const detailInfoCardStyle = {
-  borderRadius: '14px',
-  border: '1px solid var(--screen-border)',
-  background: 'var(--screen-card-soft-bg)',
-  padding: '14px 16px',
-};
-const detailLabelStyle = {
-  color: 'var(--screen-muted)',
-  fontSize: '12px',
-  fontWeight: 700,
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.08em',
-  marginBottom: '8px',
-};
-const detailValueStyle = {
-  color: 'var(--screen-heading)',
-  fontSize: '14px',
-  fontWeight: 700,
-  lineHeight: 1.5,
-};
-const detailSubValueStyle = {
-  color: 'var(--screen-subtle)',
-  fontSize: '12px',
-  fontWeight: 600,
-  marginTop: '6px',
-};
-const fullCommentCardStyle = {
-  borderRadius: '14px',
-  border: '1px solid var(--screen-border)',
-  background: 'var(--screen-card-soft-bg)',
-  padding: '14px 16px',
-};
-const fullCommentTextStyle = {
-  color: 'var(--screen-heading)',
-  fontSize: '14px',
-  lineHeight: 1.7,
-  whiteSpace: 'pre-wrap' as const,
-  wordBreak: 'break-word' as const,
-};
-const pickerButtonStyle = {
-  width: '100%',
-  padding: '14px 16px',
-  borderRadius: '16px',
-  border: '1px solid var(--screen-border-strong)',
-  background: 'var(--screen-field-bg)',
-  color: 'var(--screen-field-text)',
-  textAlign: 'left' as const,
-  cursor: 'pointer',
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-};
-const pickerMenuStyle = {
-  position: 'absolute' as const,
-  top: 'calc(100% + 8px)',
-  left: 0,
-  right: 0,
-  background: 'rgba(15,23,42,0.96)',
-  border: '1px solid var(--screen-border-strong)',
-  borderRadius: '18px',
-  boxShadow: '0 18px 44px rgba(2,6,23,0.45)',
-  zIndex: 20,
-  overflow: 'hidden',
-  backdropFilter: 'blur(16px)',
-};
-const pickerSearchWrapStyle = {
-  padding: '12px',
-  borderBottom: '1px solid rgba(148,163,184,0.12)',
-};
-const pickerListStyle = {
-  maxHeight: '280px',
-  overflowY: 'auto' as const,
-  padding: '8px',
-  display: 'grid',
-  gap: '8px',
-};
-const pickerInfoStyle = {
-  padding: '12px',
-  borderRadius: '12px',
-  backgroundColor: 'var(--screen-soft-fill)',
-  color: 'var(--screen-muted)',
-};
-const pickerOptionStyle = {
-  padding: '12px 14px',
-  borderRadius: '12px',
-  border: '1px solid var(--screen-border)',
-  backgroundColor: 'var(--screen-soft-fill)',
-  textAlign: 'left' as const,
-  cursor: 'pointer',
-  color: 'var(--screen-text)',
-  fontWeight: 600,
-};
-const pickerOptionActiveStyle = {
-  border: '1px solid rgba(96,165,250,0.36)',
-  backgroundColor: 'rgba(30,64,175,0.32)',
-};
-const scoreRowStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  gap: '12px',
-  alignItems: 'center',
-  flexWrap: 'wrap' as const,
-  padding: '12px 14px',
-  borderRadius: '14px',
-  border: '1px solid var(--screen-border)',
-  background: 'var(--screen-card-soft-bg)',
-};
-const editSummaryStyle = {
-  marginTop: '18px',
-  borderRadius: '18px',
-  padding: '18px',
-  border: '1px solid rgba(96,165,250,0.2)',
-  background:
-    'linear-gradient(135deg, rgba(30,64,175,0.22) 0%, rgba(15,23,42,0.5) 100%)',
-};
-const summaryEyebrowStyle = {
-  color: '#93c5fd',
-  fontWeight: 800,
-  textTransform: 'uppercase' as const,
-  fontSize: '12px',
-  letterSpacing: '0.12em',
-};
-const summaryScoreStyle = {
-  fontSize: '32px',
-  fontWeight: 800,
-  color: 'var(--screen-heading)',
-  marginTop: '8px',
-};
-const detailRowStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  gap: '12px',
-  alignItems: 'center',
-  padding: '12px 14px',
-  borderRadius: '14px',
-  border: '1px solid var(--screen-border)',
-  background: 'var(--screen-card-soft-bg)',
-};
 export default AuditsListSupabase;
