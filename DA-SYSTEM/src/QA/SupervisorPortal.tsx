@@ -25,17 +25,6 @@ type AgentProfile = {
   email: string;
 };
 
-type ScoreDetail = {
-  metric: string;
-  result: string;
-  pass: number;
-  borderline: number;
-  adjustedWeight: number;
-  earned: number;
-  counts_toward_score?: boolean;
-  metric_comment?: string | null;
-};
-
 type AuditItem = {
   id: string;
   agent_id: string;
@@ -48,7 +37,6 @@ type AuditItem = {
   ticket_id?: string | null;
   quality_score: number;
   comments: string | null;
-  score_details: ScoreDetail[];
   shared_with_agent?: boolean;
   created_by_name?: string | null;
   created_by_email?: string | null;
@@ -94,6 +82,36 @@ type SupervisorPortalProps = {
   currentUser: UserProfile;
 };
 
+function openNativeDatePicker(target: HTMLInputElement) {
+  const input = target as HTMLInputElement & { showPicker?: () => void };
+  input.showPicker?.();
+}
+
+function normalizeAgentId(value?: string | null) {
+  return String(value || '').trim().replace(/\.0+$/, '');
+}
+
+function normalizeAgentName(value?: string | null) {
+  return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function matchesDateRange(
+  startDate?: string | null,
+  endDate?: string | null,
+  filterFrom?: string,
+  filterTo?: string
+) {
+  const recordStart = String(startDate || '').slice(0, 10);
+  const recordEnd = String(endDate || startDate || '').slice(0, 10);
+
+  if (!recordStart) return false;
+
+  const effectiveFrom = filterFrom || '0001-01-01';
+  const effectiveTo = filterTo || '9999-12-31';
+
+  return recordEnd >= effectiveFrom && recordStart <= effectiveTo;
+}
+
 function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
   const [teamAgents, setTeamAgents] = useState<AgentProfile[]>([]);
   const [audits, setAudits] = useState<AuditItem[]>([]);
@@ -108,7 +126,6 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
   const [monitoringOpen, setMonitoringOpen] = useState(false);
   const [monitoringAgentFilter, setMonitoringAgentFilter] = useState('');
   const [activeTab, setActiveTab] = useState<SupervisorPortalTab>('overview');
-  const [expandedAuditId, setExpandedAuditId] = useState<string | null>(null);
 
   const agentPickerRef = useRef<HTMLDivElement | null>(null);
 
@@ -251,41 +268,6 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
     return `${text.slice(0, 117)}...`;
   }
 
-  function getResultBadgeColor(result: string) {
-    if (result === 'Pass') return '#166534';
-    if (result === 'Borderline') return '#92400e';
-    if (result === 'Fail' || result === 'Auto-Fail') return '#991b1b';
-    if (result === 'N/A') return '#374151';
-    if (result === 'Yes') return '#166534';
-    if (result === 'No') return '#991b1b';
-    return '#1f2937';
-  }
-
-  function isNoScoreDetail(detail: ScoreDetail) {
-    return (
-      detail.counts_toward_score === false ||
-      (Number(detail.pass || 0) === 0 &&
-        Number(detail.borderline || 0) === 0 &&
-        Number(detail.adjustedWeight || 0) === 0)
-    );
-  }
-
-  function getRecordStartDate(record: TeamRecord) {
-    return record.call_date || record.ticket_date || record.sale_date || '-';
-  }
-
-  function getRecordMetricLabel() {
-    if (currentUser.team === 'Calls') return 'Calls Count';
-    if (currentUser.team === 'Tickets') return 'Tickets Count';
-    return 'Amount';
-  }
-
-  function getRecordMetricValue(record: TeamRecord) {
-    if (currentUser.team === 'Calls') return String(record.calls_count ?? 0);
-    if (currentUser.team === 'Tickets') return String(record.tickets_count ?? 0);
-    return `$${Number(record.amount || 0).toFixed(2)}`;
-  }
-
   const visibleAgents = useMemo(() => {
     const search = agentSearch.trim().toLowerCase();
 
@@ -321,25 +303,67 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
     setIsAgentPickerOpen(false);
   }
 
-  const filteredAudits = useMemo(() => {
-    if (!selectedAgent) return audits;
+  function clearDateFilters() {
+    setAuditDateFrom('');
+    setAuditDateTo('');
+  }
 
-    return audits.filter(
-      (audit) =>
-        audit.agent_id === selectedAgent.agent_id &&
-        audit.agent_name === selectedAgent.agent_name
-    );
-  }, [audits, selectedAgent]);
+  const filteredAudits = useMemo(() => {
+    return audits.filter((audit) => {
+      const matchesAgent = selectedAgent
+        ? (() => {
+            const selectedId = normalizeAgentId(selectedAgent.agent_id);
+            const auditId = normalizeAgentId(audit.agent_id);
+
+            if (selectedId && auditId) {
+              return auditId === selectedId;
+            }
+
+            return (
+              normalizeAgentName(audit.agent_name) ===
+              normalizeAgentName(selectedAgent.agent_name)
+            );
+          })()
+        : true;
+
+      const matchesFrom = auditDateFrom ? audit.audit_date >= auditDateFrom : true;
+      const matchesTo = auditDateTo ? audit.audit_date <= auditDateTo : true;
+
+      return matchesAgent && matchesFrom && matchesTo;
+    });
+  }, [audits, selectedAgent, auditDateFrom, auditDateTo]);
 
   const filteredRecords = useMemo(() => {
-    if (!selectedAgent) return records;
+    return records.filter((record) => {
+      const matchesAgent = selectedAgent
+        ? (() => {
+            const selectedId = normalizeAgentId(selectedAgent.agent_id);
+            const recordId = normalizeAgentId(record.agent_id);
 
-    return records.filter(
-      (record) =>
-        record.agent_id === selectedAgent.agent_id &&
-        record.agent_name === selectedAgent.agent_name
-    );
-  }, [records, selectedAgent]);
+            if (selectedId && recordId) {
+              return recordId === selectedId;
+            }
+
+            return (
+              normalizeAgentName(record.agent_name) ===
+              normalizeAgentName(selectedAgent.agent_name)
+            );
+          })()
+        : true;
+
+      const recordStart =
+        record.call_date || record.ticket_date || record.sale_date || null;
+
+      const matchesDates = matchesDateRange(
+        recordStart,
+        record.date_to || null,
+        auditDateFrom,
+        auditDateTo
+      );
+
+      return matchesAgent && matchesDates;
+    });
+  }, [records, selectedAgent, auditDateFrom, auditDateTo]);
 
   const averageQuality =
     filteredAudits.length > 0
@@ -423,7 +447,33 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
           {errorMessage ? <div style={errorBanner}>{errorMessage}</div> : null}
 
           <div style={panelStyle}>
-            <label style={labelStyle}>Agent Filter</label>
+            <div style={filterGridStyle}>
+              <div>
+                <label style={labelStyle}>Date From</label>
+                <input
+                  type="date"
+                  value={auditDateFrom}
+                  onChange={(e) => setAuditDateFrom(e.target.value)}
+                  onClick={(e) => openNativeDatePicker(e.currentTarget)}
+                  onFocus={(e) => openNativeDatePicker(e.currentTarget)}
+                  style={fieldStyle}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Date To</label>
+                <input
+                  type="date"
+                  value={auditDateTo}
+                  onChange={(e) => setAuditDateTo(e.target.value)}
+                  onClick={(e) => openNativeDatePicker(e.currentTarget)}
+                  onFocus={(e) => openNativeDatePicker(e.currentTarget)}
+                  style={fieldStyle}
+                />
+              </div>
+            </div>
+
+            <label style={{ ...labelStyle, marginTop: '16px' }}>Agent Filter</label>
 
             <div ref={agentPickerRef} style={{ position: 'relative' }}>
               <button
@@ -479,14 +529,26 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
               ) : null}
             </div>
 
-            <div style={{ marginTop: '12px' }}>
+            <div style={filterActionsStyle}>
               <button
                 type="button"
                 onClick={clearAgentFilter}
                 style={secondaryButton}
               >
-                Clear Filter
+                Clear Agent
               </button>
+              <button
+                type="button"
+                onClick={clearDateFilters}
+                style={secondaryButton}
+              >
+                Clear Dates
+              </button>
+              <div style={filterPillStyle}>
+                Showing {filteredAudits.length} audit
+                {filteredAudits.length === 1 ? '' : 's'} • {filteredRecords.length}{' '}
+                {currentUser.team === 'Sales' ? 'record' : 'records'}
+              </div>
             </div>
           </div>
 
@@ -544,190 +606,69 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
                     <div style={auditCellReleaseStyle}>Release</div>
                     <div style={auditCellCreatorStyle}>Created By</div>
                     <div style={auditCellCommentsStyle}>Comments</div>
-                    <div style={auditCellActionsStyle}>Actions</div>
                   </div>
 
-                  {filteredAudits.map((audit) => {
-                    const isExpanded = expandedAuditId === audit.id;
-
-                    return (
-                      <div key={audit.id} style={auditEntryStyle}>
-                        <div style={auditRowStyle}>
-                          <div style={auditCellDateStyle}>
-                            <div style={primaryCellTextStyle}>
-                              {formatDateOnly(audit.audit_date)}
-                            </div>
-                            <div style={secondaryCellTextStyle}>{audit.team}</div>
-                          </div>
-
-                          <div style={auditCellCaseStyle}>
-                            <div style={primaryCellTextStyle}>
-                              {audit.case_type}
-                            </div>
-                            <div style={secondaryCellTextStyle}>
-                              {getAgentLabel(audit.agent_id, audit.agent_name)}
-                            </div>
-                          </div>
-
-                          <div style={auditCellReferenceStyle}>
-                            <div style={primaryCellTextStyle}>
-                              {getAuditReference(audit)}
-                            </div>
-                          </div>
-
-                          <div style={auditCellScoreStyle}>
-                            <span style={scorePillStyle}>
-                              {Number(audit.quality_score).toFixed(2)}%
-                            </span>
-                          </div>
-
-                          <div style={auditCellReleaseStyle}>
-                            <span
-                              style={{
-                                ...pillStyle,
-                                backgroundColor: audit.shared_with_agent
-                                  ? '#166534'
-                                  : '#475569',
-                              }}
-                            >
-                              {audit.shared_with_agent ? 'Released' : 'Hidden'}
-                            </span>
-                            <div style={secondaryCellTextStyle}>
-                              {formatDate(audit.shared_at)}
-                            </div>
-                          </div>
-
-                          <div style={auditCellCreatorStyle}>
-                            <div style={primaryCellTextStyle}>
-                              {audit.created_by_name ||
-                                audit.created_by_email ||
-                                '-'}
-                            </div>
-                          </div>
-
-                          <div style={auditCellCommentsStyle}>
-                            <div style={primaryCellTextStyle}>
-                              {getCommentsPreview(audit.comments)}
-                            </div>
-                          </div>
-
-                          <div style={auditCellActionsStyle}>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setExpandedAuditId(
-                                  expandedAuditId === audit.id ? null : audit.id
-                                )
-                              }
-                              style={miniSecondaryButton}
-                            >
-                              {isExpanded ? 'Hide' : 'Details'}
-                            </button>
-                          </div>
+                  {filteredAudits.map((audit) => (
+                    <div key={audit.id} style={auditRowStyle}>
+                      <div style={auditCellDateStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {formatDateOnly(audit.audit_date)}
                         </div>
-
-                        {isExpanded ? (
-                          <div style={auditExpandedRowStyle}>
-                            <div style={expandedPanelStyle}>
-                              <div style={detailInfoGridStyle}>
-                                <div style={detailInfoCardStyle}>
-                                  <div style={detailLabelStyle}>Agent</div>
-                                  <div style={detailValueStyle}>
-                                    {getAgentLabel(audit.agent_id, audit.agent_name)}
-                                  </div>
-                                </div>
-
-                                <div style={detailInfoCardStyle}>
-                                  <div style={detailLabelStyle}>Reference</div>
-                                  <div style={detailValueStyle}>
-                                    {getAuditReference(audit)}
-                                  </div>
-                                </div>
-
-                                <div style={detailInfoCardStyle}>
-                                  <div style={detailLabelStyle}>Release Date</div>
-                                  <div style={detailValueStyle}>
-                                    {formatDate(audit.shared_at)}
-                                  </div>
-                                </div>
-
-                                <div style={detailInfoCardStyle}>
-                                  <div style={detailLabelStyle}>Created By</div>
-                                  <div style={detailValueStyle}>
-                                    {audit.created_by_name ||
-                                      audit.created_by_email ||
-                                      '-'}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div style={fullCommentCardStyle}>
-                                <div style={detailLabelStyle}>Full Comment</div>
-                                <div style={fullCommentTextStyle}>
-                                  {audit.comments?.trim() || '-'}
-                                </div>
-                              </div>
-
-                              <div style={{ ...sectionEyebrow, marginTop: '18px' }}>
-                                Score Details
-                              </div>
-                              <div style={{ display: 'grid', gap: '10px' }}>
-                                {(audit.score_details || []).map((detail) => (
-                                  <div
-                                    key={`${audit.id}-${detail.metric}`}
-                                    style={detailRowStyle}
-                                  >
-                                    <div>
-                                      <div
-                                        style={{
-                                          color: 'var(--da-title, #f8fafc)',
-                                          fontWeight: 700,
-                                        }}
-                                      >
-                                        {detail.metric}
-                                      </div>
-                                      <div
-                                        style={{
-                                          color: 'var(--da-subtle-text, #94a3b8)',
-                                          fontSize: '12px',
-                                          marginTop: '4px',
-                                        }}
-                                      >
-                                        {isNoScoreDetail(detail)
-                                          ? 'Yes / No question • No score'
-                                          : `Pass ${detail.pass} • Borderline ${detail.borderline} • Adjusted ${Number(detail.adjustedWeight || 0).toFixed(2)}`}
-                                      </div>
-                                      {detail.metric_comment ? (
-                                        <div style={metricNoteCardStyle}>
-                                          <div style={metricNoteLabelStyle}>
-                                            QA Note
-                                          </div>
-                                          <div style={metricNoteTextStyle}>
-                                            {detail.metric_comment}
-                                          </div>
-                                        </div>
-                                      ) : null}
-                                    </div>
-
-                                    <span
-                                      style={{
-                                        ...pillStyle,
-                                        backgroundColor: getResultBadgeColor(
-                                          detail.result
-                                        ),
-                                      }}
-                                    >
-                                      {detail.result}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        ) : null}
+                        <div style={secondaryCellTextStyle}>{audit.team}</div>
                       </div>
-                    );
-                  })}
+
+                      <div style={auditCellCaseStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {audit.case_type}
+                        </div>
+                        <div style={secondaryCellTextStyle}>
+                          {getAgentLabel(audit.agent_id, audit.agent_name)}
+                        </div>
+                      </div>
+
+                      <div style={auditCellReferenceStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {getAuditReference(audit)}
+                        </div>
+                      </div>
+
+                      <div style={auditCellScoreStyle}>
+                        <span style={scorePillStyle}>
+                          {Number(audit.quality_score).toFixed(2)}%
+                        </span>
+                      </div>
+
+                      <div style={auditCellReleaseStyle}>
+                        <span
+                          style={{
+                            ...pillStyle,
+                            backgroundColor: audit.shared_with_agent
+                              ? '#166534'
+                              : '#475569',
+                          }}
+                        >
+                          {audit.shared_with_agent ? 'Released' : 'Hidden'}
+                        </span>
+                        <div style={secondaryCellTextStyle}>
+                          {formatDate(audit.shared_at)}
+                        </div>
+                      </div>
+
+                      <div style={auditCellCreatorStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {audit.created_by_name ||
+                            audit.created_by_email ||
+                            '-'}
+                        </div>
+                      </div>
+
+                      <div style={auditCellCommentsStyle}>
+                        <div style={primaryCellTextStyle}>
+                          {getCommentsPreview(audit.comments)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -737,50 +678,44 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
             {filteredRecords.length === 0 ? (
               <p>No team records found.</p>
             ) : (
-              <div style={recordsTableWrapStyle}>
-                <div style={recordsTableStyle}>
-                  <div style={{ ...recordsRowStyle, ...recordsHeaderRowStyle }}>
-                    <div style={recordsCellAgentStyle}>Agent</div>
-                    <div style={recordsCellDateFromStyle}>Date From</div>
-                    <div style={recordsCellDateToStyle}>Date To</div>
-                    <div style={recordsCellMetricStyle}>{getRecordMetricLabel()}</div>
-                    <div style={recordsCellNotesStyle}>Notes</div>
+              <div style={{ display: 'grid', gap: '12px' }}>
+                {filteredRecords.map((record) => (
+                  <div key={record.id} style={cardStyle}>
+                    <p>
+                      <strong>Agent:</strong>{' '}
+                      {getAgentLabel(record.agent_id, record.agent_name)}
+                    </p>
+                    <p>
+                      <strong>Date From:</strong>{' '}
+                      {record.call_date ||
+                        record.ticket_date ||
+                        record.sale_date ||
+                        '-'}
+                    </p>
+                    <p>
+                      <strong>Date To:</strong> {record.date_to || '-'}
+                    </p>
+                    {currentUser.team === 'Calls' ? (
+                      <p>
+                        <strong>Calls Count:</strong> {record.calls_count}
+                      </p>
+                    ) : null}
+                    {currentUser.team === 'Tickets' ? (
+                      <p>
+                        <strong>Tickets Count:</strong> {record.tickets_count}
+                      </p>
+                    ) : null}
+                    {currentUser.team === 'Sales' ? (
+                      <p>
+                        <strong>Amount:</strong> $
+                        {Number(record.amount || 0).toFixed(2)}
+                      </p>
+                    ) : null}
+                    <p>
+                      <strong>Notes:</strong> {record.notes || '-'}
+                    </p>
                   </div>
-
-                  {filteredRecords.map((record) => (
-                    <div key={record.id} style={recordsRowStyle}>
-                      <div style={recordsCellAgentStyle}>
-                        <div style={primaryCellTextStyle}>
-                          {getAgentLabel(record.agent_id, record.agent_name)}
-                        </div>
-                      </div>
-
-                      <div style={recordsCellDateFromStyle}>
-                        <div style={primaryCellTextStyle}>
-                          {getRecordStartDate(record)}
-                        </div>
-                      </div>
-
-                      <div style={recordsCellDateToStyle}>
-                        <div style={primaryCellTextStyle}>
-                          {record.date_to || '-'}
-                        </div>
-                      </div>
-
-                      <div style={recordsCellMetricStyle}>
-                        <div style={primaryCellTextStyle}>
-                          {getRecordMetricValue(record)}
-                        </div>
-                      </div>
-
-                      <div style={recordsCellNotesStyle}>
-                        <div style={primaryCellTextStyle}>
-                          {record.notes || '-'}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                ))}
               </div>
             )}
           </Section>
@@ -883,6 +818,30 @@ const panelStyle = {
   border: '1px solid rgba(148,163,184,0.14)',
   borderRadius: '20px',
   padding: '20px',
+};
+
+const filterGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+  gap: '16px',
+};
+
+const filterActionsStyle = {
+  marginTop: '12px',
+  display: 'flex',
+  gap: '10px',
+  flexWrap: 'wrap' as const,
+  alignItems: 'center',
+};
+
+const filterPillStyle = {
+  padding: '10px 14px',
+  borderRadius: '999px',
+  border: '1px solid rgba(148,163,184,0.16)',
+  backgroundColor: 'var(--da-surface-bg, rgba(15,23,42,0.56))',
+  color: 'var(--da-page-text, #e5eefb)',
+  fontSize: '13px',
+  fontWeight: 600,
 };
 
 const labelStyle = {
@@ -1011,20 +970,17 @@ const auditTableWrapStyle = {
 };
 
 const auditTableStyle = {
-  minWidth: '1320px',
-};
-
-const auditEntryStyle = {
-  borderBottom: '1px solid rgba(148,163,184,0.08)',
+  minWidth: '1180px',
 };
 
 const auditRowStyle = {
   display: 'grid',
   gridTemplateColumns:
-    '140px 220px minmax(240px, 1.4fr) 120px 180px 220px minmax(260px, 1.6fr) 100px',
+    '140px 220px minmax(240px, 1.4fr) 120px 180px 220px minmax(260px, 1.8fr)',
   gap: '14px',
   alignItems: 'center',
   padding: '14px 16px',
+  borderBottom: '1px solid rgba(148,163,184,0.1)',
 };
 
 const auditHeaderRowStyle = {
@@ -1046,11 +1002,6 @@ const auditCellScoreStyle = {};
 const auditCellReleaseStyle = {};
 const auditCellCreatorStyle = {};
 const auditCellCommentsStyle = {};
-const auditCellActionsStyle = {
-  display: 'flex',
-  gap: '8px',
-  flexWrap: 'wrap' as const,
-};
 
 const primaryCellTextStyle = {
   color: 'var(--da-title, #f8fafc)',
@@ -1061,7 +1012,7 @@ const primaryCellTextStyle = {
 
 const secondaryCellTextStyle = {
   marginTop: '4px',
-  color: 'var(--da-subtle-text, #64748b)',
+  color: '#64748b',
   fontSize: '12px',
   fontWeight: 600,
   lineHeight: 1.4,
@@ -1074,9 +1025,9 @@ const scorePillStyle = {
   minWidth: '84px',
   padding: '8px 10px',
   borderRadius: '999px',
-  background: 'rgba(37, 99, 235, 0.14)',
-  border: '1px solid rgba(96,165,250,0.32)',
-  color: 'var(--da-title, #0f172a)',
+  background: 'var(--da-active-option-bg, rgba(37, 99, 235, 0.18))',
+  border: '1px solid rgba(96,165,250,0.26)',
+  color: '#dbeafe',
   fontSize: '13px',
   fontWeight: 800,
 };
@@ -1091,150 +1042,5 @@ const pillStyle = {
   fontWeight: 800,
   color: '#ffffff',
 };
-
-const miniSecondaryButton = {
-  padding: '8px 10px',
-  background: 'var(--da-field-bg, rgba(15,23,42,0.78))',
-  color: 'var(--da-page-text, #e5eefb)',
-  border: '1px solid rgba(148,163,184,0.18)',
-  borderRadius: '10px',
-  cursor: 'pointer',
-  fontWeight: 700,
-  fontSize: '12px',
-};
-
-const auditExpandedRowStyle = {
-  padding: '0 16px 16px 16px',
-};
-
-const expandedPanelStyle = {
-  borderRadius: '18px',
-  border: '1px solid rgba(148,163,184,0.14)',
-  background:
-    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
-  padding: '18px',
-};
-
-const detailInfoGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-  gap: '12px',
-  marginBottom: '18px',
-};
-
-const detailInfoCardStyle = {
-  borderRadius: '14px',
-  border: '1px solid rgba(148,163,184,0.14)',
-  background: 'var(--da-surface-bg, rgba(15,23,42,0.6))',
-  padding: '14px 16px',
-};
-
-const detailLabelStyle = {
-  color: 'var(--da-subtle-text, #94a3b8)',
-  fontSize: '12px',
-  fontWeight: 700,
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.08em',
-  marginBottom: '8px',
-};
-
-const detailValueStyle = {
-  color: 'var(--da-title, #f8fafc)',
-  fontSize: '14px',
-  fontWeight: 700,
-  lineHeight: 1.5,
-};
-
-const fullCommentCardStyle = {
-  borderRadius: '14px',
-  border: '1px solid rgba(148,163,184,0.14)',
-  background: 'var(--da-surface-bg, rgba(15,23,42,0.6))',
-  padding: '14px 16px',
-  marginBottom: '18px',
-};
-
-const fullCommentTextStyle = {
-  color: 'var(--da-page-text, #e5eefb)',
-  fontSize: '14px',
-  lineHeight: 1.7,
-  whiteSpace: 'pre-wrap' as const,
-  wordBreak: 'break-word' as const,
-};
-
-const detailRowStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  gap: '12px',
-  alignItems: 'center',
-  padding: '12px 14px',
-  borderRadius: '14px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'var(--da-surface-bg, rgba(15,23,42,0.52))',
-};
-
-const metricNoteCardStyle = {
-  marginTop: '10px',
-  borderRadius: '12px',
-  border: '1px solid rgba(148,163,184,0.12)',
-  background: 'var(--da-surface-bg, rgba(15,23,42,0.52))',
-  padding: '10px 12px',
-};
-
-const metricNoteLabelStyle = {
-  color: 'var(--da-accent-text, #93c5fd)',
-  fontSize: '11px',
-  fontWeight: 800,
-  letterSpacing: '0.1em',
-  textTransform: 'uppercase' as const,
-  marginBottom: '6px',
-};
-
-const metricNoteTextStyle = {
-  color: 'var(--da-page-text, #e5eefb)',
-  fontSize: '13px',
-  lineHeight: 1.55,
-  whiteSpace: 'pre-wrap' as const,
-};
-
-const recordsTableWrapStyle = {
-  marginTop: '16px',
-  overflowX: 'auto' as const,
-  borderRadius: '18px',
-  border: '1px solid rgba(148,163,184,0.14)',
-  background:
-    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
-  boxShadow: '0 8px 24px rgba(2,6,23,0.2)',
-};
-
-const recordsTableStyle = {
-  minWidth: '1080px',
-};
-
-const recordsRowStyle = {
-  display: 'grid',
-  gridTemplateColumns: '240px 150px 150px 170px minmax(280px, 1.4fr)',
-  gap: '14px',
-  alignItems: 'center',
-  padding: '14px 16px',
-  borderBottom: '1px solid rgba(148,163,184,0.1)',
-};
-
-const recordsHeaderRowStyle = {
-  position: 'sticky' as const,
-  top: 0,
-  zIndex: 1,
-  background: 'rgba(2,6,23,0.92)',
-  color: 'var(--da-accent-text, #93c5fd)',
-  fontSize: '12px',
-  fontWeight: 800,
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.12em',
-};
-
-const recordsCellAgentStyle = {};
-const recordsCellDateFromStyle = {};
-const recordsCellDateToStyle = {};
-const recordsCellMetricStyle = {};
-const recordsCellNotesStyle = {};
 
 export default SupervisorPortal;
