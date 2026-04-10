@@ -1325,11 +1325,13 @@ const errorBanner = {
 };
 
 const pillStyle = {
-  color: 'var(--screen-text)',
-  padding: '4px 8px',
+  color: '#ffffff',
+  padding: '4px 10px',
   borderRadius: '999px',
   fontSize: '12px',
-  fontWeight: 'bold',
+  fontWeight: 800,
+  border: '1px solid rgba(15,23,42,0.08)',
+  boxShadow: '0 6px 14px rgba(15,23,42,0.08)',
 };
 
 const auditExpandedRowStyle = { padding: '0 16px 16px 16px' };
