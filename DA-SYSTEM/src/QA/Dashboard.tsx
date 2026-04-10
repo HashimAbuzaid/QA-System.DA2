@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import {
   clearCachedValue,
@@ -140,6 +140,20 @@ function matchesDateRange(
   return recordEnd >= effectiveFrom && recordStart <= effectiveTo;
 }
 
+function openNativeDatePicker(input: HTMLInputElement | null | undefined) {
+  if (!input) return;
+
+  input.focus();
+
+  const inputWithPicker = input as HTMLInputElement & {
+    showPicker?: () => void;
+  };
+
+  if (typeof inputWithPicker.showPicker === 'function') {
+    inputWithPicker.showPicker();
+  }
+}
+
 function Dashboard() {
   const [audits, setAudits] = useState<AuditItem[]>([]);
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
@@ -152,6 +166,8 @@ function Dashboard() {
   const [dateFrom, setDateFrom] = useState(getMonthStartValue());
   const [dateTo, setDateTo] = useState(getCurrentDateValue());
   const [lastLoadedAt, setLastLoadedAt] = useState('');
+  const dateFromInputRef = useRef<HTMLInputElement | null>(null);
+  const dateToInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     void loadDashboardData();
@@ -745,9 +761,12 @@ function Dashboard() {
             <label style={dateFieldWrapStyle}>
               <span style={dateFieldLabelStyle}>Date From</span>
               <input
+                ref={dateFromInputRef}
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
+                onClick={() => openNativeDatePicker(dateFromInputRef.current)}
+                onFocus={() => openNativeDatePicker(dateFromInputRef.current)}
                 style={fieldStyle}
               />
             </label>
@@ -755,9 +774,12 @@ function Dashboard() {
             <label style={dateFieldWrapStyle}>
               <span style={dateFieldLabelStyle}>Date To</span>
               <input
+                ref={dateToInputRef}
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
+                onClick={() => openNativeDatePicker(dateToInputRef.current)}
+                onFocus={() => openNativeDatePicker(dateToInputRef.current)}
                 style={fieldStyle}
               />
             </label>
@@ -1214,21 +1236,23 @@ const metaPillStyle = {
 
 const heroActionWrapStyle = {
   display: 'flex',
-  gap: '10px',
+  gap: '12px',
   flexWrap: 'wrap' as const,
-  alignItems: 'center',
+  alignItems: 'flex-end',
+  justifyContent: 'flex-end',
 };
 
 const dateRangeWrapStyle = {
-  display: 'flex',
-  gap: '10px',
-  flexWrap: 'wrap' as const,
-  alignItems: 'flex-end',
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(150px, 1fr))',
+  gap: '12px',
+  alignItems: 'end',
 };
 
 const dateFieldWrapStyle = {
   display: 'grid',
   gap: '6px',
+  minWidth: '150px',
 };
 
 const dateFieldLabelStyle = {
@@ -1271,6 +1295,8 @@ const fieldStyle = {
   border: 'var(--da-field-border, 1px solid rgba(148, 163, 184, 0.18))',
   background: 'var(--da-field-bg, rgba(15, 23, 42, 0.74))',
   color: 'var(--da-field-text, #e5eefb)',
+  minHeight: '48px',
+  cursor: 'pointer',
 };
 
 const primaryButton = {
@@ -1281,6 +1307,7 @@ const primaryButton = {
   borderRadius: '14px',
   cursor: 'pointer',
   fontWeight: 700,
+  minHeight: '48px',
 };
 
 const secondaryButton = {
@@ -1291,6 +1318,7 @@ const secondaryButton = {
   borderRadius: '14px',
   cursor: 'pointer',
   fontWeight: 700,
+  minHeight: '48px',
 };
 
 const kpiGridStyle = {
