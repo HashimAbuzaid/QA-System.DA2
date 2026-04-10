@@ -136,29 +136,35 @@ function getThemeVars(): Record<string, string> {
     typeof document !== 'undefined' && document.body.dataset.theme === 'light';
 
   return {
-    '--screen-text': isLight ? '#0f172a' : '#e5eefb',
-    '--screen-heading': isLight ? '#0f172a' : '#f8fafc',
+    '--screen-text': isLight ? '#334155' : '#e5eefb',
+    '--screen-heading': isLight ? '#334155' : '#f8fafc',
     '--screen-muted': isLight ? '#64748b' : '#94a3b8',
-    '--screen-subtle': isLight ? '#475569' : '#64748b',
+    '--screen-subtle': isLight ? '#64748b' : '#64748b',
     '--screen-accent': isLight ? '#2563eb' : '#60a5fa',
     '--screen-panel-bg': isLight
-      ? 'linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(241,245,249,0.96) 100%)'
+      ? 'linear-gradient(180deg, rgba(80, 90, 112, 0.96) 0%, rgba(95, 105, 126, 0.96) 100%)'
       : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
     '--screen-card-bg': isLight
-      ? 'linear-gradient(180deg, rgba(248,250,252,0.98) 0%, rgba(241,245,249,0.98) 100%)'
+      ? 'linear-gradient(180deg, rgba(80, 90, 112, 0.96) 0%, rgba(95, 105, 126, 0.96) 100%)'
       : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
-    '--screen-card-soft-bg': isLight ? 'rgba(248,250,252,0.9)' : 'rgba(15,23,42,0.52)',
-    '--screen-field-bg': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.7)',
-    '--screen-border': isLight ? 'rgba(148,163,184,0.28)' : 'rgba(148,163,184,0.14)',
-    '--screen-border-strong': isLight ? 'rgba(148,163,184,0.34)' : 'rgba(148,163,184,0.18)',
-    '--screen-table-head-bg': isLight ? 'rgba(226,232,240,0.95)' : 'rgba(2,6,23,0.92)',
-    '--screen-pill-bg': isLight ? 'rgba(255,255,255,0.92)' : 'rgba(15,23,42,0.56)',
-    '--screen-shadow': isLight ? '0 18px 40px rgba(15,23,42,0.08)' : '0 18px 40px rgba(2,6,23,0.35)',
-    '--screen-score-pill-bg': isLight ? 'rgba(219,234,254,0.95)' : 'rgba(37,99,235,0.18)',
-    '--screen-score-pill-border': isLight ? 'rgba(96,165,250,0.38)' : 'rgba(96,165,250,0.26)',
+    '--screen-card-soft-bg': isLight
+      ? 'linear-gradient(180deg, rgba(73, 84, 106, 0.96) 0%, rgba(65, 75, 96, 0.96) 100%)'
+      : 'rgba(15,23,42,0.52)',
+    '--screen-field-bg': isLight
+      ? 'linear-gradient(180deg, rgba(29, 39, 67, 0.98) 0%, rgba(31, 43, 73, 0.98) 100%)'
+      : 'rgba(15,23,42,0.7)',
+    '--screen-border': isLight ? 'rgba(203,213,225,0.36)' : 'rgba(148,163,184,0.14)',
+    '--screen-border-strong': isLight ? 'rgba(203,213,225,0.44)' : 'rgba(148,163,184,0.18)',
+    '--screen-table-head-bg': isLight ? 'rgba(10, 18, 36, 0.98)' : 'rgba(2,6,23,0.92)',
+    '--screen-pill-bg': isLight ? 'rgba(148,163,184,0.92)' : 'rgba(15,23,42,0.56)',
+    '--screen-shadow': isLight ? '0 18px 40px rgba(15,23,42,0.16)' : '0 18px 40px rgba(2,6,23,0.35)',
+    '--screen-score-pill-bg': isLight ? 'rgba(29, 78, 216, 0.14)' : 'rgba(37,99,235,0.18)',
+    '--screen-score-pill-border': isLight ? 'rgba(59,130,246,0.32)' : 'rgba(96,165,250,0.26)',
     '--screen-primary-btn-text': '#ffffff',
-    '--screen-secondary-btn-bg': isLight ? 'rgba(248,250,252,0.98)' : 'rgba(15,23,42,0.78)',
-    '--screen-secondary-btn-text': isLight ? '#0f172a' : '#e5eefb',
+    '--screen-field-text': isLight ? '#e2e8f0' : '#e5eefb',
+    '--screen-menu-bg': isLight ? 'rgba(29, 39, 67, 0.98)' : 'rgba(15, 23, 42, 0.96)',
+    '--screen-secondary-btn-bg': isLight ? 'rgba(248,250,252,0.96)' : 'rgba(15,23,42,0.78)',
+    '--screen-secondary-btn-text': isLight ? '#334155' : '#e5eefb',
   };
 }
 
@@ -1084,7 +1090,7 @@ const scorePillStyle = {
 const labelStyle = {
   display: 'block',
   marginBottom: '8px',
-  color: '#cbd5e1',
+  color: 'var(--screen-heading)',
   fontWeight: 700,
   fontSize: '13px',
 };
@@ -1099,8 +1105,8 @@ const fieldStyle = {
 };
 
 const secondaryButton = {
-  backgroundColor: 'rgba(15,23,42,0.78)',
-  color: 'var(--screen-text)',
+  backgroundColor: 'var(--screen-secondary-btn-bg)',
+  color: 'var(--screen-secondary-btn-text)',
   border: '1px solid var(--screen-border-strong)',
   padding: '10px 14px',
   borderRadius: '10px',
