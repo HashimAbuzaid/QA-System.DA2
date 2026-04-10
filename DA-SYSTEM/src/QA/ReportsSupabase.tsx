@@ -193,6 +193,15 @@ function ReportsSupabase() {
       : `${profile.agent_name} - ${profile.agent_id}`;
   }
 
+  function normalizeAgentId(value?: string | null) {
+    return String(value || '').trim().replace(/\.0+$/, '');
+  }
+
+  function normalizeAgentName(value?: string | null) {
+    return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+
   function matchesDate(dateValue: string) {
     const afterFrom = dateFrom ? dateValue >= dateFrom : true;
     const beforeTo = dateTo ? dateValue <= dateTo : true;
@@ -206,11 +215,20 @@ function ReportsSupabase() {
   ) {
     if (!selectedAgent) return true;
 
-    const idMatches = (itemAgentId || '') === (selectedAgent.agent_id || '');
-    const nameMatches = (itemAgentName || '') === selectedAgent.agent_name;
-    const teamMatches = (itemTeam || '') === (selectedAgent.team || '');
+    const teamMatches = !selectedAgent.team || (itemTeam || '') === selectedAgent.team;
 
-    return idMatches && nameMatches && teamMatches;
+    if (!teamMatches) {
+      return false;
+    }
+
+    const selectedId = normalizeAgentId(selectedAgent.agent_id);
+    const recordId = normalizeAgentId(itemAgentId);
+
+    if (selectedId && recordId) {
+      return selectedId === recordId;
+    }
+
+    return normalizeAgentName(itemAgentName) === normalizeAgentName(selectedAgent.agent_name);
   }
 
   const visibleAgentProfiles = useMemo(() => {
@@ -601,16 +619,16 @@ function ReportsSupabase() {
   }
 
   if (loading) {
-    return <div style={{ color: 'var(--da-page-text, #e5eefb)' }}>Loading reports...</div>;
+    return <div style={{ color: '#e5eefb' }}>Loading reports...</div>;
   }
 
   return (
-    <div style={{ color: 'var(--da-page-text, #e5eefb)' }}>
+    <div style={{ color: '#e5eefb' }}>
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Reporting</div>
           <h2 style={{ margin: 0 }}>Reports</h2>
-          <p style={{ margin: '10px 0 0 0', color: 'var(--da-subtle-text, #94a3b8)' }}>
+          <p style={{ margin: '10px 0 0 0', color: '#94a3b8' }}>
             Filter by date, team, and agent to build detailed performance
             reports.
           </p>
@@ -664,7 +682,7 @@ function ReportsSupabase() {
                 onClick={() => setIsAgentPickerOpen((prev) => !prev)}
                 style={pickerButtonStyle}
               >
-                <span style={{ color: selectedAgent ? 'var(--da-page-text, #e5eefb)' : 'var(--da-subtle-text, #94a3b8)' }}>
+                <span style={{ color: selectedAgent ? '#e5eefb' : '#94a3b8' }}>
                   {selectedAgent
                     ? getAgentLabel(selectedAgent)
                     : 'Select agent'}
@@ -1019,7 +1037,7 @@ const pageHeaderStyle = {
 };
 
 const sectionEyebrow = {
-  color: 'var(--da-accent-text, #60a5fa)',
+  color: '#60a5fa',
   fontSize: '12px',
   fontWeight: 800,
   letterSpacing: '0.18em',
@@ -1029,7 +1047,7 @@ const sectionEyebrow = {
 
 const filterPanelStyle = {
   background:
-    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
+    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
   border: '1px solid rgba(148,163,184,0.14)',
   borderRadius: '20px',
   padding: '20px',
@@ -1045,7 +1063,7 @@ const filterGridStyle = {
 const labelStyle = {
   display: 'block',
   marginBottom: '8px',
-  color: 'var(--da-muted-text, #cbd5e1)',
+  color: '#cbd5e1',
   fontWeight: 700,
   fontSize: '13px',
 };
@@ -1055,8 +1073,8 @@ const fieldStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
   border: '1px solid rgba(148,163,184,0.16)',
-  background: 'var(--da-surface-bg, rgba(15,23,42,0.7))',
-  color: 'var(--da-page-text, #e5eefb)',
+  background: 'rgba(15,23,42,0.7)',
+  color: '#e5eefb',
 };
 
 const pickerButtonStyle = {
@@ -1064,13 +1082,13 @@ const pickerButtonStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
   border: '1px solid rgba(148,163,184,0.16)',
-  background: 'var(--da-surface-bg, rgba(15,23,42,0.7))',
+  background: 'rgba(15,23,42,0.7)',
   textAlign: 'left' as const,
   cursor: 'pointer',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  color: 'var(--da-page-text, #e5eefb)',
+  color: '#e5eefb',
 };
 
 const pickerMenuStyle = {
@@ -1078,7 +1096,7 @@ const pickerMenuStyle = {
   top: 'calc(100% + 8px)',
   left: 0,
   right: 0,
-  background: 'var(--da-menu-bg, rgba(15,23,42,0.96))',
+  background: 'rgba(15,23,42,0.96)',
   border: '1px solid rgba(148,163,184,0.16)',
   borderRadius: '16px',
   boxShadow: '0 10px 30px rgba(0,0,0,0.22)',
@@ -1097,24 +1115,24 @@ const pickerListStyle = {
 const pickerInfoStyle = {
   padding: '12px',
   borderRadius: '8px',
-  backgroundColor: 'var(--da-surface-bg, rgba(15,23,42,0.68))',
-  color: 'var(--da-subtle-text, #94a3b8)',
+  backgroundColor: 'rgba(15,23,42,0.68)',
+  color: '#94a3b8',
 };
 
 const pickerOptionStyle = {
   padding: '12px',
   borderRadius: '8px',
   border: '1px solid rgba(148,163,184,0.12)',
-  backgroundColor: 'var(--da-surface-bg, rgba(15,23,42,0.6))',
+  backgroundColor: 'rgba(15,23,42,0.6)',
   textAlign: 'left' as const,
   cursor: 'pointer',
   fontWeight: 500,
-  color: 'var(--da-page-text, #e5eefb)',
+  color: '#e5eefb',
 };
 
 const pickerOptionActiveStyle = {
   border: '1px solid #2563eb',
-  backgroundColor: 'var(--da-active-option-bg, rgba(37, 99, 235, 0.18))',
+  backgroundColor: 'rgba(37,99,235,0.18)',
 };
 
 const filterActionsStyle = {
@@ -1143,7 +1161,7 @@ const primaryButton = {
 
 const secondaryButton = {
   padding: '10px 14px',
-  backgroundColor: 'var(--da-field-bg, rgba(15,23,42,0.9))',
+  backgroundColor: 'rgba(15,23,42,0.9)',
   color: 'white',
   border: '1px solid rgba(148,163,184,0.16)',
   borderRadius: '10px',
@@ -1161,7 +1179,7 @@ const summaryGridStyle = {
 
 const summaryCardStyle = {
   background:
-    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
+    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
   border: '1px solid rgba(148,163,184,0.14)',
   borderRadius: '16px',
   padding: '20px',
@@ -1169,18 +1187,18 @@ const summaryCardStyle = {
 
 const summaryCardTitleStyle = {
   fontSize: '14px',
-  color: 'var(--da-subtle-text, #94a3b8)',
+  color: '#94a3b8',
   marginBottom: '8px',
 };
 
 const summaryCardValueStyle = {
   fontSize: '28px',
   fontWeight: 800,
-  color: 'var(--da-title, #f8fafc)',
+  color: '#f8fafc',
 };
 
 const sectionTitleStyle = {
-  color: 'var(--da-title, #f8fafc)',
+  color: '#f8fafc',
   marginBottom: '14px',
 };
 
@@ -1193,15 +1211,15 @@ const detailGridStyle = {
 
 const detailCardStyle = {
   background:
-    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
+    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
   border: '1px solid rgba(148,163,184,0.14)',
   borderRadius: '16px',
   padding: '18px',
-  color: 'var(--da-page-text, #e5eefb)',
+  color: '#e5eefb',
 };
 
 const detailLabelStyle = {
-  color: 'var(--da-accent-text, #93c5fd)',
+  color: '#93c5fd',
   fontSize: '12px',
   fontWeight: 800,
   letterSpacing: '0.12em',
@@ -1211,11 +1229,11 @@ const detailLabelStyle = {
 
 const contentCardStyle = {
   background:
-    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
+    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
   border: '1px solid rgba(148,163,184,0.14)',
   borderRadius: '16px',
   padding: '18px',
-  color: 'var(--da-page-text, #e5eefb)',
+  color: '#e5eefb',
 };
 
 export default ReportsSupabase;
