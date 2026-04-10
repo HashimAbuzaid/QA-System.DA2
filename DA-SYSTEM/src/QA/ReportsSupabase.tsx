@@ -473,14 +473,6 @@ function ReportsSupabase() {
     }));
   }, [filteredFeedback]);
 
-  function getShareBadgeStyle(shared?: boolean) {
-    return {
-      ...statusPillStyle,
-      backgroundColor: shared ? '#166534' : '#475569',
-      color: '#ffffff',
-    };
-  }
-
   function getRequestPriorityBadgeStyle(priority?: string | null) {
     const normalized = String(priority || '').toLowerCase();
     if (normalized === 'urgent') {
