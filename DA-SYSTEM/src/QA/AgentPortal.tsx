@@ -126,31 +126,6 @@ type AgentPortalCachePayload = {
 const AGENT_PORTAL_CACHE_TTL_MS = 1000 * 60 * 3;
 const HIDDEN_AGENT_METRICS = new Set(['Issue was resolved']);
 
-function normalizeAgentId(value?: string | null) {
-  return String(value || '').trim().replace(/\.0+$/, '');
-}
-
-function normalizeAgentName(value?: string | null) {
-  return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
-function matchesDateRange(
-  startDate?: string | null,
-  endDate?: string | null,
-  filterFrom?: string,
-  filterTo?: string
-) {
-  const recordStart = String(startDate || '').slice(0, 10);
-  const recordEnd = String(endDate || startDate || '').slice(0, 10);
-
-  if (!recordStart) return false;
-
-  const effectiveFrom = filterFrom || '0001-01-01';
-  const effectiveTo = filterTo || '9999-12-31';
-
-  return recordEnd >= effectiveFrom && recordStart <= effectiveTo;
-}
-
 function openNativeDatePicker(target: HTMLInputElement) {
   const input = target as HTMLInputElement & { showPicker?: () => void };
   input.showPicker?.();
@@ -406,24 +381,6 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
     });
   }, [audits, auditDateFrom, auditDateTo]);
 
-  const filteredCallsRecords = useMemo(() => {
-    return callsRecords.filter((record) =>
-      matchesDateRange(record.call_date, record.date_to || null, auditDateFrom, auditDateTo)
-    );
-  }, [callsRecords, auditDateFrom, auditDateTo]);
-
-  const filteredTicketsRecords = useMemo(() => {
-    return ticketsRecords.filter((record) =>
-      matchesDateRange(record.ticket_date, record.date_to || null, auditDateFrom, auditDateTo)
-    );
-  }, [ticketsRecords, auditDateFrom, auditDateTo]);
-
-  const filteredSalesRecords = useMemo(() => {
-    return salesRecords.filter((record) =>
-      matchesDateRange(record.sale_date, record.date_to || null, auditDateFrom, auditDateTo)
-    );
-  }, [salesRecords, auditDateFrom, auditDateTo]);
-
   const averageQuality =
     filteredAudits.length > 0
       ? (
@@ -433,6 +390,24 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           ) / filteredAudits.length
         ).toFixed(2)
       : '0.00';
+
+  const filteredCallsRecords = useMemo(() => {
+    return callsRecords.filter((record) =>
+      matchesRecordRange(record.call_date, record.date_to || null, auditDateFrom, auditDateTo)
+    );
+  }, [callsRecords, auditDateFrom, auditDateTo]);
+
+  const filteredTicketsRecords = useMemo(() => {
+    return ticketsRecords.filter((record) =>
+      matchesRecordRange(record.ticket_date, record.date_to || null, auditDateFrom, auditDateTo)
+    );
+  }, [ticketsRecords, auditDateFrom, auditDateTo]);
+
+  const filteredSalesRecords = useMemo(() => {
+    return salesRecords.filter((record) =>
+      matchesRecordRange(record.sale_date, record.date_to || null, auditDateFrom, auditDateTo)
+    );
+  }, [salesRecords, auditDateFrom, auditDateTo]);
 
   const totalCalls = filteredCallsRecords.reduce(
     (sum, item) => sum + Number(item.calls_count),
@@ -502,6 +477,23 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
   function clearAuditDateFilters() {
     setAuditDateFrom('');
     setAuditDateTo('');
+  }
+
+  function matchesRecordRange(
+    startDate?: string | null,
+    endDate?: string | null,
+    filterFrom?: string,
+    filterTo?: string
+  ) {
+    const recordStart = String(startDate || '').slice(0, 10);
+    const recordEnd = String(endDate || startDate || '').slice(0, 10);
+
+    if (!recordStart) return false;
+
+    const effectiveFrom = filterFrom || '0001-01-01';
+    const effectiveTo = filterTo || '9999-12-31';
+
+    return recordEnd >= effectiveFrom && recordStart <= effectiveTo;
   }
 
   const hasVisibleData =
@@ -598,21 +590,21 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
           <SummaryCard
             title="Total Calls"
             value={String(totalCalls)}
-            subtitle="Synced with audit dates"
+            subtitle="Production records"
           />
         )}
         {currentUser.team === 'Tickets' && (
           <SummaryCard
             title="Total Tickets"
             value={String(totalTickets)}
-            subtitle="Synced with audit dates"
+            subtitle="Production records"
           />
         )}
         {currentUser.team === 'Sales' && (
           <SummaryCard
             title="Total Sales"
             value={`$${totalSales.toFixed(2)}`}
-            subtitle="Synced with audit dates"
+            subtitle="Production records"
           />
         )}
       </div>
@@ -877,7 +869,7 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
       {currentUser.team === 'Calls' && (
         <Section title="My Calls Records">
           {filteredCallsRecords.length === 0 ? (
-            <p>No calls records found for the selected audit dates.</p>
+            <p>No calls records found for this audit date range.</p>
           ) : (
             <div style={{ display: 'grid', gap: '12px' }}>
               {filteredCallsRecords.map((record) => (
@@ -904,7 +896,7 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
       {currentUser.team === 'Tickets' && (
         <Section title="My Tickets Records">
           {filteredTicketsRecords.length === 0 ? (
-            <p>No tickets records found for the selected audit dates.</p>
+            <p>No tickets records found for this audit date range.</p>
           ) : (
             <div style={{ display: 'grid', gap: '12px' }}>
               {filteredTicketsRecords.map((record) => (
@@ -931,7 +923,7 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
       {currentUser.team === 'Sales' && (
         <Section title="My Sales Records">
           {filteredSalesRecords.length === 0 ? (
-            <p>No sales records found for the selected audit dates.</p>
+            <p>No sales records found for this audit date range.</p>
           ) : (
             <div style={{ display: 'grid', gap: '12px' }}>
               {filteredSalesRecords.map((record) => (
