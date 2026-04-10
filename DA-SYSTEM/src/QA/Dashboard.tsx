@@ -856,12 +856,12 @@ function Dashboard() {
 
       <SectionHeader
         title="Performance Rankings"
-        subtitle="Quantity from uploads. Quality from audits. Combined scores use true RSD internally."
+        subtitle=""
       />
       <div style={rankingGridStyle}>
         <LeaderboardCard
           title="Top Calls Quantity"
-          subtitle="Uploads in the selected date range"
+          subtitle=""
           items={callsQuantityTop}
           formatValue={(value) => `${value}`}
           contextLabel="calls"
@@ -869,7 +869,7 @@ function Dashboard() {
 
         <LeaderboardCard
           title="Top Tickets Quantity"
-          subtitle="Uploads in the selected date range"
+          subtitle=""
           items={ticketsQuantityTop}
           formatValue={(value) => `${value}`}
           contextLabel="tickets"
@@ -877,7 +877,7 @@ function Dashboard() {
 
         <LeaderboardCard
           title="Top Sales"
-          subtitle="Taken from uploads"
+          subtitle=""
           items={salesTop}
           formatValue={(value) => `$${value.toFixed(2)}`}
           contextLabel="sales"
@@ -885,32 +885,32 @@ function Dashboard() {
 
         <QualityLeaderboardCard
           title="Top Calls Quality"
-          subtitle="Taken from audits"
+          subtitle=""
           items={callsQualityTop}
         />
 
         <QualityLeaderboardCard
           title="Top Tickets Quality"
-          subtitle="Taken from audits"
+          subtitle=""
           items={ticketsQualityTop}
         />
 
         <HybridLeaderboardCard
           title="Top Calls Combined"
-          subtitle="Built from uploads + audits"
+          subtitle=""
           items={callsHybridTop}
         />
 
         <HybridLeaderboardCard
           title="Top Tickets Combined"
-          subtitle="Built from uploads + audits"
+          subtitle=""
           items={ticketsHybridTop}
         />
       </div>
 
       <SectionHeader
         title="Insights & Action Items"
-        subtitle="Quick operational signals to spot coaching needs and consistency."
+        subtitle=""
       />
       <div style={insightGridStyle}>
         <InsightCard
@@ -1020,7 +1020,7 @@ function SectionHeader({
   return (
     <div style={sectionHeaderStyle}>
       <div style={sectionEyebrowStyle}>{title}</div>
-      <p style={sectionSubtitleStyle}>{subtitle}</p>
+      {subtitle ? <p style={sectionSubtitleStyle}>{subtitle}</p> : null}
     </div>
   );
 }
@@ -1041,7 +1041,7 @@ function LeaderboardCard({
   return (
     <div style={panelStyle}>
       <h3 style={panelTitleStyle}>{title}</h3>
-      <p style={panelSubtitleStyle}>{subtitle}</p>
+      {subtitle ? <p style={panelSubtitleStyle}>{subtitle}</p> : null}
 
       {items.length === 0 ? (
         <EmptyState text="No data available for this period." />
@@ -1074,7 +1074,7 @@ function QualityLeaderboardCard({
   return (
     <div style={panelStyle}>
       <h3 style={panelTitleStyle}>{title}</h3>
-      <p style={panelSubtitleStyle}>{subtitle}</p>
+      {subtitle ? <p style={panelSubtitleStyle}>{subtitle}</p> : null}
 
       {items.length === 0 ? (
         <EmptyState text="No audit quality data available for this period." />
@@ -1109,7 +1109,7 @@ function HybridLeaderboardCard({
   return (
     <div style={panelStyle}>
       <h3 style={panelTitleStyle}>{title}</h3>
-      <p style={panelSubtitleStyle}>{subtitle}</p>
+      {subtitle ? <p style={panelSubtitleStyle}>{subtitle}</p> : null}
 
       {items.length === 0 ? (
         <EmptyState text="No combined ranking data available for this period." />
