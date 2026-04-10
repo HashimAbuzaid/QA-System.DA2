@@ -112,8 +112,15 @@ function normalizeAgentName(value?: string | null) {
   return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-function getCurrentDateValue() {
-  return new Date().toISOString().slice(0, 10);
+function getMonthRange(monthValue: string) {
+  const [year, month] = monthValue.split('-').map(Number);
+  const start = new Date(year, (month || 1) - 1, 1);
+  const end = new Date(year, month || 1, 0);
+
+  return {
+    startDate: start.toISOString().slice(0, 10),
+    endDate: end.toISOString().slice(0, 10),
+  };
 }
 
 function matchesDateRange(
@@ -142,7 +149,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [selectedDate, setSelectedDate] = useState(getCurrentDateValue());
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthValue());
   const [lastLoadedAt, setLastLoadedAt] = useState('');
 
   useEffect(() => {
@@ -299,35 +306,33 @@ function Dashboard() {
     return `${normalizedId}|${normalizedName}`;
   }
 
-  function matchesSelectedDate(
-    dateValue?: string | null,
-    dateToValue?: string | null
-  ) {
-    if (!selectedDate) return true;
-    return matchesDateRange(dateValue, dateToValue, selectedDate, selectedDate);
+  function matchesMonth(dateValue?: string | null, dateToValue?: string | null) {
+    if (!selectedMonth) return true;
+    const { startDate, endDate } = getMonthRange(selectedMonth);
+    return matchesDateRange(dateValue, dateToValue, startDate, endDate);
   }
 
   const filteredAudits = useMemo(() => {
-    return audits.filter((item) => matchesSelectedDate(item.audit_date));
-  }, [audits, selectedDate]);
+    return audits.filter((item) => matchesMonth(item.audit_date));
+  }, [audits, selectedMonth]);
 
   const filteredCalls = useMemo(() => {
     return callsRecords.filter((item) =>
-      matchesSelectedDate(item.call_date, item.date_to || null)
+      matchesMonth(item.call_date, item.date_to || null)
     );
-  }, [callsRecords, selectedDate]);
+  }, [callsRecords, selectedMonth]);
 
   const filteredTickets = useMemo(() => {
     return ticketsRecords.filter((item) =>
-      matchesSelectedDate(item.ticket_date, item.date_to || null)
+      matchesMonth(item.ticket_date, item.date_to || null)
     );
-  }, [ticketsRecords, selectedDate]);
+  }, [ticketsRecords, selectedMonth]);
 
   const filteredSales = useMemo(() => {
     return salesRecords.filter((item) =>
-      matchesSelectedDate(item.sale_date, item.date_to || null)
+      matchesMonth(item.sale_date, item.date_to || null)
     );
-  }, [salesRecords, selectedDate]);
+  }, [salesRecords, selectedMonth]);
 
   const filteredCallsAudits = useMemo(
     () => filteredAudits.filter((item) => item.team === 'Calls'),
@@ -727,28 +732,29 @@ function Dashboard() {
             <div style={metaPillStyle}>Quality Source: Audits</div>
             <div style={metaPillStyle}>Quantity Source: Uploads</div>
             <div style={metaPillStyle}>
-              Scope: {selectedDate || 'All Time'}
+              Scope:{' '}
+              {selectedMonth ? formatMonthLabel(selectedMonth) : 'All Time'}
             </div>
           </div>
         </div>
 
         <div style={heroActionWrapStyle}>
           <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
+            type="month"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
             style={fieldStyle}
           />
           <button
             type="button"
-            onClick={() => setSelectedDate(getCurrentDateValue())}
+            onClick={() => setSelectedMonth(getCurrentMonthValue())}
             style={secondaryButton}
           >
-            Today
+            This Month
           </button>
           <button
             type="button"
-            onClick={() => setSelectedDate('')}
+            onClick={() => setSelectedMonth('')}
             style={secondaryButton}
           >
             All Time
@@ -1125,11 +1131,17 @@ function EmptyState({ text }: { text: string }) {
   return <div style={emptyStateStyle}>{text}</div>;
 }
 
-function getCurrentMonthValue() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  return `${year}-${month}`;
+
+function formatMonthLabel(value: string) {
+  if (!value) return 'All Time';
+
+  const [year, month] = value.split('-').map(Number);
+  const date = new Date(year, (month || 1) - 1, 1);
+
+  return date.toLocaleDateString(undefined, {
+    month: 'long',
+    year: 'numeric',
+  });
 }
 
 function getStandardDeviation(values: number[]) {
@@ -1167,14 +1179,13 @@ const heroTitleStyle = {
 };
 
 const heroSubtitleStyle = {
-  display: 'none',
   margin: '10px 0 0 0',
   color: 'var(--da-subtitle, #94a3b8)',
   fontSize: '15px',
 };
 
 const infoPillRowStyle = {
-  display: 'none',
+  display: 'flex',
   gap: '10px',
   flexWrap: 'wrap' as const,
   marginTop: '16px',
@@ -1494,7 +1505,7 @@ const errorBannerStyle = {
 };
 
 const statusRowStyle = {
-  display: 'none',
+  display: 'flex',
   gap: '10px',
   flexWrap: 'wrap' as const,
   marginBottom: '20px',
