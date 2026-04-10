@@ -133,7 +133,11 @@ function openNativeDatePicker(target: HTMLInputElement) {
 
 function getThemeVars(): Record<string, string> {
   const isLight =
-    typeof document !== 'undefined' && document.body.dataset.theme === 'light';
+    typeof document !== 'undefined' &&
+    (document.body.dataset.theme === 'light' ||
+      document.body.dataset.theme === 'white' ||
+      window.localStorage.getItem('detroit-axle-theme-mode') === 'light' ||
+      window.localStorage.getItem('detroit-axle-theme-mode') === 'white');
 
   return {
     '--screen-text': isLight ? '#334155' : '#e5eefb',
@@ -142,16 +146,16 @@ function getThemeVars(): Record<string, string> {
     '--screen-subtle': isLight ? '#64748b' : '#64748b',
     '--screen-accent': isLight ? '#2563eb' : '#60a5fa',
     '--screen-panel-bg': isLight
-      ? 'linear-gradient(180deg, rgba(80, 90, 112, 0.96) 0%, rgba(95, 105, 126, 0.96) 100%)'
+      ? 'linear-gradient(180deg, rgba(98, 109, 129, 0.96) 0%, rgba(118, 128, 148, 0.96) 100%)'
       : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
     '--screen-card-bg': isLight
-      ? 'linear-gradient(180deg, rgba(80, 90, 112, 0.96) 0%, rgba(95, 105, 126, 0.96) 100%)'
+      ? 'linear-gradient(180deg, rgba(98, 109, 129, 0.96) 0%, rgba(118, 128, 148, 0.96) 100%)'
       : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
     '--screen-card-soft-bg': isLight
-      ? 'linear-gradient(180deg, rgba(73, 84, 106, 0.96) 0%, rgba(65, 75, 96, 0.96) 100%)'
+      ? 'linear-gradient(180deg, rgba(84, 95, 116, 0.96) 0%, rgba(74, 85, 106, 0.96) 100%)'
       : 'rgba(15,23,42,0.52)',
     '--screen-field-bg': isLight
-      ? 'linear-gradient(180deg, rgba(29, 39, 67, 0.98) 0%, rgba(31, 43, 73, 0.98) 100%)'
+      ? 'linear-gradient(180deg, rgba(24, 35, 63, 0.98) 0%, rgba(29, 41, 71, 0.98) 100%)'
       : 'rgba(15,23,42,0.7)',
     '--screen-border': isLight ? 'rgba(203,213,225,0.36)' : 'rgba(148,163,184,0.14)',
     '--screen-border-strong': isLight ? 'rgba(203,213,225,0.44)' : 'rgba(148,163,184,0.18)',
@@ -1218,9 +1222,10 @@ const detailValueStyle = {
 
 const pageHeaderActionsStyle = {
   display: 'flex',
-  flexDirection: 'column' as const,
-  alignItems: 'flex-end',
+  alignItems: 'center',
+  justifyContent: 'flex-end',
   gap: '10px',
+  flexWrap: 'wrap' as const,
 };
 
 const headerMetaPillStyle = {
@@ -1231,7 +1236,7 @@ const headerMetaPillStyle = {
   color: 'var(--screen-muted)',
   fontSize: '13px',
   fontWeight: 700,
-  textAlign: 'right' as const,
+  textAlign: 'left' as const,
 };
 
 const fullCommentCardStyle = {
