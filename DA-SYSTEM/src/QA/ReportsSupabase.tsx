@@ -274,6 +274,70 @@ function ReportsSupabase() {
     };
   }
 
+  function getRequestPriorityBadgeStyle(priority?: string | null) {
+    const normalized = String(priority || '').toLowerCase();
+
+    if (normalized === 'urgent') {
+      return { ...statusPillStyle, backgroundColor: '#991b1b', color: '#ffffff' };
+    }
+
+    if (normalized === 'high') {
+      return { ...statusPillStyle, backgroundColor: '#b91c1c', color: '#ffffff' };
+    }
+
+    if (normalized === 'medium') {
+      return { ...statusPillStyle, backgroundColor: '#b45309', color: '#ffffff' };
+    }
+
+    return { ...statusPillStyle, backgroundColor: '#475569', color: '#ffffff' };
+  }
+
+  function getRequestStatusBadgeStyle(status?: string | null) {
+    const normalized = String(status || '').toLowerCase();
+
+    if (normalized === 'closed') {
+      return { ...statusPillStyle, backgroundColor: '#166534', color: '#ffffff' };
+    }
+
+    if (normalized === 'under review') {
+      return { ...statusPillStyle, backgroundColor: '#1d4ed8', color: '#ffffff' };
+    }
+
+    return { ...statusPillStyle, backgroundColor: '#475569', color: '#ffffff' };
+  }
+
+  function getFeedbackTypeBadgeStyle(feedbackType?: string | null) {
+    const normalized = String(feedbackType || '').toLowerCase();
+
+    if (normalized === 'warning') {
+      return { ...statusPillStyle, backgroundColor: '#991b1b', color: '#ffffff' };
+    }
+
+    if (normalized === 'audit feedback') {
+      return { ...statusPillStyle, backgroundColor: '#7c3aed', color: '#ffffff' };
+    }
+
+    if (normalized === 'follow-up') {
+      return { ...statusPillStyle, backgroundColor: '#b45309', color: '#ffffff' };
+    }
+
+    return { ...statusPillStyle, backgroundColor: '#166534', color: '#ffffff' };
+  }
+
+  function getFeedbackStatusBadgeStyle(status?: string | null) {
+    const normalized = String(status || '').toLowerCase();
+
+    if (normalized === 'closed') {
+      return { ...statusPillStyle, backgroundColor: '#166534', color: '#ffffff' };
+    }
+
+    if (normalized === 'in progress') {
+      return { ...statusPillStyle, backgroundColor: '#1d4ed8', color: '#ffffff' };
+    }
+
+    return { ...statusPillStyle, backgroundColor: '#475569', color: '#ffffff' };
+  }
+
   function normalizeAgentId(value?: string | null) {
     return String(value || '').trim().replace(/\.0+$/, '');
   }
@@ -1030,38 +1094,56 @@ function ReportsSupabase() {
         {filteredRequests.length === 0 ? (
           <p>No supervisor requests in this range.</p>
         ) : (
-          <div style={{ display: 'grid', gap: '12px' }}>
-            {filteredRequests.slice(0, 10).map((item) => (
-              <div key={item.id} style={contentCardStyle}>
-                <p>
-                  <strong>Case Ref:</strong> {item.case_reference}
-                </p>
-                <p>
-                  <strong>Agent:</strong> {item.agent_name || '-'}
-                </p>
-                <p>
-                  <strong>Display Name:</strong>{' '}
-                  {getDisplayName(
-                    item.agent_id || null,
-                    item.agent_name || null,
-                    item.team || null
-                  ) || '-'}
-                </p>
-                <p>
-                  <strong>Team:</strong> {item.team || '-'}
-                </p>
-                <p>
-                  <strong>Priority:</strong> {item.priority}
-                </p>
-                <p>
-                  <strong>Status:</strong> {item.status}
-                </p>
-                <p>
-                  <strong>Created:</strong>{' '}
-                  {new Date(item.created_at).toLocaleString()}
-                </p>
+          <div style={activityTableWrapStyle}>
+            <div style={supervisorTableStyle}>
+              <div style={{ ...activityHeaderRowStyle, ...supervisorRowStyle }}>
+                <div style={activityCellCaseStyle}>Case Ref</div>
+                <div style={activityCellAgentStyle}>Agent</div>
+                <div style={activityCellTeamStyle}>Team</div>
+                <div style={activityCellPriorityStyle}>Priority</div>
+                <div style={activityCellStatusStyle}>Status</div>
+                <div style={activityCellCreatedStyle}>Created</div>
               </div>
-            ))}
+
+              {filteredRequests.slice(0, 10).map((item) => (
+                <div key={item.id} style={activityEntryStyle}>
+                  <div style={supervisorRowStyle}>
+                    <div style={activityCellCaseStyle}>
+                      <div style={primaryCellTextStyle}>{item.case_reference || '-'}</div>
+                      <div style={secondaryCellTextStyle}>{item.case_type || '-'}</div>
+                    </div>
+
+                    <div style={activityCellAgentStyle}>
+                      <div style={primaryCellTextStyle}>{item.agent_name || '-'}</div>
+                      <div style={secondaryCellTextStyle}>
+                        {getDisplayName(
+                          item.agent_id || null,
+                          item.agent_name || null,
+                          item.team || null
+                        ) || '-'}
+                      </div>
+                    </div>
+
+                    <div style={activityCellTeamStyle}>
+                      <div style={primaryCellTextStyle}>{item.team || '-'}</div>
+                    </div>
+
+                    <div style={activityCellPriorityStyle}>
+                      <span style={getRequestPriorityBadgeStyle(item.priority)}>{item.priority || '-'}</span>
+                    </div>
+
+                    <div style={activityCellStatusStyle}>
+                      <span style={getRequestStatusBadgeStyle(item.status)}>{item.status || '-'}</span>
+                    </div>
+
+                    <div style={activityCellCreatedStyle}>
+                      <div style={primaryCellTextStyle}>{new Date(item.created_at).toLocaleString()}</div>
+                      <div style={secondaryCellTextStyle}>{item.supervisor_name || '-'}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </Section>
@@ -1070,34 +1152,56 @@ function ReportsSupabase() {
         {filteredFeedback.length === 0 ? (
           <p>No feedback items in this range.</p>
         ) : (
-          <div style={{ display: 'grid', gap: '12px' }}>
-            {filteredFeedback.slice(0, 10).map((item) => (
-              <div key={item.id} style={contentCardStyle}>
-                <p>
-                  <strong>Agent:</strong> {item.agent_name}
-                </p>
-                <p>
-                  <strong>Display Name:</strong>{' '}
-                  {getDisplayName(
-                    item.agent_id || null,
-                    item.agent_name || null,
-                    item.team || null
-                  ) || '-'}
-                </p>
-                <p>
-                  <strong>Team:</strong> {item.team}
-                </p>
-                <p>
-                  <strong>Type:</strong> {item.feedback_type}
-                </p>
-                <p>
-                  <strong>Subject:</strong> {item.subject}
-                </p>
-                <p>
-                  <strong>Status:</strong> {item.status}
-                </p>
+          <div style={activityTableWrapStyle}>
+            <div style={feedbackTableStyle}>
+              <div style={{ ...activityHeaderRowStyle, ...feedbackRowStyle }}>
+                <div style={activityCellAgentStyle}>Agent</div>
+                <div style={activityCellTeamStyle}>Team</div>
+                <div style={activityCellTypeStyle}>Type</div>
+                <div style={activityCellSubjectStyle}>Subject</div>
+                <div style={activityCellStatusStyle}>Status</div>
+                <div style={activityCellCreatedStyle}>Created</div>
               </div>
-            ))}
+
+              {filteredFeedback.slice(0, 10).map((item) => (
+                <div key={item.id} style={activityEntryStyle}>
+                  <div style={feedbackRowStyle}>
+                    <div style={activityCellAgentStyle}>
+                      <div style={primaryCellTextStyle}>{item.agent_name || '-'}</div>
+                      <div style={secondaryCellTextStyle}>
+                        {getDisplayName(
+                          item.agent_id || null,
+                          item.agent_name || null,
+                          item.team || null
+                        ) || '-'}
+                      </div>
+                    </div>
+
+                    <div style={activityCellTeamStyle}>
+                      <div style={primaryCellTextStyle}>{item.team || '-'}</div>
+                    </div>
+
+                    <div style={activityCellTypeStyle}>
+                      <span style={getFeedbackTypeBadgeStyle(item.feedback_type)}>{item.feedback_type || '-'}</span>
+                    </div>
+
+                    <div style={activityCellSubjectStyle}>
+                      <div style={primaryCellTextStyle}>{item.subject || '-'}</div>
+                      <div style={secondaryCellTextStyle}>{item.feedback_note?.trim() || item.action_plan?.trim() || '-'}</div>
+                    </div>
+
+                    <div style={activityCellStatusStyle}>
+                      <span style={getFeedbackStatusBadgeStyle(item.status)}>{item.status || '-'}</span>
+                    </div>
+
+                    <div style={activityCellCreatedStyle}>
+                      <div style={primaryCellTextStyle}>{new Date(item.created_at).toLocaleString()}</div>
+                      <div style={secondaryCellTextStyle}>{item.qa_name || item.due_date || '-'}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </Section>
@@ -1413,5 +1517,65 @@ const statusPillStyle = {
   fontSize: '12px',
   fontWeight: 800,
 };
+
+const activityTableWrapStyle = {
+  marginTop: '16px',
+  overflowX: 'auto' as const,
+  borderRadius: '20px',
+  border: '1px solid var(--screen-border)',
+  background: 'var(--screen-card-bg)',
+  boxShadow: 'var(--screen-shadow)',
+};
+
+const supervisorTableStyle = {
+  minWidth: '1120px',
+};
+
+const feedbackTableStyle = {
+  minWidth: '1280px',
+};
+
+const activityEntryStyle = {
+  borderBottom: '1px solid var(--screen-border)',
+};
+
+const activityHeaderRowStyle = {
+  position: 'sticky' as const,
+  top: 0,
+  zIndex: 1,
+  background: 'var(--screen-table-head-bg)',
+  color: '#93c5fd',
+  fontSize: '12px',
+  fontWeight: 800,
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.12em',
+  padding: '14px 16px',
+  alignItems: 'center',
+};
+
+const supervisorRowStyle = {
+  display: 'grid',
+  gridTemplateColumns: '170px 250px 120px 130px 150px 220px',
+  gap: '14px',
+  alignItems: 'center',
+  padding: '14px 16px',
+};
+
+const feedbackRowStyle = {
+  display: 'grid',
+  gridTemplateColumns: '250px 120px 170px minmax(280px,1.5fr) 150px 220px',
+  gap: '14px',
+  alignItems: 'center',
+  padding: '14px 16px',
+};
+
+const activityCellCaseStyle = {};
+const activityCellAgentStyle = {};
+const activityCellTeamStyle = {};
+const activityCellPriorityStyle = {};
+const activityCellTypeStyle = {};
+const activityCellSubjectStyle = {};
+const activityCellStatusStyle = {};
+const activityCellCreatedStyle = {};
 
 export default ReportsSupabase;
