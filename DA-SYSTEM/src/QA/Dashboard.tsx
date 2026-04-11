@@ -299,7 +299,7 @@ function Dashboard({
       title: 'QA Spotlight',
       cards: [
         { title: 'Coach With Context', description: 'Review quality trends, recognition, and recent uploads before coaching an agent.' },
-        { title: 'Write Faster', description: 'Use the AI writing helper in audits, feedback, monitoring, and requests to polish notes quickly.' },
+        { title: 'Recognition & Growth', description: 'Use recognition, trophies, and academy content to reinforce strong performance.' },
         { title: 'Celebrate Wins', description: 'Recognition and trophies make quality visible, not only corrective.' },
       ],
     };
@@ -522,7 +522,7 @@ function Dashboard({
   }, [filteredTicketsAudits]);
 
   function buildQuantityLeaderboard<
-    T extends { agent_id: string; agent_name: string }
+    T extends { agent_id: string; agent_name: string; calls_count?: number; tickets_count?: number; amount?: number }
   >(
     records: T[],
     team: 'Calls' | 'Tickets',
@@ -594,7 +594,7 @@ function Dashboard({
   }
 
   function buildHybridLeaderboard<
-    T extends { agent_id: string; agent_name: string }
+    T extends { agent_id: string; agent_name: string; calls_count?: number; tickets_count?: number; amount?: number }
   >(
     team: 'Calls' | 'Tickets',
     records: T[],
@@ -1007,63 +1007,78 @@ function Dashboard({
         <TeamCard data={salesCard} accent="#0f766e" />
       </div>
 
-      <RecognitionWall />
+      <RecognitionWall currentUser={currentUser as any} />
       <DigitalTrophyCabinet scope="global" currentUser={currentUser} />
-      {currentUser ? <VoiceOfEmployeeSupabase currentUser={currentUser as any} /> : null}
-
+      {currentUser ? <VoiceOfEmployeeSupabase currentUser={currentUser as any} title="Recent anonymous themes" showComposer={false} /> : null}
       <SectionHeader
         title="Performance Rankings"
         subtitle=""
       />
-      <div style={rankingGridStyle}>
-        <LeaderboardCard
-          title="Top Calls Quantity"
-          subtitle=""
-          items={callsQuantityTop}
-          formatValue={(value) => `${value}`}
-          contextLabel="calls"
-        />
+      <div style={rankingGroupsStyle}>
+        <div style={rankingGroupStyle}>
+          <div style={miniSectionEyebrowStyle}>Quantity</div>
+          <div style={rankingGridStyle}>
+            <LeaderboardCard
+              title="Top Calls Quantity"
+              subtitle=""
+              items={callsQuantityTop}
+              formatValue={(value) => `${value}`}
+              contextLabel="calls"
+            />
 
-        <LeaderboardCard
-          title="Top Tickets Quantity"
-          subtitle=""
-          items={ticketsQuantityTop}
-          formatValue={(value) => `${value}`}
-          contextLabel="tickets"
-        />
+            <LeaderboardCard
+              title="Top Tickets Quantity"
+              subtitle=""
+              items={ticketsQuantityTop}
+              formatValue={(value) => `${value}`}
+              contextLabel="tickets"
+            />
 
-        <LeaderboardCard
-          title="Top Sales"
-          subtitle=""
-          items={salesTop}
-          formatValue={(value) => `$${value.toFixed(2)}`}
-          contextLabel="sales"
-        />
+            <LeaderboardCard
+              title="Top Sales"
+              subtitle=""
+              items={salesTop}
+              formatValue={(value) => `$${value.toFixed(2)}`}
+              contextLabel="sales"
+            />
+          </div>
+        </div>
 
-        <QualityLeaderboardCard
-          title="Top Calls Quality"
-          subtitle=""
-          items={callsQualityTop}
-        />
+        <div style={rankingGroupStyle}>
+          <div style={miniSectionEyebrowStyle}>Quality</div>
+          <div style={rankingGridStyle}>
+            <QualityLeaderboardCard
+              title="Top Calls Quality"
+              subtitle=""
+              items={callsQualityTop}
+            />
 
-        <QualityLeaderboardCard
-          title="Top Tickets Quality"
-          subtitle=""
-          items={ticketsQualityTop}
-        />
+            <QualityLeaderboardCard
+              title="Top Tickets Quality"
+              subtitle=""
+              items={ticketsQualityTop}
+            />
+          </div>
+        </div>
 
-        <HybridLeaderboardCard
-          title="Top Calls Combined"
-          subtitle=""
-          items={callsHybridTop}
-        />
+        <div style={rankingGroupStyle}>
+          <div style={miniSectionEyebrowStyle}>Combined</div>
+          <div style={rankingGridStyle}>
+            <HybridLeaderboardCard
+              title="Top Calls Combined"
+              subtitle=""
+              items={callsHybridTop}
+            />
 
-        <HybridLeaderboardCard
-          title="Top Tickets Combined"
-          subtitle=""
-          items={ticketsHybridTop}
-        />
+            <HybridLeaderboardCard
+              title="Top Tickets Combined"
+              subtitle=""
+              items={ticketsHybridTop}
+            />
+          </div>
+        </div>
       </div>
+
 
       <SectionHeader
         title="Insights & Action Items"
@@ -1576,17 +1591,35 @@ const teamMetaRowStyle = {
   fontSize: '13px',
 };
 
+const rankingGroupsStyle = {
+  display: 'grid',
+  gap: '18px',
+};
+
+const rankingGroupStyle = {
+  display: 'grid',
+  gap: '12px',
+};
+
+const miniSectionEyebrowStyle = {
+  color: 'var(--da-section-eyebrow, #3b82f6)',
+  fontSize: '11px',
+  fontWeight: 800,
+  letterSpacing: '0.12em',
+  textTransform: 'uppercase' as const,
+};
+
 const rankingGridStyle = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-  gap: '18px',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+  gap: '14px',
 };
 
 const panelStyle = {
   background: 'var(--da-panel-bg, linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%))',
   border: 'var(--da-panel-border, 1px solid rgba(148, 163, 184, 0.14))',
-  borderRadius: '22px',
-  padding: '22px',
+  borderRadius: '20px',
+  padding: '18px',
   boxShadow: 'var(--da-panel-shadow, 0 18px 40px rgba(2, 6, 23, 0.35))',
   backdropFilter: 'blur(14px)',
 };
@@ -1608,24 +1641,24 @@ const panelSubtitleStyle = {
 
 const rankingListStyle = {
   display: 'grid',
-  gap: '12px',
-  marginTop: '18px',
+  gap: '10px',
+  marginTop: '14px',
 };
 
 const rowCardStyle = {
   display: 'flex',
   justifyContent: 'space-between',
-  gap: '14px',
+  gap: '12px',
   alignItems: 'center',
-  padding: '14px 16px',
-  borderRadius: '16px',
+  padding: '12px 14px',
+  borderRadius: '14px',
   border: 'var(--da-row-border, 1px solid rgba(148, 163, 184, 0.16))',
   background: 'var(--da-card-bg, rgba(255, 255, 255, 0.88))',
 };
 
 const rankBadgeStyle = {
-  width: '42px',
-  height: '42px',
+  width: '36px',
+  height: '36px',
   borderRadius: '999px',
   display: 'flex',
   alignItems: 'center',
@@ -1639,7 +1672,8 @@ const rankBadgeStyle = {
 const rowTitleStyle = {
   fontWeight: 700,
   color: 'var(--da-title, #0f172a)',
-  lineHeight: 1.45,
+  lineHeight: 1.35,
+  fontSize: '14px',
 };
 
 const rowSubtitleStyle = {
@@ -1650,13 +1684,13 @@ const rowSubtitleStyle = {
 };
 
 const pillStyle = {
-  padding: '8px 12px',
+  padding: '7px 10px',
   borderRadius: '999px',
   background: 'var(--da-pill-bg, rgba(37, 99, 235, 0.14))',
   color: 'var(--da-pill-text, #2563eb)',
   border: '1px solid rgba(96, 165, 250, 0.28)',
   fontWeight: 800,
-  minWidth: '96px',
+  minWidth: '82px',
   textAlign: 'center' as const,
   flexShrink: 0,
 };
