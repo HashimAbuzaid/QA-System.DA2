@@ -18,25 +18,19 @@ type TicketsDraft = {
   notes: string;
 };
 
-type CsvPreviewRow = {
+type PreparedCsvRow = {
   rowNumber: number;
-  agentLabel: string;
-  ticketsCount: number;
+  rawAgent: string;
+  matchedAgentLabel: string;
+  agent_id: string;
+  agent_name: string;
+  tickets_count: number;
 };
 
 type SkippedCsvRow = {
   rowNumber: number;
   agentLabel: string;
   reason: string;
-};
-
-type PreparedCsvRow = {
-  rowNumber: number;
-  agentLabel: string;
-  agent_id: string;
-  agent_name: string;
-  tickets_count: number;
-  notes: string | null;
 };
 
 const TEAM_NAME = 'Tickets';
@@ -122,17 +116,13 @@ function TicketsUploadSupabase() {
     return String(value || '').replace(/\u00a0/g, ' ').trim();
   }
 
-  function normalizeAgentId(value?: string | null) {
-    return normalizeText(value).replace(/\.0+$/, '');
-  }
-
   function normalizeAgentName(value?: string | null) {
     return normalizeText(value).toLowerCase().replace(/\s+/g, ' ');
   }
 
   function parseTicketsCount(value?: string | null) {
-    const normalized = normalizeText(value).replace(/,/g, '');
-    const parsed = Number(normalized);
+    const raw = normalizeText(value).replace(/,/g, '');
+    const parsed = Number(raw);
     return Number.isFinite(parsed) ? parsed : NaN;
   }
 
@@ -143,14 +133,14 @@ function TicketsUploadSupabase() {
     let inQuotes = false;
     const input = textValue.replace(/^\ufeff/, '');
 
-    for (let index = 0; index < input.length; index += 1) {
-      const char = input[index];
-      const next = input[index + 1];
+    for (let i = 0; i < input.length; i += 1) {
+      const char = input[i];
+      const next = input[i + 1];
 
       if (char === '"') {
         if (inQuotes && next === '"') {
           current += '"';
-          index += 1;
+          i += 1;
         } else {
           inQuotes = !inQuotes;
         }
@@ -165,12 +155,12 @@ function TicketsUploadSupabase() {
 
       if ((char === '\n' || char === '\r') && !inQuotes) {
         if (char === '\r' && next === '\n') {
-          index += 1;
+          i += 1;
         }
-
         row.push(current);
-        const hasValue = row.some((cell) => normalizeText(cell) !== '');
-        if (hasValue) rows.push(row);
+        if (row.some((cell) => normalizeText(cell) !== '')) {
+          rows.push(row);
+        }
         row = [];
         current = '';
         continue;
@@ -181,17 +171,16 @@ function TicketsUploadSupabase() {
 
     if (current.length > 0 || row.length > 0) {
       row.push(current);
-      const hasValue = row.some((cell) => normalizeText(cell) !== '');
-      if (hasValue) rows.push(row);
+      if (row.some((cell) => normalizeText(cell) !== '')) {
+        rows.push(row);
+      }
     }
 
     return rows;
   }
 
-  function getNormalizedHeaders(headers: string[]) {
-    return headers.map((item) =>
-      normalizeText(item).toLowerCase().replace(/[^a-z0-9]+/g, '')
-    );
+  function normalizeHeader(value?: string | null) {
+    return normalizeText(value).toLowerCase().replace(/[^a-z0-9]+/g, '');
   }
 
   function findMatchingAgentProfile(rawAgent: string) {
@@ -216,47 +205,6 @@ function TicketsUploadSupabase() {
     return null;
   }
 
-  const visibleAgents = useMemo(() => {
-    const search = draft.agentSearch.trim().toLowerCase();
-
-    if (!search) return agentProfiles;
-
-    return agentProfiles.filter((profile) => {
-      const label = getAgentLabel(profile);
-
-      return (
-        profile.agent_name.toLowerCase().includes(search) ||
-        (profile.agent_id || '').toLowerCase().includes(search) ||
-        (profile.display_name || '').toLowerCase().includes(search) ||
-        label.toLowerCase().includes(search)
-      );
-    });
-  }, [agentProfiles, draft.agentSearch]);
-
-  const selectedAgent =
-    agentProfiles.find(
-      (profile) => profile.id === draft.selectedAgentProfileId
-    ) || null;
-
-  const csvPreviewRows = useMemo(
-    () => preparedCsvRows.slice(0, 12),
-    [preparedCsvRows]
-  );
-
-  const skippedCsvPreviewRows = useMemo(
-    () => skippedCsvRows.slice(0, 20),
-    [skippedCsvRows]
-  );
-
-  function handleSelectAgent(profile: AgentProfile) {
-    setDraft((prev) => ({
-      ...prev,
-      selectedAgentProfileId: profile.id,
-      agentSearch: getAgentLabel(profile),
-    }));
-    setIsAgentPickerOpen(false);
-  }
-
   async function handleCsvFileChange(file?: File | null) {
     if (!file) return;
 
@@ -269,7 +217,7 @@ function TicketsUploadSupabase() {
 
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
-      const csvText = new TextDecoder('windows-1252').decode(bytes);
+      const csvText = new TextDecoder('utf-8').decode(bytes);
       const rows = parseCsv(csvText);
 
       if (rows.length === 0) {
@@ -277,15 +225,13 @@ function TicketsUploadSupabase() {
         return;
       }
 
-      const headers = rows[0].map((item) => normalizeText(item));
-      const normalizedHeaders = getNormalizedHeaders(headers);
-
-      const agentIndex = normalizedHeaders.indexOf('agent');
-      const ticketsIndex = normalizedHeaders.indexOf('tickets');
+      const headers = rows[0].map((cell) => normalizeHeader(cell));
+      const agentIndex = headers.indexOf('agent');
+      const ticketsIndex = headers.indexOf('tickets');
 
       if (agentIndex === -1 || ticketsIndex === -1) {
         setErrorMessage(
-          'This Tickets CSV must contain Agent and Tickets columns.'
+          'This CSV must include Agent and Tickets columns.'
         );
         return;
       }
@@ -322,18 +268,18 @@ function TicketsUploadSupabase() {
           nextSkipped.push({
             rowNumber,
             agentLabel: rawAgent,
-            reason: 'Tickets count is missing or invalid.',
+            reason: 'Tickets value is missing or invalid.',
           });
           return;
         }
 
         nextPrepared.push({
           rowNumber,
-          agentLabel: rawAgent,
+          rawAgent,
+          matchedAgentLabel: getAgentLabel(matchedProfile),
           agent_id: matchedProfile.agent_id,
           agent_name: matchedProfile.agent_name,
           tickets_count: ticketsCount,
-          notes: draft.notes.trim() || null,
         });
       });
 
@@ -341,7 +287,7 @@ function TicketsUploadSupabase() {
       setSkippedCsvRows(nextSkipped);
 
       if (nextPrepared.length === 0) {
-        setErrorMessage('No importable Tickets rows were found in this CSV.');
+        setErrorMessage('No importable ticket rows were found in this CSV.');
       } else {
         setSuccessMessage(
           `${nextPrepared.length} ticket row(s) are ready to import. ${nextSkipped.length} row(s) will be skipped.`
@@ -361,12 +307,12 @@ function TicketsUploadSupabase() {
     setSuccessMessage('');
 
     if (preparedCsvRows.length === 0) {
-      setErrorMessage('Load a valid Tickets CSV before importing.');
+      setErrorMessage('Please upload a valid Tickets CSV first.');
       return;
     }
 
     if (!draft.dateFrom || !draft.dateTo) {
-      setErrorMessage('Please fill Date From and Date To for the whole CSV import.');
+      setErrorMessage('Please fill Date From and Date To once for the whole CSV import.');
       return;
     }
 
@@ -378,13 +324,13 @@ function TicketsUploadSupabase() {
     setCsvSaving(true);
 
     try {
-      const payload = preparedCsvRows.map((item) => ({
-        agent_id: item.agent_id,
-        agent_name: item.agent_name,
-        tickets_count: Number(item.tickets_count),
+      const payload = preparedCsvRows.map((row) => ({
+        agent_id: row.agent_id,
+        agent_name: row.agent_name,
+        tickets_count: row.tickets_count,
         ticket_date: draft.dateFrom,
         date_to: draft.dateTo,
-        notes: item.notes,
+        notes: draft.notes || null,
       }));
 
       const chunkSize = 200;
@@ -397,34 +343,69 @@ function TicketsUploadSupabase() {
       setPreparedCsvRows([]);
       setSkippedCsvRows([]);
       setCsvFileName('');
-      setDraft((prev) => ({
-        ...prev,
-        notes: '',
-      }));
       setSuccessMessage(
-        `${payload.length} Tickets record row(s) imported successfully from CSV.`
+        `${payload.length} Tickets row(s) imported successfully from CSV.`
       );
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'Could not save Tickets CSV rows.'
+        error instanceof Error ? error.message : 'Could not save the Tickets CSV rows.'
       );
     } finally {
       setCsvSaving(false);
     }
   }
 
-  function clearCsvLoad() {
+  function clearLoadedCsv() {
     setCsvFileName('');
     setPreparedCsvRows([]);
     setSkippedCsvRows([]);
-    setErrorMessage('');
-    setSuccessMessage('');
+  }
+
+  const visibleAgents = useMemo(() => {
+    const search = draft.agentSearch.trim().toLowerCase();
+
+    if (!search) return agentProfiles;
+
+    return agentProfiles.filter((profile) => {
+      const label = getAgentLabel(profile);
+
+      return (
+        profile.agent_name.toLowerCase().includes(search) ||
+        (profile.agent_id || '').toLowerCase().includes(search) ||
+        (profile.display_name || '').toLowerCase().includes(search) ||
+        label.toLowerCase().includes(search)
+      );
+    });
+  }, [agentProfiles, draft.agentSearch]);
+
+  const selectedAgent =
+    agentProfiles.find(
+      (profile) => profile.id === draft.selectedAgentProfileId
+    ) || null;
+
+  const previewCsvRows = useMemo(
+    () => preparedCsvRows.slice(0, 12),
+    [preparedCsvRows]
+  );
+
+  const previewSkippedCsvRows = useMemo(
+    () => skippedCsvRows.slice(0, 20),
+    [skippedCsvRows]
+  );
+
+  function handleSelectAgent(profile: AgentProfile) {
+    setDraft((prev) => ({
+      ...prev,
+      selectedAgentProfileId: profile.id,
+      agentSearch: getAgentLabel(profile),
+    }));
+    setIsAgentPickerOpen(false);
   }
 
   function resetForm() {
     setDraft(emptyDraft);
     setIsAgentPickerOpen(false);
-    clearCsvLoad();
+    clearLoadedCsv();
   }
 
   async function handleSave() {
@@ -503,11 +484,13 @@ function TicketsUploadSupabase() {
       ) : null}
 
       <div style={csvPanelStyle}>
-        <div style={csvHeaderRowStyle}>
+        <div style={csvHeaderStyle}>
           <div>
             <div style={infoCardTitleStyle}>CSV Import</div>
-            <p style={csvHelperTextStyle}>
-              Upload your Tickets quantity CSV in the format you shared here. Date From and Date To below will be used once for the whole CSV import.
+            <p style={csvSubtextStyle}>
+              Upload the Tickets quantity CSV you shared. The importer uses the
+              Agent and Tickets columns, ignores the extra columns, and applies
+              Date From / Date To once for the whole CSV import.
             </p>
           </div>
         </div>
@@ -524,7 +507,8 @@ function TicketsUploadSupabase() {
               style={fieldStyle}
             />
             <div style={helperTextStyle}>
-              Expected columns: Agent, Tickets. Other CSV columns are ignored.
+              Expected columns from your file: Agent, Tickets, Handling Time,
+              Messages sent, Internal notes, One and done.
             </div>
           </div>
 
@@ -602,7 +586,7 @@ function TicketsUploadSupabase() {
 
           <button
             type="button"
-            onClick={clearCsvLoad}
+            onClick={clearLoadedCsv}
             disabled={csvSaving || csvPreparing}
             style={secondaryButton}
           >
@@ -610,35 +594,31 @@ function TicketsUploadSupabase() {
           </button>
         </div>
 
-        {csvPreviewRows.length > 0 ? (
-          <div style={{ marginTop: '20px' }}>
+        {previewCsvRows.length > 0 ? (
+          <div style={{ marginTop: '22px' }}>
             <div style={infoCardTitleStyle}>CSV Preview</div>
             <div style={tableWrapStyle}>
               <div style={tableStyle}>
                 <div style={{ ...tableRowStyle, ...tableHeaderRowStyle }}>
                   <div style={csvCellRowStyle}>Row</div>
                   <div style={csvCellAgentStyle}>Agent</div>
-                  <div style={csvCellCountStyle}>Tickets Count</div>
-                  <div style={csvCellNotesStyle}>Notes</div>
+                  <div style={csvCellCountStyle}>Tickets</div>
                 </div>
 
-                {csvPreviewRows.map((item) => (
-                  <div key={`${item.rowNumber}-${item.agent_id}`} style={entryStyle}>
+                {previewCsvRows.map((row) => (
+                  <div key={`${row.rowNumber}-${row.agent_id}`} style={entryStyle}>
                     <div style={tableRowStyle}>
                       <div style={csvCellRowStyle}>
-                        <div style={primaryCellTextStyle}>{item.rowNumber}</div>
+                        <div style={primaryCellTextStyle}>{row.rowNumber}</div>
                       </div>
                       <div style={csvCellAgentStyle}>
-                        <div style={primaryCellTextStyle}>{item.agent_name}</div>
+                        <div style={primaryCellTextStyle}>{row.matchedAgentLabel}</div>
                         <div style={secondaryCellTextStyle}>
-                          {item.agentLabel} • {item.agent_id}
+                          CSV: {row.rawAgent} • {row.agent_id}
                         </div>
                       </div>
                       <div style={csvCellCountStyle}>
-                        <div style={primaryCellTextStyle}>{item.tickets_count}</div>
-                      </div>
-                      <div style={csvCellNotesStyle}>
-                        <div style={primaryCellTextStyle}>{item.notes || '-'}</div>
+                        <div style={primaryCellTextStyle}>{row.tickets_count}</div>
                       </div>
                     </div>
                   </div>
@@ -648,14 +628,19 @@ function TicketsUploadSupabase() {
           </div>
         ) : null}
 
-        {skippedCsvPreviewRows.length > 0 ? (
-          <div style={{ marginTop: '20px' }}>
+        {previewSkippedCsvRows.length > 0 ? (
+          <div style={{ marginTop: '22px' }}>
             <div style={infoCardTitleStyle}>Skipped Rows</div>
             <div style={{ display: 'grid', gap: '10px' }}>
-              {skippedCsvPreviewRows.map((item) => (
-                <div key={`${item.rowNumber}-${item.agentLabel}-${item.reason}`} style={skippedRowStyle}>
-                  <div style={primaryCellTextStyle}>Row {item.rowNumber} • {item.agentLabel || '-'}</div>
-                  <div style={secondaryCellTextStyle}>{item.reason}</div>
+              {previewSkippedCsvRows.map((row) => (
+                <div
+                  key={`${row.rowNumber}-${row.agentLabel}-${row.reason}`}
+                  style={skippedRowStyle}
+                >
+                  <div style={primaryCellTextStyle}>
+                    Row {row.rowNumber} • {row.agentLabel || '-'}
+                  </div>
+                  <div style={secondaryCellTextStyle}>{row.reason}</div>
                 </div>
               ))}
             </div>
@@ -666,6 +651,7 @@ function TicketsUploadSupabase() {
       <div style={panelStyle}>
         <div style={formGridStyle}>
           <div style={wideFieldStyle}>
+            <div style={infoCardTitleStyle}>Manual Single Record</div>
             <label style={labelStyle}>Agent</label>
             <div ref={agentPickerRef} style={{ position: 'relative' }}>
               <button
@@ -1046,18 +1032,21 @@ const csvPanelStyle = {
   marginBottom: '20px',
 };
 
-const csvHeaderRowStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  gap: '12px',
-  alignItems: 'flex-start',
-  flexWrap: 'wrap' as const,
+const csvHeaderStyle = {
   marginBottom: '18px',
 };
 
-const csvHelperTextStyle = {
-  margin: 0,
+const csvSubtextStyle = {
+  margin: '6px 0 0 0',
   color: 'var(--da-subtle-text, #94a3b8)',
+  lineHeight: 1.6,
+};
+
+const helperTextStyle = {
+  marginTop: '8px',
+  color: 'var(--da-subtle-text, #94a3b8)',
+  fontSize: '12px',
+  lineHeight: 1.5,
 };
 
 const summaryValueCardStyle = {
@@ -1080,7 +1069,7 @@ const tableWrapStyle = {
 };
 
 const tableStyle = {
-  minWidth: '900px',
+  minWidth: '760px',
 };
 
 const entryStyle = {
@@ -1089,7 +1078,7 @@ const entryStyle = {
 
 const tableRowStyle = {
   display: 'grid',
-  gridTemplateColumns: '100px minmax(280px, 1.4fr) 180px minmax(260px, 1fr)',
+  gridTemplateColumns: '100px minmax(320px, 1.5fr) 180px',
   gap: '14px',
   alignItems: 'center',
   padding: '14px 16px',
@@ -1110,7 +1099,6 @@ const tableHeaderRowStyle = {
 const csvCellRowStyle = {};
 const csvCellAgentStyle = {};
 const csvCellCountStyle = {};
-const csvCellNotesStyle = {};
 
 const primaryCellTextStyle = {
   color: 'var(--da-title, #f8fafc)',
