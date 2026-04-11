@@ -31,6 +31,28 @@ type AgentProfile = {
   team: TeamName | null;
 };
 
+
+type SupervisorRequestSummary = {
+  id: string;
+  status: 'Open' | 'Under Review' | 'Closed';
+  created_at: string;
+  team: string | null;
+};
+
+type AgentFeedbackSummary = {
+  id: string;
+  status: 'Open' | 'In Progress' | 'Closed';
+  created_at: string;
+  team: string;
+};
+
+type MonitoringSummary = {
+  id: string;
+  status: 'active' | 'resolved';
+  created_at: string;
+  team: string;
+};
+
 type CallsRecord = {
   id: string;
   agent_id: string;
@@ -102,6 +124,9 @@ type DashboardCachePayload = {
   callsRecords: CallsRecord[];
   ticketsRecords: TicketsRecord[];
   salesRecords: SalesRecord[];
+  supervisorRequests: SupervisorRequestSummary[];
+  agentFeedback: AgentFeedbackSummary[];
+  monitoringItems: MonitoringSummary[];
 };
 
 const DASHBOARD_CACHE_KEY = 'dashboard:datasets:v1';
@@ -272,6 +297,9 @@ function Dashboard({
   const [callsRecords, setCallsRecords] = useState<CallsRecord[]>([]);
   const [ticketsRecords, setTicketsRecords] = useState<TicketsRecord[]>([]);
   const [salesRecords, setSalesRecords] = useState<SalesRecord[]>([]);
+  const [supervisorRequests, setSupervisorRequests] = useState<SupervisorRequestSummary[]>([]);
+  const [agentFeedback, setAgentFeedback] = useState<AgentFeedbackSummary[]>([]);
+  const [monitoringItems, setMonitoringItems] = useState<MonitoringSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -316,6 +344,9 @@ function Dashboard({
     setCallsRecords(payload.callsRecords);
     setTicketsRecords(payload.ticketsRecords);
     setSalesRecords(payload.salesRecords);
+    setSupervisorRequests(payload.supervisorRequests);
+    setAgentFeedback(payload.agentFeedback);
+    setMonitoringItems(payload.monitoringItems);
   }
 
   async function fetchDashboardData() {
@@ -325,6 +356,9 @@ function Dashboard({
       callsResult,
       ticketsResult,
       salesResult,
+      requestsResult,
+      feedbackResult,
+      monitoringResult,
     ] = await Promise.all([
       supabase
         .from('audits')
@@ -347,6 +381,18 @@ function Dashboard({
         .from('sales_records')
         .select('*')
         .order('sale_date', { ascending: false }),
+      supabase
+        .from('supervisor_requests')
+        .select('id, status, created_at, team')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('agent_feedback')
+        .select('id, status, created_at, team')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('monitoring_items')
+        .select('id, status, created_at, team')
+        .order('created_at', { ascending: false }),
     ]);
 
     const errors = [
@@ -355,6 +401,9 @@ function Dashboard({
       callsResult.error?.message,
       ticketsResult.error?.message,
       salesResult.error?.message,
+      requestsResult.error?.message,
+      feedbackResult.error?.message,
+      monitoringResult.error?.message,
     ].filter(Boolean);
 
     if (errors.length > 0) {
@@ -367,6 +416,9 @@ function Dashboard({
       callsRecords: (callsResult.data as CallsRecord[]) || [],
       ticketsRecords: (ticketsResult.data as TicketsRecord[]) || [],
       salesRecords: (salesResult.data as SalesRecord[]) || [],
+      supervisorRequests: (requestsResult.data as SupervisorRequestSummary[]) || [],
+      agentFeedback: (feedbackResult.data as AgentFeedbackSummary[]) || [],
+      monitoringItems: (monitoringResult.data as MonitoringSummary[]) || [],
     } satisfies DashboardCachePayload;
   }
 
@@ -489,6 +541,24 @@ function Dashboard({
       matchesSelectedRange(item.sale_date, item.date_to || null)
     );
   }, [salesRecords, dateFrom, dateTo]);
+
+  const filteredRequests = useMemo(() => {
+    return supervisorRequests.filter((item) =>
+      matchesSelectedRange(item.created_at.slice(0, 10), item.created_at.slice(0, 10))
+    );
+  }, [supervisorRequests, dateFrom, dateTo]);
+
+  const filteredFeedback = useMemo(() => {
+    return agentFeedback.filter((item) =>
+      matchesSelectedRange(item.created_at.slice(0, 10), item.created_at.slice(0, 10))
+    );
+  }, [agentFeedback, dateFrom, dateTo]);
+
+  const filteredMonitoring = useMemo(() => {
+    return monitoringItems.filter((item) =>
+      matchesSelectedRange(item.created_at.slice(0, 10), item.created_at.slice(0, 10))
+    );
+  }, [monitoringItems, dateFrom, dateTo]);
 
   const filteredCallsAudits = useMemo(
     () => filteredAudits.filter((item) => item.team === 'Calls'),
@@ -861,6 +931,66 @@ function Dashboard({
   );
   const mostConsistentPerformer = consistencyPool[0] || null;
 
+
+  const uploadsRowCount = filteredCalls.length + filteredTickets.length + filteredSales.length;
+  const openRequestsCount = filteredRequests.filter((item) => item.status !== 'Closed').length;
+  const openFeedbackCount = filteredFeedback.filter((item) => item.status !== 'Closed').length;
+  const activeMonitoringCount = filteredMonitoring.filter((item) => item.status === 'active').length;
+  const releasedRate = totalAudits > 0 ? (releasedAudits / totalAudits) * 100 : 0;
+  const crossTeamTrendLabel = [
+    `Calls ${getTeamAverage(filteredCallsAudits).toFixed(2)}%`,
+    `Tickets ${getTeamAverage(filteredTicketsAudits).toFixed(2)}%`,
+    `Sales ${getTeamAverage(filteredSalesAudits).toFixed(2)}%`,
+  ].join(' • ');
+
+  function getSpotlightStats(cardTitle: string) {
+    if (cardTitle === 'System Pulse') {
+      return [
+        { label: 'Uploads', value: `${uploadsRowCount}` },
+        { label: 'Released', value: `${releasedAudits}` },
+        { label: 'Trend', value: crossTeamTrendLabel },
+      ];
+    }
+
+    if (cardTitle === 'People Ops') {
+      return [
+        { label: 'Agents', value: `${profiles.length}` },
+        { label: 'Recognition', value: `${callsQualityTop.length + ticketsQualityTop.length + salesTop.length}` },
+        { label: 'Leader', value: callsHybridTop[0]?.label || ticketsHybridTop[0]?.label || salesTop[0]?.label || '-' },
+      ];
+    }
+
+    if (cardTitle === 'Action Queue') {
+      return [
+        { label: 'Feedback', value: `${openFeedbackCount}` },
+        { label: 'Monitoring', value: `${activeMonitoringCount}` },
+        { label: 'Requests', value: `${openRequestsCount}` },
+      ];
+    }
+
+    if (cardTitle === 'Coach With Context') {
+      return [
+        { label: 'Audits', value: `${totalAudits}` },
+        { label: 'Avg', value: `${averageQuality.toFixed(2)}%` },
+        { label: 'Focus', value: coachingOpportunity?.label || '-' },
+      ];
+    }
+
+    if (cardTitle === 'Recognition & Growth') {
+      return [
+        { label: 'Released', value: `${releasedAudits}` },
+        { label: 'Rate', value: `${releasedRate.toFixed(0)}%` },
+        { label: 'Consistent', value: mostConsistentPerformer?.label || '-' },
+      ];
+    }
+
+    return [
+      { label: 'Top Calls', value: callsQuantityTop[0]?.label || '-' },
+      { label: 'Top Tickets', value: ticketsQuantityTop[0]?.label || '-' },
+      { label: 'Top Sales', value: salesTop[0]?.label || '-' },
+    ];
+  }
+
   const hasAnyData =
     audits.length > 0 ||
     profiles.length > 0 ||
@@ -978,6 +1108,14 @@ function Dashboard({
             <div key={card.title} style={spotlightCardStyle}>
               <div style={spotlightCardTitleStyle}>{card.title}</div>
               <div style={spotlightCardTextStyle}>{card.description}</div>
+              <div style={spotlightStatGridStyle}>
+                {getSpotlightStats(card.title).map((item) => (
+                  <div key={`${card.title}-${item.label}`} style={spotlightStatRowStyle}>
+                    <div style={spotlightStatLabelStyle}>{item.label}</div>
+                    <div style={spotlightStatValueStyle}>{item.value}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
@@ -1810,6 +1948,37 @@ const spotlightCardTextStyle = {
   color: 'var(--screen-text, #e5eefb)',
   lineHeight: 1.6,
   fontSize: '14px',
+};
+
+
+const spotlightStatGridStyle = {
+  display: 'grid',
+  gap: '8px',
+  marginTop: '14px',
+};
+
+const spotlightStatRowStyle = {
+  display: 'grid',
+  gap: '4px',
+  padding: '10px 12px',
+  borderRadius: '14px',
+  border: '1px solid rgba(148,163,184,0.14)',
+  background: 'rgba(255,255,255,0.64)',
+};
+
+const spotlightStatLabelStyle = {
+  color: 'var(--screen-muted, #64748b)',
+  fontSize: '12px',
+  fontWeight: 800,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase' as const,
+};
+
+const spotlightStatValueStyle = {
+  color: 'var(--screen-heading, #0f172a)',
+  fontSize: '14px',
+  fontWeight: 800,
+  lineHeight: 1.5,
 };
 
 export default Dashboard;
