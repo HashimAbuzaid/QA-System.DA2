@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { runAIWritingHelper } from './aiWritingHelper';
 
 type AgentFeedback = {
   id: string;
@@ -33,7 +32,6 @@ function AgentFeedbackSupabase() {
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [aiWorking, setAiWorking] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -189,40 +187,7 @@ function AgentFeedbackSupabase() {
     setDueDate('');
   }
 
-  async function handleRewriteFeedbackNote() {
-    setErrorMessage('');
-    setSuccessMessage('');
-    if (!feedbackNote.trim()) {
-      setErrorMessage('Write feedback text first, then use Rewrite.');
-      return;
-    }
 
-    setAiWorking(true);
-    const output = await runAIWritingHelper({
-      task: 'rewrite',
-      text: feedbackNote,
-      team: selectedAgent?.team || null,
-      feedbackType,
-      subject,
-    });
-    setAiWorking(false);
-    if (output) setFeedbackNote(output);
-  }
-
-  async function handleSuggestFeedbackNote() {
-    setErrorMessage('');
-    setSuccessMessage('');
-    setAiWorking(true);
-    const output = await runAIWritingHelper({
-      task: 'feedback',
-      text: feedbackNote,
-      team: selectedAgent?.team || null,
-      feedbackType,
-      subject,
-    });
-    setAiWorking(false);
-    if (output) setFeedbackNote(output);
-  }
 
   async function handleCreateFeedback() {
     setErrorMessage('');
@@ -482,24 +447,6 @@ function AgentFeedbackSupabase() {
               style={fieldStyle}
               placeholder="Write the feedback details"
             />
-            <div style={helperActionRowStyle}>
-              <button
-                type="button"
-                onClick={() => void handleRewriteFeedbackNote()}
-                disabled={aiWorking}
-                style={secondaryButton}
-              >
-                {aiWorking ? 'Working...' : 'Rewrite Note'}
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleSuggestFeedbackNote()}
-                disabled={aiWorking}
-                style={secondaryButton}
-              >
-                Suggest Coaching
-              </button>
-            </div>
           </div>
 
           <div>
@@ -931,12 +878,6 @@ const errorBannerStyle = {
   color: 'var(--da-error-text, #fecaca)',
 };
 
-const helperActionRowStyle = {
-  display: 'flex',
-  gap: '10px',
-  flexWrap: 'wrap' as const,
-  marginTop: '12px',
-};
 
 const successBannerStyle = {
   marginBottom: '16px',
