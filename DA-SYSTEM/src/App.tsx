@@ -8,6 +8,7 @@ import AgentPortal from './QA/AgentPortal';
 import SupervisorPortal from './QA/SupervisorPortal';
 import Dashboard from './QA/Dashboard';
 import NewAuditSupabase from './QA/NewAuditSupabase';
+import AuditsImportSupabase from './QA/AuditsImportSupabase';
 import CallsUploadSupabase from './QA/CallsUploadSupabase';
 import TicketsUploadSupabase from './QA/TicketsUploadSupabase';
 import SalesUploadSupabase from './QA/SalesUploadSupabase';
@@ -31,6 +32,7 @@ export type UserProfile = {
 type StaffPage =
   | 'dashboard'
   | 'newAudit'
+  | 'auditsUpload'
   | 'auditsList'
   | 'callsUpload'
   | 'ticketsUpload'
@@ -813,6 +815,7 @@ function App() {
     const baseItems: Array<{ key: StaffPage; label: string }> = [
       { key: 'dashboard', label: 'Dashboard' },
       { key: 'newAudit', label: 'New Audit' },
+      { key: 'auditsUpload', label: 'Audits Upload' },
       { key: 'auditsList', label: 'Audits List' },
       { key: 'callsUpload', label: 'Calls Upload' },
       { key: 'ticketsUpload', label: 'Tickets Upload' },
@@ -843,6 +846,8 @@ function App() {
         return <Dashboard />;
       case 'newAudit':
         return <NewAuditSupabase />;
+      case 'auditsUpload':
+        return <AuditsImportSupabase />;
       case 'auditsList':
         return <AuditsListSupabase />;
       case 'callsUpload':
