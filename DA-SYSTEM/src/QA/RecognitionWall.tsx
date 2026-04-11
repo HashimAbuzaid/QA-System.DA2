@@ -3,6 +3,12 @@ import { supabase } from '../lib/supabase';
 
 type TeamName = 'Calls' | 'Tickets' | 'Sales';
 
+type Viewer = {
+  id?: string;
+  role?: 'admin' | 'qa' | 'agent' | 'supervisor';
+  team?: TeamName | null;
+};
+
 type AuditItem = {
   id: string;
   agent_id: string;
@@ -47,6 +53,7 @@ type RecognitionEntry = {
 type RecognitionWallProps = {
   title?: string;
   compact?: boolean;
+  currentUser?: Viewer | null;
 };
 
 function normalizeAgentId(value?: string | null) {
@@ -64,6 +71,7 @@ function getAgentKey(agentId?: string | null, agentName?: string | null) {
 function RecognitionWall({
   title = 'Recognition Wall',
   compact = false,
+  currentUser = null,
 }: RecognitionWallProps) {
   const [audits, setAudits] = useState<AuditItem[]>([]);
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
@@ -119,11 +127,34 @@ function RecognitionWall({
     return `${agentName || '-'} - ${agentId || '-'}`;
   }
 
+  const teamScope =
+    currentUser?.role === 'agent' || currentUser?.role === 'supervisor'
+      ? currentUser.team || null
+      : null;
+
+  const scopedAudits = useMemo(
+    () => audits.filter((audit) => (teamScope ? audit.team === teamScope : true)),
+    [audits, teamScope]
+  );
+
+  const scopedCalls = useMemo(
+    () => (teamScope && teamScope !== 'Calls' ? [] : callsRecords),
+    [callsRecords, teamScope]
+  );
+  const scopedTickets = useMemo(
+    () => (teamScope && teamScope !== 'Tickets' ? [] : ticketsRecords),
+    [ticketsRecords, teamScope]
+  );
+  const scopedSales = useMemo(
+    () => (teamScope && teamScope !== 'Sales' ? [] : salesRecords),
+    [salesRecords, teamScope]
+  );
+
   const entries = useMemo<RecognitionEntry[]>(() => {
     const results: RecognitionEntry[] = [];
 
     const qualityMap = new Map<string, { label: string; team: string; scores: number[] }>();
-    audits.forEach((audit) => {
+    scopedAudits.forEach((audit) => {
       const key = getAgentKey(audit.agent_id, audit.agent_name);
       const existing = qualityMap.get(key);
       if (existing) {
@@ -147,96 +178,106 @@ function RecognitionWall({
 
     if (qualityLeader) {
       results.push({
-        title: 'Quality Champion',
+        title: teamScope ? `${teamScope} Quality Champion` : 'Quality Champion',
         value: `${qualityLeader.average.toFixed(2)}%`,
-        subtitle: `${qualityLeader.label} • ${qualityLeader.team}`,
+        subtitle: teamScope ? qualityLeader.label : `${qualityLeader.label} • ${qualityLeader.team}`,
         badge: 'Quality',
       });
     }
 
-    const callsMap = new Map<string, { label: string; total: number }>();
-    callsRecords.forEach((record) => {
-      const key = getAgentKey(record.agent_id, record.agent_name);
-      const existing = callsMap.get(key);
-      if (existing) existing.total += Number(record.calls_count || 0);
-      else callsMap.set(key, {
-        label: getAgentLabel(record.agent_id, record.agent_name, 'Calls'),
-        total: Number(record.calls_count || 0),
+    if (!teamScope || teamScope === 'Calls') {
+      const callsMap = new Map<string, { label: string; total: number }>();
+      scopedCalls.forEach((record) => {
+        const key = getAgentKey(record.agent_id, record.agent_name);
+        const existing = callsMap.get(key);
+        if (existing) existing.total += Number(record.calls_count || 0);
+        else callsMap.set(key, {
+          label: getAgentLabel(record.agent_id, record.agent_name, 'Calls'),
+          total: Number(record.calls_count || 0),
+        });
       });
-    });
-    const callsLeader = Array.from(callsMap.values()).sort((a, b) => b.total - a.total)[0];
-    if (callsLeader) {
-      results.push({
-        title: 'Calls Star',
-        value: `${callsLeader.total}`,
-        subtitle: callsLeader.label,
-        badge: 'Calls',
-      });
+      const leader = Array.from(callsMap.values()).sort((a, b) => b.total - a.total)[0];
+      if (leader) {
+        results.push({
+          title: 'Calls Star',
+          value: `${leader.total}`,
+          subtitle: leader.label,
+          badge: 'Calls',
+        });
+      }
     }
 
-    const ticketsMap = new Map<string, { label: string; total: number }>();
-    ticketsRecords.forEach((record) => {
-      const key = getAgentKey(record.agent_id, record.agent_name);
-      const existing = ticketsMap.get(key);
-      if (existing) existing.total += Number(record.tickets_count || 0);
-      else ticketsMap.set(key, {
-        label: getAgentLabel(record.agent_id, record.agent_name, 'Tickets'),
-        total: Number(record.tickets_count || 0),
+    if (!teamScope || teamScope === 'Tickets') {
+      const ticketsMap = new Map<string, { label: string; total: number }>();
+      scopedTickets.forEach((record) => {
+        const key = getAgentKey(record.agent_id, record.agent_name);
+        const existing = ticketsMap.get(key);
+        if (existing) existing.total += Number(record.tickets_count || 0);
+        else ticketsMap.set(key, {
+          label: getAgentLabel(record.agent_id, record.agent_name, 'Tickets'),
+          total: Number(record.tickets_count || 0),
+        });
       });
-    });
-    const ticketsLeader = Array.from(ticketsMap.values()).sort((a, b) => b.total - a.total)[0];
-    if (ticketsLeader) {
-      results.push({
-        title: 'Tickets Star',
-        value: `${ticketsLeader.total}`,
-        subtitle: ticketsLeader.label,
-        badge: 'Tickets',
-      });
+      const leader = Array.from(ticketsMap.values()).sort((a, b) => b.total - a.total)[0];
+      if (leader) {
+        results.push({
+          title: 'Tickets Star',
+          value: `${leader.total}`,
+          subtitle: leader.label,
+          badge: 'Tickets',
+        });
+      }
     }
 
-    const salesMap = new Map<string, { label: string; total: number }>();
-    salesRecords.forEach((record) => {
-      const key = getAgentKey(record.agent_id, record.agent_name);
-      const existing = salesMap.get(key);
-      if (existing) existing.total += Number(record.amount || 0);
-      else salesMap.set(key, {
-        label: getAgentLabel(record.agent_id, record.agent_name, 'Sales'),
-        total: Number(record.amount || 0),
+    if (!teamScope || teamScope === 'Sales') {
+      const salesMap = new Map<string, { label: string; total: number }>();
+      scopedSales.forEach((record) => {
+        const key = getAgentKey(record.agent_id, record.agent_name);
+        const existing = salesMap.get(key);
+        if (existing) existing.total += Number(record.amount || 0);
+        else salesMap.set(key, {
+          label: getAgentLabel(record.agent_id, record.agent_name, 'Sales'),
+          total: Number(record.amount || 0),
+        });
       });
-    });
-    const salesLeader = Array.from(salesMap.values()).sort((a, b) => b.total - a.total)[0];
-    if (salesLeader) {
-      results.push({
-        title: 'Sales Star',
-        value: `$${salesLeader.total.toFixed(2)}`,
-        subtitle: salesLeader.label,
-        badge: 'Sales',
-      });
+      const leader = Array.from(salesMap.values()).sort((a, b) => b.total - a.total)[0];
+      if (leader) {
+        results.push({
+          title: 'Sales Star',
+          value: `$${leader.total.toFixed(2)}`,
+          subtitle: leader.label,
+          badge: 'Sales',
+        });
+      }
     }
 
-    const releasedLeaderMap = new Map<string, { label: string; count: number; team: string }>();
-    audits.filter((audit) => Boolean(audit.shared_with_agent)).forEach((audit) => {
-      const key = getAgentKey(audit.agent_id, audit.agent_name);
-      const existing = releasedLeaderMap.get(key);
-      if (existing) existing.count += 1;
-      else releasedLeaderMap.set(key, {
-        label: getAgentLabel(audit.agent_id, audit.agent_name, audit.team),
-        count: 1,
-        team: String(audit.team || '-'),
+    const releasedMap = new Map<string, { label: string; count: number; team: string }>();
+    scopedAudits
+      .filter((audit) => Boolean(audit.shared_with_agent))
+      .forEach((audit) => {
+        const key = getAgentKey(audit.agent_id, audit.agent_name);
+        const existing = releasedMap.get(key);
+        if (existing) existing.count += 1;
+        else releasedMap.set(key, {
+          label: getAgentLabel(audit.agent_id, audit.agent_name, audit.team),
+          count: 1,
+          team: String(audit.team || '-'),
+        });
       });
-    });
-    const releasedLeader = Array.from(releasedLeaderMap.values()).sort((a, b) => b.count - a.count)[0];
-    if (releasedLeader) {
+
+    const releasedLeader = Array.from(releasedMap.values()).sort((a, b) => b.count - a.count)[0];
+    if (releasedLeader && !compact) {
       results.push({
         title: 'Release Ready',
         value: `${releasedLeader.count}`,
-        subtitle: `${releasedLeader.label} • ${releasedLeader.team}`,
+        subtitle: teamScope ? releasedLeader.label : `${releasedLeader.label} • ${releasedLeader.team}`,
         badge: 'Released',
       });
     }
 
-    return results.slice(0, compact ? 3 : 5);
-  }, [audits, callsRecords, ticketsRecords, salesRecords, profiles]);
+    const maxItems = compact ? 2 : teamScope ? 3 : 4;
+    return results.slice(0, maxItems);
+  }, [scopedAudits, scopedCalls, scopedTickets, scopedSales, teamScope, compact, profiles]);
 
   return (
     <div style={{ marginTop: '30px' }}>
@@ -274,49 +315,56 @@ const eyebrowStyle = {
 const gridStyle = (compact: boolean) => ({
   display: 'grid',
   gridTemplateColumns: compact
-    ? 'repeat(auto-fit, minmax(200px, 1fr))'
-    : 'repeat(auto-fit, minmax(220px, 1fr))',
-  gap: '14px',
+    ? 'repeat(auto-fit, minmax(280px, 1fr))'
+    : 'repeat(auto-fit, minmax(320px, 1fr))',
+  gap: '16px',
 });
 
 const cardStyle = {
-  borderRadius: '18px',
+  minHeight: '170px',
+  display: 'flex',
+  flexDirection: 'column' as const,
+  justifyContent: 'flex-start',
+  borderRadius: '20px',
   border: '1px solid var(--screen-border, rgba(148,163,184,0.16))',
-  background: 'var(--screen-card-bg, rgba(15,23,42,0.7))',
+  background:
+    'linear-gradient(135deg, rgba(2, 6, 23, 0.96) 0%, rgba(15, 23, 42, 0.92) 55%, rgba(30, 41, 59, 0.9) 100%)',
   boxShadow: 'var(--screen-shadow, 0 18px 40px rgba(2,6,23,0.35))',
   padding: '18px',
 };
 
 const badgeStyle = {
   display: 'inline-block',
-  marginBottom: '12px',
+  alignSelf: 'flex-start',
+  marginBottom: '14px',
   padding: '6px 10px',
   borderRadius: '999px',
-  background: 'var(--screen-score-pill-bg, rgba(37,99,235,0.18))',
-  border: '1px solid var(--screen-score-pill-border, rgba(96,165,250,0.26))',
-  color: 'var(--screen-accent, #60a5fa)',
+  background: 'rgba(37,99,235,0.18)',
+  border: '1px solid rgba(96,165,250,0.26)',
+  color: '#93c5fd',
   fontSize: '12px',
   fontWeight: 800,
 };
 
 const titleStyle = {
-  color: 'var(--screen-heading, #f8fafc)',
+  color: '#f8fafc',
   fontSize: '18px',
   fontWeight: 800,
-  marginBottom: '10px',
+  marginBottom: '12px',
 };
 
 const valueStyle = {
-  color: 'var(--screen-heading, #f8fafc)',
-  fontSize: '28px',
+  color: '#f8fafc',
+  fontSize: '40px',
   fontWeight: 900,
-  marginBottom: '10px',
+  marginBottom: '12px',
+  lineHeight: 1,
 };
 
 const subtitleStyle = {
-  color: 'var(--screen-text, #e5eefb)',
-  fontSize: '14px',
-  lineHeight: 1.5,
+  color: '#e5eefb',
+  fontSize: '15px',
+  lineHeight: 1.55,
 };
 
 export default RecognitionWall;
