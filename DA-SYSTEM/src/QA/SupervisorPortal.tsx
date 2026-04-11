@@ -102,6 +102,45 @@ function openNativeDatePicker(target: HTMLInputElement) {
   input.showPicker?.();
 }
 
+
+function getSupervisorThemeVars(): Record<string, string> {
+  const themeMode =
+    typeof document !== 'undefined'
+      ? (
+          document.body.dataset.theme ||
+          document.documentElement.dataset.theme ||
+          window.localStorage.getItem('detroit-axle-theme-mode') ||
+          window.sessionStorage.getItem('detroit-axle-theme-mode') ||
+          window.localStorage.getItem('detroit-axle-theme') ||
+          window.sessionStorage.getItem('detroit-axle-theme') ||
+          ''
+        ).toLowerCase()
+      : '';
+
+  const isLight = themeMode === 'light' || themeMode === 'white';
+
+  return {
+    '--da-page-text': isLight ? '#334155' : '#e5eefb',
+    '--da-title': isLight ? '#0f172a' : '#f8fafc',
+    '--da-muted-text': isLight ? '#475569' : '#cbd5e1',
+    '--da-subtle-text': isLight ? '#64748b' : '#94a3b8',
+    '--da-accent-text': isLight ? '#2563eb' : '#60a5fa',
+    '--da-panel-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(247,250,255,0.96) 100%)'
+      : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    '--da-panel-border': isLight
+      ? '1px solid rgba(203,213,225,0.92)'
+      : '1px solid rgba(148,163,184,0.14)',
+    '--da-panel-shadow': isLight
+      ? '0 18px 40px rgba(15,23,42,0.10)'
+      : '0 18px 40px rgba(2,6,23,0.35)',
+    '--da-surface-bg': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.62)',
+    '--da-field-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(250,252,255,0.98) 100%)'
+      : 'rgba(15,23,42,0.74)',
+  };
+}
+
 function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
   const [teamAgents, setTeamAgents] = useState<AgentProfile[]>([]);
   const [audits, setAudits] = useState<AuditItem[]>([]);
@@ -124,6 +163,8 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
 
   const agentPickerRef = useRef<HTMLDivElement | null>(null);
   const pageRootRef = useRef<HTMLDivElement | null>(null);
+  const themeVars = getSupervisorThemeVars();
+  const [auditsVisible, setAuditsVisible] = useState(true);
 
   useEffect(() => {
     void loadTeamData(false);
@@ -456,7 +497,7 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
   }
 
   return (
-    <div ref={pageRootRef} data-no-theme-invert="true" style={{ color: 'var(--da-page-text, #e5eefb)' }}>
+    <div ref={pageRootRef} data-no-theme-invert="true" style={{ color: 'var(--da-page-text, #e5eefb)', ...(themeVars as any) }}>
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Supervisor Portal</div>
@@ -682,7 +723,18 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
               selectedAgent ? 'Filtered' : currentUser.team || 'Team'
             } Audits`}
           >
-            {filteredAudits.length === 0 ? (
+            <div style={sectionHeaderActionsStyle}>
+              <button
+                type="button"
+                onClick={() => setAuditsVisible((prev) => !prev)}
+                style={miniSecondaryButton}
+              >
+                {auditsVisible ? 'Hide Audits' : 'Show Audits'}
+              </button>
+            </div>
+            {!auditsVisible ? (
+              <div style={collapsedMessageStyle}>Audits are hidden for now.</div>
+            ) : filteredAudits.length === 0 ? (
               <p>No audits found for this selection.</p>
             ) : (
               <div style={auditTableWrapStyle}>
@@ -937,7 +989,7 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
           </Section>
 
           <DigitalTrophyCabinet scope="team" currentUser={currentUser} />
-          <RecognitionWall compact />
+          <RecognitionWall compact currentUser={currentUser as any} />
           <VoiceOfEmployeeSupabase currentUser={currentUser} />
 
           <MonitoringWidget
@@ -986,6 +1038,18 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
     </div>
   );
 }
+
+const sectionHeaderActionsStyle = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  marginBottom: '12px',
+};
+
+const collapsedMessageStyle = {
+  color: 'var(--da-subtle-text, #94a3b8)',
+  fontWeight: 600,
+  padding: '8px 2px',
+};
 
 const pageHeaderStyle = {
   display: 'flex',
