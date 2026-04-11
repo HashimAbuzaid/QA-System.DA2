@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import RecognitionWall from './RecognitionWall';
+import DigitalTrophyCabinet from './DigitalTrophyCabinet';
+import VoiceOfEmployeeSupabase from './VoiceOfEmployeeSupabase';
 import {
   clearCachedValue,
   getCachedValue,
@@ -154,7 +157,19 @@ function openNativeDatePicker(input: HTMLInputElement | null | undefined) {
   }
 }
 
-function Dashboard() {
+function Dashboard({
+  currentUser = null,
+}: {
+  currentUser?: {
+    id?: string;
+    role?: 'admin' | 'qa' | 'agent' | 'supervisor';
+    agent_id?: string | null;
+    agent_name?: string;
+    display_name?: string | null;
+    team?: TeamName | null;
+    email?: string;
+  } | null;
+}) {
   const [audits, setAudits] = useState<AuditItem[]>([]);
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
   const [callsRecords, setCallsRecords] = useState<CallsRecord[]>([]);
@@ -168,6 +183,30 @@ function Dashboard() {
   const [lastLoadedAt, setLastLoadedAt] = useState('');
   const dateFromInputRef = useRef<HTMLInputElement | null>(null);
   const dateToInputRef = useRef<HTMLInputElement | null>(null);
+  const roleSpotlight = useMemo(() => {
+    const role = currentUser?.role || 'qa';
+
+    if (role === 'admin') {
+      return {
+        title: 'Admin Spotlight',
+        cards: [
+          { title: 'System Pulse', description: 'Watch uploads, released audits, and cross-team quality trends from one place.' },
+          { title: 'People Ops', description: 'Use reports, accounts, and recognition to keep every team aligned.' },
+          { title: 'Action Queue', description: 'Review feedback, monitoring, and supervisor requests that need attention.' },
+        ],
+      };
+    }
+
+    return {
+      title: 'QA Spotlight',
+      cards: [
+        { title: 'Coach With Context', description: 'Review quality trends, recognition, and recent uploads before coaching an agent.' },
+        { title: 'Write Faster', description: 'Use the AI writing helper in audits, feedback, monitoring, and requests to polish notes quickly.' },
+        { title: 'Celebrate Wins', description: 'Recognition and trophies make quality visible, not only corrective.' },
+      ],
+    };
+  }, [currentUser?.role]);
+
 
   useEffect(() => {
     void loadDashboardData();
@@ -830,6 +869,19 @@ function Dashboard() {
         </div>
       </div>
 
+      <div style={spotlightPanelStyle}>
+        <div style={sectionEyebrowStyle}>Smart Homepage</div>
+        <h3 style={{ marginTop: 0, marginBottom: '14px' }}>{roleSpotlight.title}</h3>
+        <div style={spotlightGridStyle}>
+          {roleSpotlight.cards.map((card) => (
+            <div key={card.title} style={spotlightCardStyle}>
+              <div style={spotlightCardTitleStyle}>{card.title}</div>
+              <div style={spotlightCardTextStyle}>{card.description}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div style={kpiGridStyle}>
         <SummaryCard
           title="Total Audits"
@@ -853,6 +905,10 @@ function Dashboard() {
         <TeamCard data={ticketsCard} accent="#7c3aed" />
         <TeamCard data={salesCard} accent="#0f766e" />
       </div>
+
+      <RecognitionWall />
+      <DigitalTrophyCabinet scope="global" currentUser={currentUser} />
+      {currentUser ? <VoiceOfEmployeeSupabase currentUser={currentUser as any} /> : null}
 
       <SectionHeader
         title="Performance Rankings"
@@ -1584,6 +1640,49 @@ const statusPillStyle = {
   color: 'var(--da-meta-text, #cbd5e1)',
   fontWeight: 700,
   fontSize: '12px',
+};
+
+const spotlightPanelStyle = {
+  marginBottom: '24px',
+  borderRadius: '24px',
+  border: '1px solid rgba(148,163,184,0.14)',
+  background: 'var(--screen-panel-bg, rgba(15,23,42,0.78))',
+  boxShadow: 'var(--screen-shadow, 0 18px 40px rgba(2,6,23,0.35))',
+  padding: '20px',
+};
+
+const sectionEyebrowStyle = {
+  color: '#3b82f6',
+  fontSize: '12px',
+  fontWeight: 800,
+  letterSpacing: '0.18em',
+  textTransform: 'uppercase' as const,
+  marginBottom: '10px',
+};
+
+const spotlightGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+  gap: '14px',
+};
+
+const spotlightCardStyle = {
+  borderRadius: '18px',
+  border: '1px solid rgba(148,163,184,0.14)',
+  background: 'var(--screen-card-soft-bg, rgba(15,23,42,0.52))',
+  padding: '18px',
+};
+
+const spotlightCardTitleStyle = {
+  color: 'var(--screen-heading, #f8fafc)',
+  fontWeight: 800,
+  marginBottom: '8px',
+};
+
+const spotlightCardTextStyle = {
+  color: 'var(--screen-text, #e5eefb)',
+  lineHeight: 1.6,
+  fontSize: '14px',
 };
 
 export default Dashboard;
