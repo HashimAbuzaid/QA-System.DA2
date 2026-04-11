@@ -74,7 +74,13 @@ function Login() {
           <div style={successBannerStyle}>{successMessage}</div>
         ) : null}
 
-        <div style={formStyle}>
+        <form
+          style={formStyle}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleLogin();
+          }}
+        >
           <div>
             <label style={labelStyle}>Email</label>
             <input
@@ -97,7 +103,7 @@ function Login() {
             />
           </div>
 
-          <button onClick={handleLogin} disabled={loading} style={buttonStyle}>
+          <button type="submit" disabled={loading} style={buttonStyle}>
             {loading ? 'Logging in...' : 'Login'}
           </button>
 
@@ -109,7 +115,7 @@ function Login() {
           >
             {sendingRecovery ? 'Sending recovery...' : 'Forgot password?'}
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );
