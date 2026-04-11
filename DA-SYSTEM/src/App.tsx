@@ -843,7 +843,7 @@ function App() {
   function renderStaffPage() {
     switch (page) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard currentUser={profile} />;
       case 'newAudit':
         return <NewAuditSupabase />;
       case 'auditsUpload':
@@ -898,7 +898,7 @@ function App() {
           </div>
         );
       default:
-        return <Dashboard />;
+        return <Dashboard currentUser={profile} />;
     }
   }
 
