@@ -16,6 +16,13 @@ type Props = {
   team: TeamName | null;
 };
 
+type CurrentProfile = {
+  id: string;
+  role: 'admin' | 'qa' | 'agent' | 'supervisor';
+  agent_name: string;
+  display_name: string | null;
+};
+
 const fallbackLessons: Record<TeamName, Lesson[]> = {
   Calls: [
     {
@@ -70,10 +77,44 @@ const fallbackLessons: Record<TeamName, Lesson[]> = {
 function QaAcademy({ team }: Props) {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [currentProfile, setCurrentProfile] = useState<CurrentProfile | null>(null);
+  const [lessonTitle, setLessonTitle] = useState('');
+  const [lessonType, setLessonType] = useState('Micro Lesson');
+  const [lessonTeam, setLessonTeam] = useState<TeamName | 'All'>('All');
+  const [lessonContent, setLessonContent] = useState('');
+
+  const canManageLessons =
+    currentProfile?.role === 'admin' || currentProfile?.role === 'qa';
 
   useEffect(() => {
+    void loadCurrentProfile();
+  }, []);
+
+  useEffect(() => {
+    setLessonTeam(team || 'All');
     void loadLessons();
   }, [team]);
+
+  async function loadCurrentProfile() {
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData.user?.id;
+
+    if (!userId) {
+      setCurrentProfile(null);
+      return;
+    }
+
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, role, agent_name, display_name')
+      .eq('id', userId)
+      .maybeSingle();
+
+    setCurrentProfile((data as CurrentProfile) || null);
+  }
 
   async function loadLessons() {
     if (!team) {
@@ -83,6 +124,8 @@ function QaAcademy({ team }: Props) {
     }
 
     setLoading(true);
+    setErrorMessage('');
+
     const { data, error } = await supabase
       .from('qa_academy_lessons')
       .select('id, title, team, content, lesson_type, is_active')
@@ -100,6 +143,44 @@ function QaAcademy({ team }: Props) {
     setLoading(false);
   }
 
+  async function handleCreateLesson() {
+    if (!canManageLessons) {
+      setErrorMessage('Only QA and admin users can add academy lessons.');
+      return;
+    }
+
+    if (!lessonTitle.trim() || !lessonContent.trim()) {
+      setErrorMessage('Please fill Lesson Title and Lesson Content.');
+      return;
+    }
+
+    setSaving(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    const { error } = await supabase.from('qa_academy_lessons').insert({
+      title: lessonTitle.trim(),
+      team: lessonTeam,
+      content: lessonContent.trim(),
+      lesson_type: lessonType.trim() || 'Micro Lesson',
+      is_active: true,
+    });
+
+    setSaving(false);
+
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+
+    setLessonTitle('');
+    setLessonType('Micro Lesson');
+    setLessonTeam(team || 'All');
+    setLessonContent('');
+    setSuccessMessage('QA Academy lesson created successfully.');
+    await loadLessons();
+  }
+
   const visibleLessons = useMemo(() => lessons.slice(0, 6), [lessons]);
 
   if (!team) return null;
@@ -111,6 +192,68 @@ function QaAcademy({ team }: Props) {
       <p style={subtextStyle}>
         Short lessons and reminders built for the {team} team.
       </p>
+
+      {canManageLessons ? (
+        <div style={managerPanelStyle}>
+          <div style={managerPanelHeaderStyle}>Add Your Own Lesson</div>
+          {errorMessage ? <div style={errorBannerStyle}>{errorMessage}</div> : null}
+          {successMessage ? <div style={successBannerStyle}>{successMessage}</div> : null}
+          <div style={managerGridStyle}>
+            <div>
+              <label style={fieldLabelStyle}>Lesson Title</label>
+              <input
+                type="text"
+                value={lessonTitle}
+                onChange={(event) => setLessonTitle(event.target.value)}
+                style={fieldStyle}
+                placeholder="Enter lesson title"
+              />
+            </div>
+            <div>
+              <label style={fieldLabelStyle}>Lesson Type</label>
+              <input
+                type="text"
+                value={lessonType}
+                onChange={(event) => setLessonType(event.target.value)}
+                style={fieldStyle}
+                placeholder="Micro Lesson, Checklist, Script, etc."
+              />
+            </div>
+            <div>
+              <label style={fieldLabelStyle}>Lesson Team</label>
+              <select
+                value={lessonTeam}
+                onChange={(event) => setLessonTeam(event.target.value as TeamName | 'All')}
+                style={fieldStyle}
+              >
+                <option value="All">All</option>
+                <option value="Calls">Calls</option>
+                <option value="Tickets">Tickets</option>
+                <option value="Sales">Sales</option>
+              </select>
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={fieldLabelStyle}>Lesson Content</label>
+              <textarea
+                value={lessonContent}
+                onChange={(event) => setLessonContent(event.target.value)}
+                rows={4}
+                style={fieldStyle}
+                placeholder="Write the lesson content"
+              />
+            </div>
+          </div>
+          <div style={managerActionRowStyle}>
+            <button type="button" onClick={() => void handleCreateLesson()} style={primaryButtonStyle}>
+              {saving ? 'Saving...' : 'Save Lesson'}
+            </button>
+            <button type="button" onClick={() => void loadLessons()} style={secondaryButtonStyle}>
+              Refresh Lessons
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {loading ? (
         <p style={subtextStyle}>Loading academy lessons...</p>
       ) : visibleLessons.length === 0 ? (
@@ -180,6 +323,90 @@ const contentStyle = {
   color: 'var(--screen-text, #e5eefb)',
   fontSize: '14px',
   lineHeight: 1.6,
+};
+
+const managerPanelStyle = {
+  borderRadius: '18px',
+  border: '1px solid var(--screen-border, rgba(148,163,184,0.16))',
+  background: 'var(--screen-card-bg, rgba(15,23,42,0.7))',
+  boxShadow: 'var(--screen-shadow, 0 18px 40px rgba(2,6,23,0.35))',
+  padding: '18px',
+  marginBottom: '18px',
+};
+
+const managerPanelHeaderStyle = {
+  color: 'var(--screen-heading, #f8fafc)',
+  fontSize: '16px',
+  fontWeight: 800,
+  marginBottom: '14px',
+};
+
+const managerGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+  gap: '14px',
+};
+
+const fieldLabelStyle = {
+  display: 'block',
+  marginBottom: '8px',
+  color: 'var(--screen-text, #e5eefb)',
+  fontSize: '13px',
+  fontWeight: 700,
+};
+
+const fieldStyle = {
+  width: '100%',
+  padding: '12px 14px',
+  borderRadius: '14px',
+  border: '1px solid var(--screen-border, rgba(148,163,184,0.16))',
+  background: 'var(--screen-field-bg, rgba(15,23,42,0.7))',
+  color: 'var(--screen-field-text, #e5eefb)',
+};
+
+const managerActionRowStyle = {
+  display: 'flex',
+  gap: '10px',
+  flexWrap: 'wrap' as const,
+  marginTop: '14px',
+};
+
+const primaryButtonStyle = {
+  padding: '12px 16px',
+  borderRadius: '14px',
+  border: '1px solid rgba(96, 165, 250, 0.24)',
+  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+  color: '#ffffff',
+  fontWeight: 800,
+  cursor: 'pointer',
+};
+
+const secondaryButtonStyle = {
+  padding: '12px 16px',
+  borderRadius: '14px',
+  border: '1px solid var(--screen-border, rgba(148,163,184,0.16))',
+  background: 'var(--screen-card-soft-bg, rgba(15,23,42,0.52))',
+  color: 'var(--screen-text, #e5eefb)',
+  fontWeight: 700,
+  cursor: 'pointer',
+};
+
+const errorBannerStyle = {
+  marginBottom: '12px',
+  padding: '12px 14px',
+  borderRadius: '14px',
+  background: 'rgba(127,29,29,0.18)',
+  border: '1px solid rgba(248,113,113,0.18)',
+  color: '#fecaca',
+};
+
+const successBannerStyle = {
+  marginBottom: '12px',
+  padding: '12px 14px',
+  borderRadius: '14px',
+  background: 'rgba(22,101,52,0.16)',
+  border: '1px solid rgba(74,222,128,0.18)',
+  color: '#bbf7d0',
 };
 
 export default QaAcademy;
