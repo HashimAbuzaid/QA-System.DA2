@@ -38,6 +38,36 @@ type MonitoringDrawerProps = {
   onItemUpdated?: () => Promise<void> | void;
 };
 
+function getDrawerThemeVars(): Record<string, string> {
+  const themeMode =
+    typeof document !== 'undefined'
+      ? (
+          document.body.dataset.theme ||
+          document.documentElement.dataset.theme ||
+          window.localStorage.getItem('detroit-axle-theme-mode') ||
+          window.sessionStorage.getItem('detroit-axle-theme-mode') ||
+          window.localStorage.getItem('detroit-axle-theme') ||
+          window.sessionStorage.getItem('detroit-axle-theme') ||
+          ''
+        ).toLowerCase()
+      : '';
+
+  const isLight = themeMode === 'light' || themeMode === 'white';
+
+  return {
+    '--md-overlay': isLight ? 'rgba(15,23,42,0.18)' : 'rgba(2,6,23,0.56)',
+    '--md-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(247,250,255,0.98) 100%)'
+      : 'linear-gradient(180deg, rgba(7,17,31,0.98) 0%, rgba(11,19,36,0.96) 100%)',
+    '--md-border': isLight ? 'rgba(203,213,225,0.92)' : 'rgba(148,163,184,0.16)',
+    '--md-text': isLight ? '#334155' : '#e5eefb',
+    '--md-title': isLight ? '#0f172a' : '#f8fafc',
+    '--md-muted': isLight ? '#64748b' : '#94a3b8',
+    '--md-field': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.78)',
+    '--md-pill': isLight ? 'rgba(37,99,235,0.10)' : 'rgba(37,99,235,0.18)',
+  };
+}
+
 function MonitoringDrawer({
   open,
   onClose,
@@ -50,6 +80,7 @@ function MonitoringDrawer({
 }: MonitoringDrawerProps) {
   const [workingId, setWorkingId] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const themeVars = getDrawerThemeVars();
 
   const filteredItems = useMemo(() => {
     if (mode !== 'supervisor' || !selectedAgentId) return items;
@@ -90,8 +121,8 @@ function MonitoringDrawer({
 
   return (
     <>
-      <div style={overlayStyle} onClick={onClose} />
-      <aside style={drawerStyle}>
+      <div style={{ ...overlayStyle, ...(themeVars as any) }} onClick={onClose} />
+      <aside style={{ ...drawerStyle, ...(themeVars as any) }}>
         <div style={headerStyle}>
           <div>
             <div style={eyebrowStyle}>Monitoring</div>
@@ -200,7 +231,7 @@ function MonitoringDrawer({
 const overlayStyle = {
   position: 'fixed' as const,
   inset: 0,
-  background: 'rgba(2,6,23,0.56)',
+  background: 'var(--md-overlay, rgba(2,6,23,0.56))',
   zIndex: 70,
 };
 
@@ -212,13 +243,12 @@ const drawerStyle = {
   maxWidth: '100vw',
   height: '100vh',
   zIndex: 71,
-  background:
-    'linear-gradient(180deg, rgba(7,17,31,0.98) 0%, rgba(11,19,36,0.96) 100%)',
-  borderLeft: '1px solid rgba(148,163,184,0.16)',
+  background: 'var(--md-bg, linear-gradient(180deg, rgba(7,17,31,0.98) 0%, rgba(11,19,36,0.96) 100%))',
+  borderLeft: '1px solid var(--md-border, rgba(148,163,184,0.16))',
   boxShadow: '-16px 0 40px rgba(2,6,23,0.42)',
   padding: '22px',
   overflowY: 'auto' as const,
-  color: '#e5eefb',
+  color: 'var(--md-text, #e5eefb)',
 };
 
 const headerStyle = {
@@ -230,7 +260,7 @@ const headerStyle = {
 };
 
 const eyebrowStyle = {
-  color: '#60a5fa',
+  color: 'var(--md-muted, #64748b)',
   fontSize: '12px',
   fontWeight: 800,
   letterSpacing: '0.16em',
@@ -273,7 +303,7 @@ const fieldStyle = {
   borderRadius: '12px',
   border: '1px solid rgba(148,163,184,0.16)',
   background: 'rgba(15,23,42,0.7)',
-  color: '#e5eefb',
+  color: 'var(--md-text, #e5eefb)',
 };
 
 const errorBannerStyle = {
@@ -329,14 +359,14 @@ const topRowStyle = {
 
 const orderNumberStyle = {
   fontWeight: 800,
-  color: '#f8fafc',
+  color: 'var(--md-title, #f8fafc)',
   fontSize: '16px',
 };
 
 const statusPillStyle = {
   padding: '6px 10px',
   borderRadius: '999px',
-  background: 'rgba(37,99,235,0.18)',
+  background: 'var(--md-pill, rgba(37,99,235,0.18))',
   color: '#bfdbfe',
   fontSize: '11px',
   fontWeight: 800,
