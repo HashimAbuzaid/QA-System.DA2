@@ -23,11 +23,13 @@ type VoiceSubmission = {
 type Props = {
   currentUser: Viewer;
   title?: string;
+  showComposer?: boolean;
 };
 
 function VoiceOfEmployeeSupabase({
   currentUser,
   title = 'Voice of the Employee',
+  showComposer = true,
 }: Props) {
   const [category, setCategory] = useState('Idea');
   const [message, setMessage] = useState('');
@@ -99,52 +101,60 @@ function VoiceOfEmployeeSupabase({
 
   return (
     <div style={{ marginTop: '30px' }}>
-      <div style={eyebrowStyle}>Anonymous Channel</div>
-      <h3 style={{ marginTop: 0 }}>{title}</h3>
-      <p style={subtextStyle}>
-        Share ideas, blockers, or process improvements anonymously. Names and emails are not shown in this area.
-      </p>
+      {showComposer ? (
+        <>
+          <div style={eyebrowStyle}>Anonymous Channel</div>
+          <h3 style={{ marginTop: 0 }}>{title}</h3>
+          <p style={subtextStyle}>
+            Share ideas, blockers, or process improvements anonymously. Names and emails are not shown in this area.
+          </p>
+        </>
+      ) : (
+        <h3 style={{ marginTop: 0 }}>{title}</h3>
+      )}
 
       {errorMessage ? <div style={errorStyle}>{errorMessage}</div> : null}
       {successMessage ? <div style={successStyle}>{successMessage}</div> : null}
 
-      <div style={panelStyle}>
-        <div style={gridStyle}>
-          <div>
-            <label style={labelStyle}>Category</label>
-            <select value={category} onChange={(e) => setCategory(e.target.value)} style={fieldStyle}>
-              <option value="Idea">Idea</option>
-              <option value="Blocker">Blocker</option>
-              <option value="Process">Process</option>
-              <option value="Recognition">Recognition</option>
-              <option value="Tooling">Tooling</option>
-            </select>
+      {showComposer ? (
+        <div style={panelStyle}>
+          <div style={gridStyle}>
+            <div>
+              <label style={labelStyle}>Category</label>
+              <select value={category} onChange={(e) => setCategory(e.target.value)} style={fieldStyle}>
+                <option value="Idea">Idea</option>
+                <option value="Blocker">Blocker</option>
+                <option value="Process">Process</option>
+                <option value="Recognition">Recognition</option>
+                <option value="Tooling">Tooling</option>
+              </select>
+            </div>
+
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Message</label>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                rows={4}
+                style={fieldStyle}
+                placeholder="What should leadership know?"
+              />
+            </div>
           </div>
 
-          <div style={{ gridColumn: '1 / -1' }}>
-            <label style={labelStyle}>Message</label>
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              rows={4}
-              style={fieldStyle}
-              placeholder="What should leadership know?"
-            />
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => void handleSubmit()} style={primaryButton} disabled={saving}>
+              {saving ? 'Sending...' : 'Send Anonymously'}
+            </button>
+            <button type="button" onClick={() => setMessage('')} style={secondaryButton} disabled={saving}>
+              Clear
+            </button>
           </div>
         </div>
+      ) : null}
 
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <button type="button" onClick={() => void handleSubmit()} style={primaryButton} disabled={saving}>
-            {saving ? 'Sending...' : 'Send Anonymously'}
-          </button>
-          <button type="button" onClick={() => setMessage('')} style={secondaryButton} disabled={saving}>
-            Clear
-          </button>
-        </div>
-      </div>
-
-      <div style={{ marginTop: '20px' }}>
-        <div style={recentTitleStyle}>Recent anonymous themes</div>
+      <div style={{ marginTop: showComposer ? '20px' : '0' }}>
+        {showComposer ? <div style={recentTitleStyle}>Recent anonymous themes</div> : null}
         {loading ? (
           <p style={subtextStyle}>Loading voice submissions...</p>
         ) : visibleItems.length === 0 ? (
