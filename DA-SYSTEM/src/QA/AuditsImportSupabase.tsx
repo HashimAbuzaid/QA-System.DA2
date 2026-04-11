@@ -67,6 +67,17 @@ type SkippedRow = {
   reason: string;
 };
 
+type ExistingAuditRow = {
+  id: string;
+  team: TeamName;
+  agent_id: string;
+  audit_date: string;
+  case_type: string;
+  order_number?: string | null;
+  phone_number?: string | null;
+  ticket_id?: string | null;
+};
+
 const LOCKED_NA_METRICS = new Set(['Active Listening']);
 const AUTO_FAIL_METRICS = new Set(['Hold (≤3 mins)', 'Procedure']);
 const ISSUE_WAS_RESOLVED_METRIC = 'Issue was resolved';
@@ -352,6 +363,43 @@ function getProfileLabel(profile: AgentProfile) {
     : `${profile.agent_name} - ${profile.agent_id || ''}`.trim();
 }
 
+function normalizeCaseType(value?: string | null) {
+  return normalizeText(value).toLowerCase();
+}
+
+function getAuditReferenceKey(audit: {
+  team: TeamName;
+  order_number?: string | null;
+  phone_number?: string | null;
+  ticket_id?: string | null;
+}) {
+  if (audit.team === 'Tickets') {
+    return `ticket:${normalizeText(audit.ticket_id).toLowerCase()}`;
+  }
+
+  return `order:${normalizeText(audit.order_number).toLowerCase()}|phone:${normalizeText(
+    audit.phone_number
+  ).toLowerCase()}`;
+}
+
+function getAuditDuplicateKey(audit: {
+  team: TeamName;
+  agent_id: string;
+  audit_date: string;
+  case_type: string;
+  order_number?: string | null;
+  phone_number?: string | null;
+  ticket_id?: string | null;
+}) {
+  return [
+    audit.team,
+    normalizeAgentId(audit.agent_id),
+    audit.audit_date,
+    normalizeCaseType(audit.case_type),
+    getAuditReferenceKey(audit),
+  ].join('||');
+}
+
 function matchProfile(
   team: TeamName,
   rawAgentName: string,
@@ -558,6 +606,102 @@ function buildTicketsAudit(
   };
 }
 
+
+async function detectDuplicateAudits(
+  team: TeamName,
+  auditsToCheck: ImportableAudit[]
+): Promise<{ uniqueAudits: ImportableAudit[]; duplicateRows: SkippedRow[] }> {
+  if (auditsToCheck.length === 0) {
+    return { uniqueAudits: [], duplicateRows: [] };
+  }
+
+  const duplicateRows: SkippedRow[] = [];
+  const seenCsvKeys = new Set<string>();
+  const csvUniqueAudits: ImportableAudit[] = [];
+
+  for (const audit of auditsToCheck) {
+    const key = getAuditDuplicateKey(audit);
+    if (seenCsvKeys.has(key)) {
+      duplicateRows.push({
+        rowNumber: audit.source_row_number,
+        agentLabel: audit.source_agent_label || audit.agent_name,
+        reason: 'Duplicate audit found in the uploaded CSV.',
+      });
+      continue;
+    }
+
+    seenCsvKeys.add(key);
+    csvUniqueAudits.push(audit);
+  }
+
+  if (csvUniqueAudits.length === 0) {
+    return { uniqueAudits: [], duplicateRows };
+  }
+
+  const agentIds = Array.from(
+    new Set(csvUniqueAudits.map((item) => normalizeAgentId(item.agent_id)).filter(Boolean))
+  );
+  const auditDates = csvUniqueAudits.map((item) => item.audit_date).filter(Boolean);
+  const minDate = [...auditDates].sort()[0];
+  const maxDate = [...auditDates].sort().slice(-1)[0];
+
+  let query = supabase
+    .from('audits')
+    .select(
+      'id, team, agent_id, audit_date, case_type, order_number, phone_number, ticket_id'
+    )
+    .eq('team', team);
+
+  if (agentIds.length > 0) {
+    query = query.in('agent_id', agentIds);
+  }
+
+  if (minDate) {
+    query = query.gte('audit_date', minDate);
+  }
+
+  if (maxDate) {
+    query = query.lte('audit_date', maxDate);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw error;
+  }
+
+  const existingRows = ((data || []) as ExistingAuditRow[]).map((item) =>
+    getAuditDuplicateKey({
+      team: item.team,
+      agent_id: item.agent_id,
+      audit_date: item.audit_date,
+      case_type: item.case_type,
+      order_number: item.order_number || null,
+      phone_number: item.phone_number || null,
+      ticket_id: item.ticket_id || null,
+    })
+  );
+
+  const existingKeySet = new Set(existingRows);
+  const uniqueAudits: ImportableAudit[] = [];
+
+  for (const audit of csvUniqueAudits) {
+    const key = getAuditDuplicateKey(audit);
+    if (existingKeySet.has(key)) {
+      duplicateRows.push({
+        rowNumber: audit.source_row_number,
+        agentLabel: audit.source_agent_label || audit.agent_name,
+        reason: 'Duplicate audit already exists in the audits table.',
+      });
+      continue;
+    }
+
+    uniqueAudits.push(audit);
+  }
+
+  return { uniqueAudits, duplicateRows };
+}
+
 function getThemeVars(): Record<string, string> {
   const themeMode =
     typeof document !== 'undefined'
@@ -705,14 +849,17 @@ function AuditsImportSupabase() {
         }
       });
 
-      setPreparedAudits(nextAudits);
-      setSkippedRows(nextSkipped);
+      const dedupeResult = await detectDuplicateAudits(team, nextAudits);
+      const finalSkippedRows = [...nextSkipped, ...dedupeResult.duplicateRows];
 
-      if (nextAudits.length === 0) {
-        setErrorMessage('No importable audits were found in this CSV.');
+      setPreparedAudits(dedupeResult.uniqueAudits);
+      setSkippedRows(finalSkippedRows);
+
+      if (dedupeResult.uniqueAudits.length === 0) {
+        setErrorMessage('No importable audits were found in this CSV after duplicate detection.');
       } else {
         setSuccessMessage(
-          `${nextAudits.length} ${team} audit row(s) are ready to import. ${nextSkipped.length} row(s) will be skipped.`
+          `${dedupeResult.uniqueAudits.length} ${team} audit row(s) are ready to import. ${finalSkippedRows.length} row(s) will be skipped, including ${dedupeResult.duplicateRows.length} duplicate row(s).`
         );
       }
     } catch (error) {
@@ -733,7 +880,33 @@ function AuditsImportSupabase() {
     setSuccessMessage('');
 
     try {
-      const payload = preparedAudits.map((item) => ({
+      const dedupeResult = await detectDuplicateAudits(detectedTeam, preparedAudits);
+
+      if (dedupeResult.duplicateRows.length > 0) {
+        setPreparedAudits(dedupeResult.uniqueAudits);
+        setSkippedRows((prev) => {
+          const existingKeys = new Set(
+            prev.map((item) => `${item.rowNumber}||${item.agentLabel}||${item.reason}`)
+          );
+          const merged = [...prev];
+          dedupeResult.duplicateRows.forEach((item) => {
+            const key = `${item.rowNumber}||${item.agentLabel}||${item.reason}`;
+            if (!existingKeys.has(key)) {
+              merged.push(item);
+              existingKeys.add(key);
+            }
+          });
+          return merged;
+        });
+
+        if (dedupeResult.uniqueAudits.length === 0) {
+          setErrorMessage('All remaining rows were detected as duplicates. Nothing was imported.');
+          setImporting(false);
+          return;
+        }
+      }
+
+      const payload = dedupeResult.uniqueAudits.map((item) => ({
         agent_id: item.agent_id,
         agent_name: item.agent_name,
         team: item.team,
@@ -760,8 +933,9 @@ function AuditsImportSupabase() {
         if (error) throw error;
       }
 
+      setPreparedAudits([]);
       setSuccessMessage(
-        `${payload.length} ${detectedTeam} audit row(s) imported successfully.`
+        `${payload.length} ${detectedTeam} audit row(s) imported successfully. ${dedupeResult.duplicateRows.length} duplicate row(s) were skipped.`
       );
     } catch (error) {
       setErrorMessage(
@@ -783,6 +957,10 @@ function AuditsImportSupabase() {
 
   const previewRows = useMemo(() => preparedAudits.slice(0, 8), [preparedAudits]);
   const skippedPreviewRows = useMemo(() => skippedRows.slice(0, 20), [skippedRows]);
+  const duplicateRowsCount = useMemo(
+    () => skippedRows.filter((item) => item.reason.toLowerCase().includes('duplicate')).length,
+    [skippedRows]
+  );
 
   if (loading) {
     return <div style={{ color: 'var(--screen-text)' }}>Loading audit import tools...</div>;
@@ -821,7 +999,7 @@ function AuditsImportSupabase() {
               style={fieldStyle}
             />
             <div style={helperTextStyle}>
-              Supported formats: the Calls and Tickets CSV files you uploaded in this chat.
+              Supported formats: the Calls and Tickets CSV files you uploaded in this chat. Duplicate detection checks both the uploaded CSV and existing audits already saved in Supabase.
             </div>
           </div>
 
@@ -878,6 +1056,11 @@ function AuditsImportSupabase() {
         <div style={statCardStyle}>
           <div style={statLabelStyle}>Preview Rows</div>
           <div style={statValueStyle}>{previewRows.length}</div>
+        </div>
+
+        <div style={statCardStyle}>
+          <div style={statLabelStyle}>Duplicates Skipped</div>
+          <div style={statValueStyle}>{duplicateRowsCount}</div>
         </div>
 
         <div style={statCardStyle}>
