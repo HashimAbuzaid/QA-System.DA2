@@ -6,6 +6,7 @@ import {
   type CachedAgentProfile,
   type TeamName,
 } from '../lib/agentProfilesCache';
+import { runAIWritingHelper } from './aiWritingHelper';
 import { usePersistentState } from '../hooks/usePersistentState';
 
 type Metric = {
@@ -342,6 +343,7 @@ function NewAuditSupabase() {
   );
 
   const [saving, setSaving] = useState(false);
+  const [aiWorking, setAiWorking] = useState(false);
   const [loadingAgents, setLoadingAgents] = useState(true);
   const [agentProfiles, setAgentProfiles] = useState<AgentProfile[]>([]);
   const [agentLoadError, setAgentLoadError] = useState('');
@@ -555,6 +557,47 @@ function NewAuditSupabase() {
       agentSearch: getAgentLabel(profile),
     }));
     setIsAgentPickerOpen(false);
+  }
+
+  async function handleRewriteComments() {
+    setErrorMessage('');
+    setSuccessMessage('');
+    if (!draft.comments.trim()) {
+      setErrorMessage('Write comments first, then use Rewrite.');
+      return;
+    }
+    setAiWorking(true);
+    const output = await runAIWritingHelper({
+      task: 'rewrite',
+      text: draft.comments,
+      team: draft.team || null,
+      caseType: draft.caseType,
+    });
+    setAiWorking(false);
+    if (output) {
+      setDraftField('comments', output);
+    }
+  }
+
+  async function handleSuggestAuditComment() {
+    setErrorMessage('');
+    setSuccessMessage('');
+    setAiWorking(true);
+    const failedMetrics = Object.entries(draft.scores)
+      .filter(([, value]) => value === 'Fail' || value === 'Borderline' || value === 'Auto-Fail')
+      .map(([metric]) => metric);
+
+    const output = await runAIWritingHelper({
+      task: 'audit_comment',
+      text: draft.comments,
+      team: draft.team || null,
+      caseType: draft.caseType,
+      failedMetrics,
+    });
+    setAiWorking(false);
+    if (output) {
+      setDraftField('comments', output);
+    }
   }
 
   async function handleSave() {
@@ -1003,6 +1046,24 @@ function NewAuditSupabase() {
                 rows={4}
                 style={fieldStyle}
               />
+              <div style={helperActionRowStyle}>
+                <button
+                  type="button"
+                  onClick={() => void handleRewriteComments()}
+                  disabled={aiWorking}
+                  style={secondaryButton}
+                >
+                  {aiWorking ? 'Working...' : 'Rewrite Comment'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleSuggestAuditComment()}
+                  disabled={aiWorking}
+                  style={secondaryButton}
+                >
+                  Suggest Audit Comment
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1316,6 +1377,13 @@ const scoreValueStyle = {
   fontSize: '36px',
   fontWeight: 800,
   color: 'var(--screen-heading)',
+};
+
+const helperActionRowStyle = {
+  display: 'flex',
+  gap: '10px',
+  flexWrap: 'wrap' as const,
+  marginTop: '12px',
 };
 
 const actionRowStyle = {
