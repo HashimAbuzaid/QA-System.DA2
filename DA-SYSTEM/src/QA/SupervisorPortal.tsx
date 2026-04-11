@@ -3,6 +3,9 @@ import { supabase } from '../lib/supabase';
 import MonitoringWidget from './MonitoringWidget';
 import MonitoringDrawer from './MonitoringDrawer';
 import SupervisorRequestsSupabase from './SupervisorRequestsSupabase';
+import RecognitionWall from './RecognitionWall';
+import DigitalTrophyCabinet from './DigitalTrophyCabinet';
+import VoiceOfEmployeeSupabase from './VoiceOfEmployeeSupabase';
 
 type TeamName = 'Calls' | 'Tickets' | 'Sales';
 
@@ -918,6 +921,10 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
               </div>
             )}
           </Section>
+
+          <DigitalTrophyCabinet scope="team" currentUser={currentUser} />
+          <RecognitionWall compact />
+          <VoiceOfEmployeeSupabase currentUser={currentUser} />
 
           <MonitoringWidget
             count={monitoringItems.length}
