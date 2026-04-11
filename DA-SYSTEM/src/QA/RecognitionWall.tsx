@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { supabase } from '../lib/supabase';
 
 type TeamName = 'Calls' | 'Tickets' | 'Sales';
@@ -14,6 +14,7 @@ type AuditItem = {
   agent_id: string;
   agent_name: string;
   team: TeamName | string;
+  audit_date: string;
   quality_score: number;
   shared_with_agent?: boolean | null;
 };
@@ -22,18 +23,24 @@ type CallsRecord = {
   agent_id: string;
   agent_name: string;
   calls_count: number;
+  call_date?: string | null;
+  date_to?: string | null;
 };
 
 type TicketsRecord = {
   agent_id: string;
   agent_name: string;
   tickets_count: number;
+  ticket_date?: string | null;
+  date_to?: string | null;
 };
 
 type SalesRecord = {
   agent_id: string;
   agent_name: string;
   amount: number;
+  sale_date?: string | null;
+  date_to?: string | null;
 };
 
 type AgentProfile = {
@@ -48,6 +55,7 @@ type RecognitionEntry = {
   value: string;
   subtitle: string;
   badge: string;
+  helper: string;
 };
 
 type RecognitionWallProps = {
@@ -68,6 +76,57 @@ function getAgentKey(agentId?: string | null, agentName?: string | null) {
   return `${normalizeAgentId(agentId)}|${normalizeAgentName(agentName)}`;
 }
 
+function getCurrentMonthBounds() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const start = new Date(year, month, 1).toISOString().slice(0, 10);
+  const end = new Date().toISOString().slice(0, 10);
+  return { start, end };
+}
+
+function matchesRange(startDate?: string | null, endDate?: string | null) {
+  const { start, end } = getCurrentMonthBounds();
+  const recordStart = String(startDate || '').slice(0, 10);
+  const recordEnd = String(endDate || startDate || '').slice(0, 10);
+  if (!recordStart) return false;
+  return recordEnd >= start && recordStart <= end
+}
+
+function getRecognitionThemeVars(): Record<string, string> {
+  const themeMode =
+    typeof document !== 'undefined'
+      ? (
+          document.body.dataset.theme ||
+          document.documentElement.dataset.theme ||
+          window.localStorage.getItem('detroit-axle-theme-mode') ||
+          window.sessionStorage.getItem('detroit-axle-theme-mode') ||
+          window.localStorage.getItem('detroit-axle-theme') ||
+          window.sessionStorage.getItem('detroit-axle-theme') ||
+          ''
+        ).toLowerCase()
+      : '';
+
+  const isLight = themeMode === 'light' || themeMode === 'white';
+
+  return {
+    '--rw-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(247,250,255,0.98) 100%)'
+      : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    '--rw-card-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(245,248,253,0.98) 100%)'
+      : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    '--rw-border': isLight ? 'rgba(203,213,225,0.92)' : 'rgba(148,163,184,0.16)',
+    '--rw-heading': isLight ? '#0f172a' : '#f8fafc',
+    '--rw-text': isLight ? '#334155' : '#e5eefb',
+    '--rw-muted': isLight ? '#64748b' : '#94a3b8',
+    '--rw-accent': isLight ? '#2563eb' : '#60a5fa',
+    '--rw-pill-bg': isLight ? 'rgba(37,99,235,0.10)' : 'rgba(37,99,235,0.18)',
+    '--rw-pill-border': isLight ? 'rgba(59,130,246,0.30)' : 'rgba(96,165,250,0.26)',
+    '--rw-shadow': isLight ? '0 18px 40px rgba(15,23,42,0.10)' : '0 18px 40px rgba(2,6,23,0.35)',
+  };
+}
+
 function RecognitionWall({
   title = 'Recognition Wall',
   compact = false,
@@ -79,6 +138,7 @@ function RecognitionWall({
   const [ticketsRecords, setTicketsRecords] = useState<TicketsRecord[]>([]);
   const [salesRecords, setSalesRecords] = useState<SalesRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const themeVars = getRecognitionThemeVars();
 
   useEffect(() => {
     void loadRecognitionData();
@@ -86,18 +146,12 @@ function RecognitionWall({
 
   async function loadRecognitionData() {
     setLoading(true);
-    const [
-      auditsResult,
-      profilesResult,
-      callsResult,
-      ticketsResult,
-      salesResult,
-    ] = await Promise.all([
-      supabase.from('audits').select('id, agent_id, agent_name, team, quality_score, shared_with_agent'),
+    const [auditsResult, profilesResult, callsResult, ticketsResult, salesResult] = await Promise.all([
+      supabase.from('audits').select('id, agent_id, agent_name, team, audit_date, quality_score, shared_with_agent'),
       supabase.from('profiles').select('agent_id, agent_name, display_name, team').eq('role', 'agent'),
-      supabase.from('calls_records').select('agent_id, agent_name, calls_count'),
-      supabase.from('tickets_records').select('agent_id, agent_name, tickets_count'),
-      supabase.from('sales_records').select('agent_id, agent_name, amount'),
+      supabase.from('calls_records').select('agent_id, agent_name, calls_count, call_date, date_to'),
+      supabase.from('tickets_records').select('agent_id, agent_name, tickets_count, ticket_date, date_to'),
+      supabase.from('sales_records').select('agent_id, agent_name, amount, sale_date, date_to'),
     ]);
 
     setAudits((auditsResult.data as AuditItem[]) || []);
@@ -108,11 +162,7 @@ function RecognitionWall({
     setLoading(false);
   }
 
-  function getAgentLabel(
-    agentId?: string | null,
-    agentName?: string | null,
-    team?: string | null
-  ) {
+  function getAgentLabel(agentId?: string | null, agentName?: string | null, team?: string | null) {
     const key = getAgentKey(agentId, agentName);
     const matched = profiles.find(
       (profile) =>
@@ -132,22 +182,44 @@ function RecognitionWall({
       ? currentUser.team || null
       : null;
 
+  const monthAudits = useMemo(
+    () => audits.filter((audit) => matchesRange(audit.audit_date, audit.audit_date)),
+    [audits]
+  );
+
+  const monthCalls = useMemo(
+    () => callsRecords.filter((record) => matchesRange(record.call_date, record.date_to || null)),
+    [callsRecords]
+  );
+
+  const monthTickets = useMemo(
+    () => ticketsRecords.filter((record) => matchesRange(record.ticket_date, record.date_to || null)),
+    [ticketsRecords]
+  );
+
+  const monthSales = useMemo(
+    () => salesRecords.filter((record) => matchesRange(record.sale_date, record.date_to || null)),
+    [salesRecords]
+  );
+
   const scopedAudits = useMemo(
-    () => audits.filter((audit) => (teamScope ? audit.team === teamScope : true)),
-    [audits, teamScope]
+    () => monthAudits.filter((audit) => (teamScope ? audit.team === teamScope : true)),
+    [monthAudits, teamScope]
   );
 
   const scopedCalls = useMemo(
-    () => (teamScope && teamScope !== 'Calls' ? [] : callsRecords),
-    [callsRecords, teamScope]
+    () => (teamScope && teamScope !== 'Calls' ? [] : monthCalls),
+    [monthCalls, teamScope]
   );
+
   const scopedTickets = useMemo(
-    () => (teamScope && teamScope !== 'Tickets' ? [] : ticketsRecords),
-    [ticketsRecords, teamScope]
+    () => (teamScope && teamScope !== 'Tickets' ? [] : monthTickets),
+    [monthTickets, teamScope]
   );
+
   const scopedSales = useMemo(
-    () => (teamScope && teamScope !== 'Sales' ? [] : salesRecords),
-    [salesRecords, teamScope]
+    () => (teamScope && teamScope !== 'Sales' ? [] : monthSales),
+    [monthSales, teamScope]
   );
 
   const entries = useMemo<RecognitionEntry[]>(() => {
@@ -182,6 +254,7 @@ function RecognitionWall({
         value: `${qualityLeader.average.toFixed(2)}%`,
         subtitle: teamScope ? qualityLeader.label : `${qualityLeader.label} • ${qualityLeader.team}`,
         badge: 'Quality',
+        helper: 'Based on this month audit rankings',
       });
     }
 
@@ -203,6 +276,7 @@ function RecognitionWall({
           value: `${leader.total}`,
           subtitle: leader.label,
           badge: 'Calls',
+          helper: 'Top calls quantity for this month',
         });
       }
     }
@@ -225,6 +299,7 @@ function RecognitionWall({
           value: `${leader.total}`,
           subtitle: leader.label,
           badge: 'Tickets',
+          helper: 'Top tickets quantity for this month',
         });
       }
     }
@@ -247,6 +322,7 @@ function RecognitionWall({
           value: `$${leader.total.toFixed(2)}`,
           subtitle: leader.label,
           badge: 'Sales',
+          helper: 'Top sales amount for this month',
         });
       }
     }
@@ -272,29 +348,38 @@ function RecognitionWall({
         value: `${releasedLeader.count}`,
         subtitle: teamScope ? releasedLeader.label : `${releasedLeader.label} • ${releasedLeader.team}`,
         badge: 'Released',
+        helper: 'Most shared audits this month',
       });
     }
 
-    const maxItems = compact ? 2 : teamScope ? 3 : 4;
-    return results.slice(0, maxItems);
-  }, [scopedAudits, scopedCalls, scopedTickets, scopedSales, teamScope, compact, profiles]);
+    return results;
+  }, [compact, scopedAudits, scopedCalls, scopedTickets, scopedSales, teamScope]);
+
+  const visibleEntries = compact ? entries.slice(0, Math.max(2, entries.length)) : entries;
 
   return (
-    <div style={{ marginTop: '30px' }}>
+    <div data-no-theme-invert="true" style={{ marginTop: '30px', ...(themeVars as CSSProperties) }}>
       <div style={eyebrowStyle}>Recognition</div>
-      <h3 style={{ marginTop: 0 }}>{title}</h3>
+      <div style={headerRowStyle}>
+        <div>
+          <h3 style={{ marginTop: 0, marginBottom: '6px', color: 'var(--rw-heading, #0f172a)' }}>{title}</h3>
+          <p style={subtextStyle}>Based on current month performance rankings.</p>
+        </div>
+      </div>
+
       {loading ? (
-        <p style={{ color: 'var(--screen-muted, #94a3b8)' }}>Loading recognition wall...</p>
-      ) : entries.length === 0 ? (
-        <p style={{ color: 'var(--screen-muted, #94a3b8)' }}>No recognition entries yet.</p>
+        <p style={subtextStyle}>Loading recognition wall...</p>
+      ) : visibleEntries.length === 0 ? (
+        <p style={subtextStyle}>No recognition entries yet for this month.</p>
       ) : (
-        <div style={gridStyle(compact)}>
-          {entries.map((entry) => (
+        <div style={gridStyle(compact, teamScope)}>
+          {visibleEntries.map((entry) => (
             <div key={`${entry.title}-${entry.subtitle}`} style={cardStyle}>
               <div style={badgeStyle}>{entry.badge}</div>
               <div style={titleStyle}>{entry.title}</div>
               <div style={valueStyle}>{entry.value}</div>
               <div style={subtitleStyle}>{entry.subtitle}</div>
+              <div style={helperStyle}>{entry.helper}</div>
             </div>
           ))}
         </div>
@@ -304,7 +389,7 @@ function RecognitionWall({
 }
 
 const eyebrowStyle = {
-  color: 'var(--screen-accent, #60a5fa)',
+  color: 'var(--rw-accent, #2563eb)',
   fontSize: '12px',
   fontWeight: 800,
   letterSpacing: '0.18em',
@@ -312,59 +397,79 @@ const eyebrowStyle = {
   marginBottom: '10px',
 };
 
-const gridStyle = (compact: boolean) => ({
+const headerRowStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'flex-start',
+  gap: '12px',
+  marginBottom: '14px',
+};
+
+const subtextStyle = {
+  color: 'var(--rw-muted, #64748b)',
+  marginTop: 0,
+  marginBottom: 0,
+};
+
+const gridStyle = (compact: boolean, teamScope?: TeamName | null) => ({
   display: 'grid',
-  gridTemplateColumns: compact
-    ? 'repeat(auto-fit, minmax(280px, 1fr))'
-    : 'repeat(auto-fit, minmax(320px, 1fr))',
-  gap: '16px',
+  gridTemplateColumns:
+    compact
+      ? 'repeat(auto-fit, minmax(240px, 1fr))'
+      : teamScope
+      ? 'repeat(auto-fit, minmax(280px, 1fr))'
+      : 'repeat(auto-fit, minmax(260px, 1fr))',
+  gap: '14px',
 });
 
 const cardStyle = {
-  minHeight: '170px',
-  display: 'flex',
-  flexDirection: 'column' as const,
-  justifyContent: 'flex-start',
-  borderRadius: '20px',
-  border: '1px solid var(--screen-border, rgba(148,163,184,0.16))',
-  background:
-    'linear-gradient(135deg, rgba(2, 6, 23, 0.96) 0%, rgba(15, 23, 42, 0.92) 55%, rgba(30, 41, 59, 0.9) 100%)',
-  boxShadow: 'var(--screen-shadow, 0 18px 40px rgba(2,6,23,0.35))',
-  padding: '18px',
+  borderRadius: '22px',
+  border: '1px solid var(--rw-border, rgba(203,213,225,0.92))',
+  background: 'var(--rw-card-bg, #ffffff)',
+  boxShadow: 'var(--rw-shadow, 0 18px 40px rgba(15,23,42,0.10))',
+  padding: '20px',
 };
 
 const badgeStyle = {
   display: 'inline-block',
-  alignSelf: 'flex-start',
   marginBottom: '14px',
-  padding: '6px 10px',
+  padding: '6px 12px',
   borderRadius: '999px',
-  background: 'rgba(37,99,235,0.18)',
-  border: '1px solid rgba(96,165,250,0.26)',
-  color: '#93c5fd',
+  background: 'var(--rw-pill-bg, rgba(37,99,235,0.10))',
+  border: '1px solid var(--rw-pill-border, rgba(59,130,246,0.30))',
+  color: 'var(--rw-accent, #2563eb)',
   fontSize: '12px',
   fontWeight: 800,
 };
 
 const titleStyle = {
-  color: '#f8fafc',
-  fontSize: '18px',
-  fontWeight: 800,
-  marginBottom: '12px',
+  color: 'var(--rw-heading, #0f172a)',
+  fontSize: '28px',
+  fontWeight: 900,
+  lineHeight: 1.2,
+  marginBottom: '14px',
 };
 
 const valueStyle = {
-  color: '#f8fafc',
-  fontSize: '40px',
+  color: 'var(--rw-heading, #0f172a)',
+  fontSize: '42px',
   fontWeight: 900,
-  marginBottom: '12px',
   lineHeight: 1,
+  marginBottom: '12px',
 };
 
 const subtitleStyle = {
-  color: '#e5eefb',
+  color: 'var(--rw-text, #334155)',
   fontSize: '15px',
-  lineHeight: 1.55,
+  lineHeight: 1.5,
+  fontWeight: 700,
+  marginBottom: '8px',
+};
+
+const helperStyle = {
+  color: 'var(--rw-muted, #64748b)',
+  fontSize: '13px',
+  lineHeight: 1.5,
 };
 
 export default RecognitionWall;
