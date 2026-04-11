@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import MonitoringWidget from './MonitoringWidget';
 import MonitoringDrawer from './MonitoringDrawer';
@@ -121,10 +121,9 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
   const [auditDateTo, setAuditDateTo] = useState('');
   const [recordDateFrom, setRecordDateFrom] = useState('');
   const [recordDateTo, setRecordDateTo] = useState('');
-  const [showAuditsSection, setShowAuditsSection] = useState(true);
 
   const agentPickerRef = useRef<HTMLDivElement | null>(null);
-  const themeVars = useMemo(() => getSupervisorThemeVars(), []);
+  const pageRootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     void loadTeamData(false);
@@ -439,18 +438,25 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
     0
   );
 
+  function handleMonitoringWidgetClick() {
+    setMonitoringOpen(true);
+
+    if (pageRootRef.current) {
+      pageRootRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
   if (loading) {
     return <div style={{ color: 'var(--da-muted-text, #cbd5e1)' }}>Loading supervisor portal...</div>;
   }
 
   return (
-    <div
-      data-no-theme-invert="true"
-      style={{
-        ...themeVars,
-        color: 'var(--da-page-text, #0f172a)',
-      }}
-    >
+    <div ref={pageRootRef} data-no-theme-invert="true" style={{ color: 'var(--da-page-text, #e5eefb)' }}>
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Supervisor Portal</div>
@@ -675,21 +681,8 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
             title={`${
               selectedAgent ? 'Filtered' : currentUser.team || 'Team'
             } Audits`}
-            action={
-              <button
-                type="button"
-                onClick={() => setShowAuditsSection((prev) => !prev)}
-                style={secondaryButton}
-              >
-                {showAuditsSection ? 'Hide Audits' : 'Show Audits'}
-              </button>
-            }
           >
-            {!showAuditsSection ? (
-              <p style={sectionMutedTextStyle}>
-                Audits are hidden. Press Show Audits to view them again.
-              </p>
-            ) : filteredAudits.length === 0 ? (
+            {filteredAudits.length === 0 ? (
               <p>No audits found for this selection.</p>
             ) : (
               <div style={auditTableWrapStyle}>
@@ -949,7 +942,7 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
 
           <MonitoringWidget
             count={monitoringItems.length}
-            onClick={() => setMonitoringOpen(true)}
+            onClick={handleMonitoringWidgetClick}
           />
           <MonitoringDrawer
             open={monitoringOpen}
@@ -972,55 +965,6 @@ function SupervisorPortal({ currentUser }: SupervisorPortalProps) {
   );
 }
 
-function getSupervisorThemeVars() {
-  return {
-    '--da-page-text': '#334155',
-    '--da-title': '#0f172a',
-    '--da-subtle-text': '#64748b',
-    '--da-muted-text': '#475569',
-    '--da-accent-text': '#2563eb',
-    '--da-panel-bg':
-      'linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(248,250,252,0.96) 100%)',
-    '--da-panel-border': '1px solid rgba(148,163,184,0.22)',
-    '--da-panel-shadow': '0 14px 34px rgba(15,23,42,0.08)',
-    '--da-surface-bg': 'rgba(241,245,249,0.92)',
-    '--da-card-bg': 'rgba(255,255,255,0.94)',
-    '--da-field-bg': '#ffffff',
-    '--da-field-text': '#0f172a',
-    '--da-field-border': '1px solid rgba(148,163,184,0.28)',
-    '--da-secondary-bg': '#ffffff',
-    '--da-secondary-text': '#334155',
-    '--da-secondary-border': '1px solid rgba(148,163,184,0.24)',
-    '--da-meta-bg': 'rgba(255,255,255,0.92)',
-    '--da-meta-border': '1px solid rgba(148,163,184,0.22)',
-    '--da-meta-text': '#475569',
-    '--da-card-label': '#64748b',
-    '--da-card-value': '#0f172a',
-    '--da-card-subtitle': '#64748b',
-    '--da-team-meta': '#475569',
-    '--da-row-border': '1px solid rgba(148,163,184,0.18)',
-    '--da-pill-bg': 'rgba(37,99,235,0.10)',
-    '--da-pill-text': '#2563eb',
-    '--da-empty-border': '1px dashed rgba(148,163,184,0.28)',
-    '--da-error-bg': 'rgba(254,226,226,0.95)',
-    '--da-error-border': '1px solid rgba(248,113,113,0.30)',
-    '--da-error-text': '#991b1b',
-    '--da-menu-bg': '#ffffff',
-    '--da-option-bg': 'rgba(248,250,252,0.96)',
-    '--da-active-option-bg': 'rgba(37,99,235,0.10)',
-    '--screen-panel-bg':
-      'linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(248,250,252,0.96) 100%)',
-    '--screen-card-bg': 'rgba(255,255,255,0.96)',
-    '--screen-card-soft-bg': 'rgba(248,250,252,0.96)',
-    '--screen-card-border': '1px solid rgba(148,163,184,0.22)',
-    '--screen-shadow': '0 14px 34px rgba(15,23,42,0.08)',
-    '--screen-text': '#334155',
-    '--screen-heading': '#0f172a',
-    '--screen-subtle-text': '#64748b',
-    '--screen-accent': '#2563eb',
-  } as CSSProperties;
-}
-
 function SummaryCard({ title, value }: { title: string; value: string }) {
   return (
     <div style={cardStyle}>
@@ -1034,22 +978,11 @@ function SummaryCard({ title, value }: { title: string; value: string }) {
   );
 }
 
-function Section({
-  title,
-  children,
-  action,
-}: {
-  title: string;
-  children: ReactNode;
-  action?: ReactNode;
-}) {
+function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div style={{ marginTop: '32px' }}>
-      <div style={sectionHeaderRowStyle}>
-        <h3 style={{ margin: 0 }}>{title}</h3>
-        {action ? <div>{action}</div> : null}
-      </div>
-      <div style={{ marginTop: '14px' }}>{children}</div>
+      <h3 style={{ marginBottom: '14px' }}>{title}</h3>
+      {children}
     </div>
   );
 }
@@ -1070,20 +1003,6 @@ const sectionEyebrow = {
   letterSpacing: '0.18em',
   textTransform: 'uppercase' as const,
   marginBottom: '12px',
-};
-
-const sectionHeaderRowStyle = {
-  display: 'flex',
-  gap: '12px',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  flexWrap: 'wrap' as const,
-};
-
-const sectionMutedTextStyle = {
-  color: 'var(--da-subtle-text, #64748b)',
-  fontSize: '14px',
-  margin: 0,
 };
 
 const tabBarStyle = {
@@ -1275,7 +1194,7 @@ const auditHeaderRowStyle = {
   position: 'sticky' as const,
   top: 0,
   zIndex: 1,
-  background: 'rgba(226,232,240,0.96)',
+  background: 'rgba(2,6,23,0.92)',
   color: 'var(--da-accent-text, #93c5fd)',
   fontSize: '12px',
   fontWeight: 800,
@@ -1318,7 +1237,7 @@ const scorePillStyle = {
   minWidth: '84px',
   padding: '8px 10px',
   borderRadius: '999px',
-  background: 'rgba(37, 99, 235, 0.10)',
+  background: 'rgba(37, 99, 235, 0.14)',
   border: '1px solid rgba(96,165,250,0.32)',
   color: 'var(--da-accent-text, #2563eb)',
   fontSize: '13px',
@@ -1467,7 +1386,7 @@ const recordsHeaderRowStyle = {
   position: 'sticky' as const,
   top: 0,
   zIndex: 1,
-  background: 'rgba(226,232,240,0.96)',
+  background: 'rgba(2,6,23,0.92)',
   color: 'var(--da-accent-text, #93c5fd)',
   fontSize: '12px',
   fontWeight: 800,
