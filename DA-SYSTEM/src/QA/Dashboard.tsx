@@ -1651,14 +1651,6 @@ const spotlightPanelStyle = {
   padding: '20px',
 };
 
-const sectionEyebrowStyle = {
-  color: '#3b82f6',
-  fontSize: '12px',
-  fontWeight: 800,
-  letterSpacing: '0.18em',
-  textTransform: 'uppercase' as const,
-  marginBottom: '10px',
-};
 
 const spotlightGridStyle = {
   display: 'grid',
