@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { runAIWritingHelper } from './aiWritingHelper';
 
 type MonitoringStatus = 'active' | 'resolved';
 
@@ -49,7 +48,6 @@ function MonitoringSupabase() {
   const [items, setItems] = useState<MonitoringItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [aiWorking, setAiWorking] = useState(false);
   const [workingId, setWorkingId] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -186,33 +184,7 @@ function MonitoringSupabase() {
     setComment('');
   }
 
-  async function handleRewriteComment() {
-    setErrorMessage('');
-    if (!comment.trim()) {
-      setErrorMessage('Write a comment first, then use Rewrite.');
-      return;
-    }
-    setAiWorking(true);
-    const output = await runAIWritingHelper({
-      task: 'rewrite',
-      text: comment,
-      team: selectedAgent?.team || null,
-    });
-    setAiWorking(false);
-    if (output) setComment(output);
-  }
 
-  async function handleSuggestComment() {
-    setErrorMessage('');
-    setAiWorking(true);
-    const output = await runAIWritingHelper({
-      task: 'monitoring',
-      text: comment,
-      team: selectedAgent?.team || null,
-    });
-    setAiWorking(false);
-    if (output) setComment(output);
-  }
 
   async function handleCreate() {
     setErrorMessage('');
@@ -401,24 +373,6 @@ function MonitoringSupabase() {
               rows={4}
               style={fieldStyle}
             />
-            <div style={helperActionRowStyle}>
-              <button
-                type="button"
-                onClick={() => void handleRewriteComment()}
-                disabled={aiWorking}
-                style={secondaryButton}
-              >
-                {aiWorking ? 'Working...' : 'Rewrite Comment'}
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleSuggestComment()}
-                disabled={aiWorking}
-                style={secondaryButton}
-              >
-                Suggest Monitoring Note
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -666,12 +620,6 @@ const pickerOptionStyle = {
 const pickerOptionActiveStyle = {
   border: '1px solid #2563eb',
   backgroundColor: 'rgba(37,99,235,0.18)',
-};
-const helperActionRowStyle = {
-  display: 'flex',
-  gap: '10px',
-  flexWrap: 'wrap' as const,
-  marginTop: '12px',
 };
 
 const actionRowStyle = {
