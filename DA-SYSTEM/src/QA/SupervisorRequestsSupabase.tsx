@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { runAIWritingHelper } from './aiWritingHelper';
 
 type ProfileRole = 'admin' | 'qa' | 'agent' | 'supervisor';
 type TeamName = 'Calls' | 'Tickets' | 'Sales';
@@ -53,7 +52,6 @@ function SupervisorRequestsSupabase({
   const [loading, setLoading] = useState(true);
   const [loadingAgents, setLoadingAgents] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [aiWorking, setAiWorking] = useState(false);
   const [statusSavingId, setStatusSavingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [agentLoadError, setAgentLoadError] = useState('');
@@ -313,35 +311,7 @@ function SupervisorRequestsSupabase({
     setLoading(false);
   }
 
-  async function handleRewriteRequestNote() {
-    setErrorMessage('');
-    if (!requestNote.trim()) {
-      setErrorMessage('Write a request note first, then use Rewrite.');
-      return;
-    }
-    setAiWorking(true);
-    const output = await runAIWritingHelper({
-      task: 'rewrite',
-      text: requestNote,
-      team: selectedAgent?.team || viewerProfile?.team || null,
-      caseType,
-    });
-    setAiWorking(false);
-    if (output) setRequestNote(output);
-  }
 
-  async function handleSuggestRequestNote() {
-    setErrorMessage('');
-    setAiWorking(true);
-    const output = await runAIWritingHelper({
-      task: 'request',
-      text: requestNote,
-      team: selectedAgent?.team || viewerProfile?.team || null,
-      caseType,
-    });
-    setAiWorking(false);
-    if (output) setRequestNote(output);
-  }
 
   async function handleCreateRequest() {
     if (!viewerProfile || !canCreate) return;
@@ -659,24 +629,6 @@ function SupervisorRequestsSupabase({
                 rows={5}
                 style={fieldStyle}
               />
-              <div style={helperActionRowStyle}>
-                <button
-                  type="button"
-                  onClick={() => void handleRewriteRequestNote()}
-                  disabled={aiWorking}
-                  style={secondaryButton}
-                >
-                  {aiWorking ? 'Working...' : 'Rewrite Note'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleSuggestRequestNote()}
-                  disabled={aiWorking}
-                  style={secondaryButton}
-                >
-                  Suggest Request Note
-                </button>
-              </div>
             </div>
 
             <button
@@ -1036,12 +988,6 @@ const secondaryButton = {
   fontWeight: 700,
 };
 
-const helperActionRowStyle = {
-  display: 'flex',
-  gap: '10px',
-  flexWrap: 'wrap' as const,
-  marginTop: '12px',
-};
 
 const requestsHeaderStyle = {
   display: 'flex',
