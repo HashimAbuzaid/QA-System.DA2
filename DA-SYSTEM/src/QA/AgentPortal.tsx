@@ -208,6 +208,7 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
   const [auditDateTo, setAuditDateTo] = useState('');
   const [lastLoadedAt, setLastLoadedAt] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [auditsVisible, setAuditsVisible] = useState(true);
 
   const themeVars = getThemeVars();
 
@@ -809,6 +810,17 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
       </Section>
 
       <Section title="My Released Audits">
+        <div style={sectionHeaderActionsStyle}>
+          <button
+            type="button"
+            onClick={() => setAuditsVisible((prev) => !prev)}
+            style={miniSecondaryButton}
+          >
+            {auditsVisible ? 'Hide Audits' : 'Show Audits'}
+          </button>
+        </div>
+        {auditsVisible ? (
+          <>
         <div style={{ ...panelStyle, marginTop: '16px' }}>
           <div style={filterGridStyle}>
             <div>
@@ -1010,6 +1022,10 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
             </div>
           </div>
         )}
+          </>
+        ) : (
+          <div style={collapsedMessageStyle}>Audits are hidden for now.</div>
+        )}
       </Section>
 
       {currentUser.team === 'Calls' && (
@@ -1156,7 +1172,7 @@ function AgentPortal({ currentUser }: AgentPortalProps) {
       )}
 
       <DigitalTrophyCabinet scope="agent" currentUser={currentUser} />
-      <RecognitionWall compact />
+      <RecognitionWall compact currentUser={currentUser as any} />
       <QaAcademy team={currentUser.team} />
       <VoiceOfEmployeeSupabase currentUser={currentUser} />
 
@@ -1216,6 +1232,18 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
     </div>
   );
 }
+
+const sectionHeaderActionsStyle = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  marginBottom: '12px',
+};
+
+const collapsedMessageStyle = {
+  color: 'var(--screen-muted, #94a3b8)',
+  fontWeight: 600,
+  padding: '10px 2px',
+};
 
 const pageHeaderStyle = {
   display: 'flex',
