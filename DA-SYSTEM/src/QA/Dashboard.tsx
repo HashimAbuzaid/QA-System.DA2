@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { supabase } from '../lib/supabase';
 import RecognitionWall from './RecognitionWall';
 import DigitalTrophyCabinet from './DigitalTrophyCabinet';
@@ -157,6 +157,103 @@ function openNativeDatePicker(input: HTMLInputElement | null | undefined) {
   }
 }
 
+
+function getDashboardThemeVars(): Record<string, string> {
+  const themeMode =
+    typeof document !== 'undefined'
+      ? (
+          document.body.dataset.theme ||
+          document.documentElement.dataset.theme ||
+          window.localStorage.getItem('detroit-axle-theme-mode') ||
+          window.sessionStorage.getItem('detroit-axle-theme-mode') ||
+          window.localStorage.getItem('detroit-axle-theme') ||
+          window.sessionStorage.getItem('detroit-axle-theme') ||
+          ''
+        ).toLowerCase()
+      : '';
+
+  const isLight = themeMode === 'light' || themeMode === 'white';
+
+  return {
+    '--da-page-text': isLight ? '#334155' : '#e5eefb',
+    '--da-title': isLight ? '#0f172a' : '#f8fafc',
+    '--da-subtitle': isLight ? '#64748b' : '#94a3b8',
+    '--da-muted-text': isLight ? '#475569' : '#cbd5e1',
+    '--da-subtle-text': isLight ? '#64748b' : '#94a3b8',
+    '--da-card-label': isLight ? '#64748b' : '#94a3b8',
+    '--da-card-value': isLight ? '#0f172a' : '#f8fafc',
+    '--da-card-subtitle': isLight ? '#64748b' : '#94a3b8',
+    '--da-team-meta': isLight ? '#475569' : '#cbd5e1',
+    '--da-accent-text': isLight ? '#2563eb' : '#60a5fa',
+    '--da-eyebrow': isLight ? '#3b82f6' : '#60a5fa',
+    '--da-section-eyebrow': isLight ? '#3b82f6' : '#93c5fd',
+    '--da-panel-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(247,250,255,0.96) 100%)'
+      : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    '--da-panel-border': isLight
+      ? '1px solid rgba(203,213,225,0.92)'
+      : '1px solid rgba(148,163,184,0.14)',
+    '--da-panel-shadow': isLight
+      ? '0 18px 40px rgba(15,23,42,0.10)'
+      : '0 18px 40px rgba(2,6,23,0.35)',
+    '--da-card-bg': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.52)',
+    '--da-row-border': isLight
+      ? '1px solid rgba(203,213,225,0.92)'
+      : '1px solid rgba(148,163,184,0.16)',
+    '--da-empty-border': isLight
+      ? '1px dashed rgba(203,213,225,0.92)'
+      : '1px dashed rgba(148,163,184,0.24)',
+    '--da-field-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(250,252,255,0.98) 100%)'
+      : 'rgba(15,23,42,0.74)',
+    '--da-field-border': isLight
+      ? '1px solid rgba(203,213,225,0.92)'
+      : '1px solid rgba(148,163,184,0.18)',
+    '--da-field-text': isLight ? '#334155' : '#e5eefb',
+    '--da-secondary-bg': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.74)',
+    '--da-secondary-text': isLight ? '#475569' : '#e5eefb',
+    '--da-secondary-border': isLight
+      ? '1px solid rgba(203,213,225,0.92)'
+      : '1px solid rgba(148,163,184,0.18)',
+    '--da-meta-bg': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.62)',
+    '--da-meta-border': isLight
+      ? '1px solid rgba(203,213,225,0.92)'
+      : '1px solid rgba(148,163,184,0.14)',
+    '--da-meta-text': isLight ? '#475569' : '#cbd5e1',
+    '--da-pill-bg': isLight ? 'rgba(37,99,235,0.10)' : 'rgba(37,99,235,0.14)',
+    '--da-pill-text': isLight ? '#2563eb' : '#93c5fd',
+    '--da-rank-badge-bg': isLight ? 'rgba(37,99,235,0.10)' : 'rgba(37,99,235,0.14)',
+    '--da-rank-badge-text': isLight ? '#2563eb' : '#60a5fa',
+    '--da-error-bg': isLight ? 'rgba(254,242,242,0.98)' : 'rgba(127,29,29,0.24)',
+    '--da-error-border': isLight
+      ? '1px solid rgba(248,113,113,0.28)'
+      : '1px solid rgba(248,113,113,0.22)',
+    '--da-error-text': isLight ? '#b91c1c' : '#fecaca',
+    '--screen-panel-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(247,250,255,0.96) 100%)'
+      : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    '--screen-card-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(248,250,255,0.97) 100%)'
+      : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.68) 100%)',
+    '--screen-card-soft-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(245,248,253,0.96) 100%)'
+      : 'rgba(15,23,42,0.52)',
+    '--screen-heading': isLight ? '#0f172a' : '#f8fafc',
+    '--screen-text': isLight ? '#334155' : '#e5eefb',
+    '--screen-muted': isLight ? '#64748b' : '#94a3b8',
+    '--screen-subtle': isLight ? '#64748b' : '#94a3b8',
+    '--screen-border': isLight ? 'rgba(203,213,225,0.92)' : 'rgba(148,163,184,0.14)',
+    '--screen-shadow': isLight
+      ? '0 18px 40px rgba(15,23,42,0.10)'
+      : '0 18px 40px rgba(2,6,23,0.35)',
+    '--screen-pill-bg': isLight ? 'rgba(37,99,235,0.10)' : 'rgba(37,99,235,0.18)',
+    '--screen-pill-border': isLight ? 'rgba(59,130,246,0.24)' : 'rgba(96,165,250,0.26)',
+    '--screen-soft-fill': isLight ? 'rgba(248,250,252,0.98)' : 'rgba(15,23,42,0.48)',
+    '--screen-soft-fill-2': isLight ? 'rgba(241,245,249,0.98)' : 'rgba(15,23,42,0.62)',
+    '--screen-note-bg': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.52)',
+  };
+}
+
 function Dashboard({
   currentUser = null,
 }: {
@@ -183,6 +280,7 @@ function Dashboard({
   const [lastLoadedAt, setLastLoadedAt] = useState('');
   const dateFromInputRef = useRef<HTMLInputElement | null>(null);
   const dateToInputRef = useRef<HTMLInputElement | null>(null);
+  const themeVars = getDashboardThemeVars();
   const roleSpotlight = useMemo(() => {
     const role = currentUser?.role || 'qa';
 
@@ -779,7 +877,10 @@ function Dashboard({
   }
 
   return (
-    <div style={{ color: 'var(--da-page-text, #e5eefb)' }}>
+    <div
+      data-no-theme-invert="true"
+      style={{ color: 'var(--da-page-text, #e5eefb)', ...(themeVars as CSSProperties) }}
+    >
       <div style={heroStyle}>
         <div>
           <div style={eyebrowStyle}>Operations Overview</div>
