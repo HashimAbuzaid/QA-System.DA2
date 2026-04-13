@@ -54,7 +54,7 @@ function getDrawerThemeVars(): Record<string, string> {
 
   const isLight = themeMode === 'light' || themeMode === 'white';
   const isCompact = typeof window !== 'undefined' ? window.innerWidth < 900 : false;
-  const topOffset = isCompact ? 0 : 176;
+  const topOffset = isCompact ? 0 : 146;
 
   return {
     '--md-overlay': isLight ? 'rgba(15,23,42,0.16)' : 'rgba(2,6,23,0.56)',
@@ -245,25 +245,25 @@ function MonitoringDrawer({
 
 const overlayStyle = {
   position: 'fixed' as const,
-  inset: 'var(--md-top, 176px) 0 0 0',
+  inset: 'var(--md-top, 146px) 0 0 0',
   background: 'var(--md-overlay, rgba(2,6,23,0.56))',
   zIndex: 70,
 };
 
 const drawerStyle = {
   position: 'fixed' as const,
-  top: 'var(--md-top, 176px)',
+  top: 'var(--md-top, 146px)',
   right: 0,
-  width: '440px',
+  width: '420px',
   maxWidth: '100vw',
-  height: 'var(--md-height, calc(100vh - 176px))',
+  height: 'var(--md-height, calc(100vh - 146px))',
   zIndex: 71,
   background: 'var(--md-bg, linear-gradient(180deg, rgba(7,17,31,0.98) 0%, rgba(11,19,36,0.96) 100%))',
   borderLeft: '1px solid var(--md-border, rgba(148,163,184,0.16))',
   borderTop: '1px solid var(--md-border, rgba(148,163,184,0.16))',
   borderTopLeftRadius: 'var(--md-radius, 28px 0 0 28px)',
   boxShadow: 'var(--md-shadow, -16px 0 40px rgba(2,6,23,0.42))',
-  padding: '26px 22px 22px',
+  padding: '22px',
   overflowY: 'auto' as const,
   color: 'var(--md-text, #e5eefb)',
 };
@@ -306,7 +306,7 @@ const closeButtonStyle = {
   fontSize: '22px',
   fontWeight: 900,
   lineHeight: 1,
-  boxShadow: '0 12px 28px rgba(15,23,42,0.10)',
+  boxShadow: '0 12px 28px rgba(15,23,42,0.14)',
 };
 
 const filterWrapStyle = {
@@ -345,7 +345,7 @@ const countPillStyle = {
   borderRadius: '999px',
   background: 'var(--md-pill-bg, rgba(37,99,235,0.18))',
   border: '1px solid var(--md-pill-border, rgba(96,165,250,0.2))',
-  color: 'var(--md-title, #2563eb)',
+  color: '#93c5fd',
   fontSize: '12px',
   fontWeight: 800,
   marginBottom: '16px',
@@ -361,7 +361,7 @@ const emptyStateStyle = {
   borderRadius: '16px',
   border: '1px dashed var(--md-border, rgba(203,213,225,0.92))',
   backgroundColor: 'var(--md-empty-bg, rgba(241,245,249,0.98))',
-  color: 'var(--md-text, #334155)',
+  color: 'var(--md-muted, #64748b)',
   textAlign: 'center' as const,
 };
 
