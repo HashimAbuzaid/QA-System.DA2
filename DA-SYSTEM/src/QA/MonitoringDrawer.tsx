@@ -54,7 +54,7 @@ function getDrawerThemeVars(): Record<string, string> {
 
   const isLight = themeMode === 'light' || themeMode === 'white';
   const isCompact = typeof window !== 'undefined' ? window.innerWidth < 900 : false;
-  const topOffset = isCompact ? 0 : 146;
+  const topOffset = isCompact ? 0 : 190;
 
   return {
     '--md-overlay': isLight ? 'rgba(15,23,42,0.16)' : 'rgba(2,6,23,0.56)',
