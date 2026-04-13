@@ -1927,8 +1927,9 @@ const spotlightPanelStyle = {
 
 const spotlightGridStyle = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-  gap: '14px',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+  gap: '16px',
+  alignItems: 'stretch',
 };
 
 const spotlightCardStyle = {
@@ -1936,6 +1937,9 @@ const spotlightCardStyle = {
   border: '1px solid rgba(148,163,184,0.14)',
   background: 'var(--screen-card-soft-bg, rgba(15,23,42,0.52))',
   padding: '18px',
+  display: 'flex',
+  flexDirection: 'column' as const,
+  minHeight: '100%',
 };
 
 const spotlightCardTitleStyle = {
@@ -1948,21 +1952,24 @@ const spotlightCardTextStyle = {
   color: 'var(--screen-text, #e5eefb)',
   lineHeight: 1.6,
   fontSize: '14px',
+  minHeight: '48px',
 };
 
 
 const spotlightStatGridStyle = {
   display: 'grid',
-  gap: '8px',
-  marginTop: '14px',
+  gap: '10px',
+  marginTop: 'auto',
+  paddingTop: '16px',
 };
 
 const spotlightStatRowStyle = {
   display: 'grid',
-  gridTemplateColumns: '110px minmax(0, 1fr)',
+  gridTemplateColumns: '120px minmax(0, 1fr)',
   alignItems: 'center',
-  gap: '12px',
-  padding: '12px 14px',
+  gap: '14px',
+  padding: '14px 16px',
+  minHeight: '58px',
   borderRadius: '14px',
   border: '1px solid rgba(148,163,184,0.14)',
   background: 'rgba(255,255,255,0.78)',
@@ -1983,6 +1990,7 @@ const spotlightStatValueStyle = {
   fontWeight: 800,
   lineHeight: 1.5,
   wordBreak: 'break-word' as const,
+  textAlign: 'left' as const,
 };
 
 export default Dashboard;
