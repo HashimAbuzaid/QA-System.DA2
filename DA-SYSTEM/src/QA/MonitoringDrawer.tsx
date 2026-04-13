@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { supabase } from '../lib/supabase';
 
 type MonitoringItem = {
@@ -53,18 +53,32 @@ function getDrawerThemeVars(): Record<string, string> {
       : '';
 
   const isLight = themeMode === 'light' || themeMode === 'white';
+  const isCompact = typeof window !== 'undefined' ? window.innerWidth < 900 : false;
+  const topOffset = isCompact ? 0 : 146;
 
   return {
-    '--md-overlay': isLight ? 'rgba(15,23,42,0.18)' : 'rgba(2,6,23,0.56)',
+    '--md-overlay': isLight ? 'rgba(15,23,42,0.16)' : 'rgba(2,6,23,0.56)',
     '--md-bg': isLight
-      ? 'linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(247,250,255,0.98) 100%)'
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.995) 0%, rgba(247,250,255,0.985) 100%)'
       : 'linear-gradient(180deg, rgba(7,17,31,0.98) 0%, rgba(11,19,36,0.96) 100%)',
     '--md-border': isLight ? 'rgba(203,213,225,0.92)' : 'rgba(148,163,184,0.16)',
     '--md-text': isLight ? '#334155' : '#e5eefb',
     '--md-title': isLight ? '#0f172a' : '#f8fafc',
     '--md-muted': isLight ? '#64748b' : '#94a3b8',
-    '--md-field': isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.78)',
-    '--md-pill': isLight ? 'rgba(37,99,235,0.10)' : 'rgba(37,99,235,0.18)',
+    '--md-field-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(250,252,255,0.98) 100%)'
+      : 'rgba(15,23,42,0.78)',
+    '--md-field-border': isLight ? 'rgba(203,213,225,0.92)' : 'rgba(148,163,184,0.18)',
+    '--md-pill-bg': isLight ? 'rgba(37,99,235,0.10)' : 'rgba(37,99,235,0.18)',
+    '--md-pill-border': isLight ? 'rgba(59,130,246,0.24)' : 'rgba(96,165,250,0.20)',
+    '--md-item-bg': isLight
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(245,248,253,0.98) 100%)'
+      : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.66) 100%)',
+    '--md-empty-bg': isLight ? 'rgba(241,245,249,0.98)' : 'rgba(15,23,42,0.52)',
+    '--md-shadow': isLight ? '-16px 0 40px rgba(15,23,42,0.12)' : '-16px 0 40px rgba(2,6,23,0.42)',
+    '--md-top': `${topOffset}px`,
+    '--md-height': isCompact ? '100vh' : `calc(100vh - ${topOffset}px)`,
+    '--md-radius': isCompact ? '0px' : '28px 0 0 28px',
   };
 }
 
@@ -121,16 +135,21 @@ function MonitoringDrawer({
 
   return (
     <>
-      <div style={{ ...overlayStyle, ...(themeVars as any) }} onClick={onClose} />
-      <aside style={{ ...drawerStyle, ...(themeVars as any) }}>
+      <div style={{ ...overlayStyle, ...(themeVars as CSSProperties) }} onClick={onClose} />
+      <aside style={{ ...drawerStyle, ...(themeVars as CSSProperties) }}>
         <div style={headerStyle}>
           <div>
             <div style={eyebrowStyle}>Monitoring</div>
-            <h3 style={{ margin: 0 }}>
+            <h3 style={titleStyle}>
               {mode === 'agent' ? 'My Monitoring Items' : 'Team Monitoring'}
             </h3>
           </div>
-          <button type="button" aria-label="Close monitoring" onClick={onClose} style={closeButtonStyle}>
+          <button
+            type="button"
+            aria-label="Close monitoring"
+            onClick={onClose}
+            style={closeButtonStyle}
+          >
             ✕
           </button>
         </div>
@@ -153,9 +172,7 @@ function MonitoringDrawer({
           </div>
         ) : null}
 
-        {errorMessage ? (
-          <div style={errorBannerStyle}>{errorMessage}</div>
-        ) : null}
+        {errorMessage ? <div style={errorBannerStyle}>{errorMessage}</div> : null}
 
         <div style={countPillStyle}>
           {filteredItems.length} active monitoring item
@@ -203,9 +220,7 @@ function MonitoringDrawer({
                     <div style={acknowledgedPillStyle}>
                       Acknowledged
                       {item.acknowledged_at
-                        ? ` • ${new Date(
-                            item.acknowledged_at
-                          ).toLocaleString()}`
+                        ? ` • ${new Date(item.acknowledged_at).toLocaleString()}`
                         : ''}
                     </div>
                   ) : (
@@ -230,22 +245,24 @@ function MonitoringDrawer({
 
 const overlayStyle = {
   position: 'fixed' as const,
-  inset: 0,
+  inset: 'var(--md-top, 146px) 0 0 0',
   background: 'var(--md-overlay, rgba(2,6,23,0.56))',
   zIndex: 70,
 };
 
 const drawerStyle = {
   position: 'fixed' as const,
-  top: 0,
+  top: 'var(--md-top, 146px)',
   right: 0,
   width: '420px',
   maxWidth: '100vw',
-  height: '100vh',
+  height: 'var(--md-height, calc(100vh - 146px))',
   zIndex: 71,
   background: 'var(--md-bg, linear-gradient(180deg, rgba(7,17,31,0.98) 0%, rgba(11,19,36,0.96) 100%))',
   borderLeft: '1px solid var(--md-border, rgba(148,163,184,0.16))',
-  boxShadow: '-16px 0 40px rgba(2,6,23,0.42)',
+  borderTop: '1px solid var(--md-border, rgba(148,163,184,0.16))',
+  borderTopLeftRadius: 'var(--md-radius, 28px 0 0 28px)',
+  boxShadow: 'var(--md-shadow, -16px 0 40px rgba(2,6,23,0.42))',
   padding: '22px',
   overflowY: 'auto' as const,
   color: 'var(--md-text, #e5eefb)',
@@ -254,9 +271,16 @@ const drawerStyle = {
 const headerStyle = {
   display: 'flex',
   justifyContent: 'space-between',
-  alignItems: 'center',
+  alignItems: 'flex-start',
   gap: '12px',
   marginBottom: '18px',
+};
+
+const titleStyle = {
+  margin: 0,
+  color: 'var(--md-title, #0f172a)',
+  fontSize: '20px',
+  fontWeight: 800,
 };
 
 const eyebrowStyle = {
@@ -269,20 +293,20 @@ const eyebrowStyle = {
 };
 
 const closeButtonStyle = {
-  width: '44px',
-  height: '44px',
+  width: '48px',
+  height: '48px',
   borderRadius: '999px',
-  border: '1px solid rgba(255,255,255,0.82)',
+  border: '1px solid var(--md-border, rgba(203,213,225,0.92))',
   background: 'rgba(255,255,255,0.98)',
   color: '#0f172a',
   cursor: 'pointer',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  fontSize: '20px',
+  fontSize: '22px',
   fontWeight: 900,
   lineHeight: 1,
-  boxShadow: '0 10px 24px rgba(2,6,23,0.28)',
+  boxShadow: '0 12px 28px rgba(15,23,42,0.14)',
 };
 
 const filterWrapStyle = {
@@ -292,7 +316,7 @@ const filterWrapStyle = {
 };
 
 const labelStyle = {
-  color: '#cbd5e1',
+  color: 'var(--md-muted, #64748b)',
   fontWeight: 700,
   fontSize: '13px',
 };
@@ -301,9 +325,9 @@ const fieldStyle = {
   width: '100%',
   padding: '12px 14px',
   borderRadius: '12px',
-  border: '1px solid rgba(148,163,184,0.16)',
-  background: 'rgba(15,23,42,0.7)',
-  color: 'var(--md-text, #e5eefb)',
+  border: '1px solid var(--md-field-border, rgba(203,213,225,0.92))',
+  background: 'var(--md-field-bg, rgba(255,255,255,0.98))',
+  color: 'var(--md-text, #334155)',
 };
 
 const errorBannerStyle = {
@@ -311,17 +335,17 @@ const errorBannerStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
   border: '1px solid rgba(248, 113, 113, 0.22)',
-  background: 'rgba(127, 29, 29, 0.24)',
-  color: '#fecaca',
+  background: 'rgba(127, 29, 29, 0.12)',
+  color: '#b91c1c',
 };
 
 const countPillStyle = {
   display: 'inline-flex',
   padding: '8px 12px',
   borderRadius: '999px',
-  background: 'rgba(37,99,235,0.16)',
-  border: '1px solid rgba(96,165,250,0.2)',
-  color: '#bfdbfe',
+  background: 'var(--md-pill-bg, rgba(37,99,235,0.18))',
+  border: '1px solid var(--md-pill-border, rgba(96,165,250,0.2))',
+  color: '#93c5fd',
   fontSize: '12px',
   fontWeight: 800,
   marginBottom: '16px',
@@ -335,18 +359,18 @@ const listStyle = {
 const emptyStateStyle = {
   padding: '18px',
   borderRadius: '16px',
-  border: '1px dashed rgba(148,163,184,0.24)',
-  backgroundColor: 'rgba(15,23,42,0.52)',
-  color: '#94a3b8',
+  border: '1px dashed var(--md-border, rgba(203,213,225,0.92))',
+  backgroundColor: 'var(--md-empty-bg, rgba(241,245,249,0.98))',
+  color: 'var(--md-muted, #64748b)',
   textAlign: 'center' as const,
 };
 
 const itemCardStyle = {
   padding: '18px',
   borderRadius: '18px',
-  border: '1px solid rgba(148,163,184,0.14)',
-  background:
-    'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.66) 100%)',
+  border: '1px solid var(--md-border, rgba(203,213,225,0.92))',
+  background: 'var(--md-item-bg, #ffffff)',
+  boxShadow: '0 14px 30px rgba(15,23,42,0.08)',
 };
 
 const topRowStyle = {
@@ -359,27 +383,27 @@ const topRowStyle = {
 
 const orderNumberStyle = {
   fontWeight: 800,
-  color: 'var(--md-title, #f8fafc)',
+  color: 'var(--md-title, #0f172a)',
   fontSize: '16px',
 };
 
 const statusPillStyle = {
   padding: '6px 10px',
   borderRadius: '999px',
-  background: 'var(--md-pill, rgba(37,99,235,0.18))',
-  color: '#bfdbfe',
+  background: 'var(--md-pill-bg, rgba(37,99,235,0.18))',
+  color: '#2563eb',
   fontSize: '11px',
   fontWeight: 800,
 };
 
 const commentStyle = {
-  color: '#e2e8f0',
+  color: 'var(--md-text, #334155)',
   lineHeight: 1.55,
   marginBottom: '12px',
 };
 
 const metaTextStyle = {
-  color: '#94a3b8',
+  color: 'var(--md-muted, #64748b)',
   fontSize: '13px',
   marginBottom: '10px',
 };
@@ -387,7 +411,7 @@ const metaTextStyle = {
 const metaGridStyle = {
   display: 'grid',
   gap: '8px',
-  color: '#cbd5e1',
+  color: 'var(--md-muted, #64748b)',
   fontSize: '13px',
   marginBottom: '12px',
 };
@@ -406,9 +430,9 @@ const acknowledgedPillStyle = {
   display: 'inline-flex',
   padding: '8px 12px',
   borderRadius: '999px',
-  background: 'rgba(22,101,52,0.18)',
+  background: 'rgba(22,101,52,0.12)',
   border: '1px solid rgba(74,222,128,0.2)',
-  color: '#bbf7d0',
+  color: '#166534',
   fontSize: '12px',
   fontWeight: 800,
 };
