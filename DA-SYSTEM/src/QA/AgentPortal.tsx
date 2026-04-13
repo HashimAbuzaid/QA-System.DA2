@@ -156,7 +156,7 @@ function getThemeVars(): Record<string, string> {
   return {
     '--screen-text': isLight ? '#334155' : '#e5eefb',
     '--screen-heading': isLight ? '#0f172a' : '#f8fafc',
-    '--screen-muted': isLight ? '#8a98b3' : '#94a3b8',
+    '--screen-muted': isLight ? '#64748b' : '#94a3b8',
     '--screen-subtle': isLight ? '#64748b' : '#64748b',
     '--screen-accent': isLight ? '#2563eb' : '#60a5fa',
     '--screen-panel-bg': isLight
