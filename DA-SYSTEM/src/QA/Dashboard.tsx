@@ -316,7 +316,7 @@ function Dashboard({
       return {
         title: 'Admin Spotlight',
         cards: [
-          { title: 'System Pulse', description: 'Watch uploads, released audits, and cross-team quality trends from one place.' },
+          { title: 'System Pulse', description: 'Watch production uploads, released audits, and cross-team quality trends from one place.' },
           { title: 'People Ops', description: 'Use reports, accounts, and recognition to keep every team aligned.' },
           { title: 'Action Queue', description: 'Review feedback, monitoring, and supervisor requests that need attention.' },
         ],
@@ -946,7 +946,7 @@ function Dashboard({
   function getSpotlightStats(cardTitle: string) {
     if (cardTitle === 'System Pulse') {
       return [
-        { label: 'Uploads', value: `${uploadsRowCount}` },
+        { label: 'Upload Rows', value: `${uploadsRowCount}` },
         { label: 'Released', value: `${releasedAudits}` },
         { label: 'Trend', value: crossTeamTrendLabel },
       ];
@@ -1936,6 +1936,9 @@ const spotlightCardStyle = {
   border: '1px solid rgba(148,163,184,0.14)',
   background: 'var(--screen-card-soft-bg, rgba(15,23,42,0.52))',
   padding: '18px',
+  display: 'grid',
+  alignContent: 'start',
+  gap: '10px',
 };
 
 const spotlightCardTitleStyle = {
@@ -1948,27 +1951,30 @@ const spotlightCardTextStyle = {
   color: 'var(--screen-text, #e5eefb)',
   lineHeight: 1.6,
   fontSize: '14px',
+  marginBottom: '2px',
 };
 
 
 const spotlightStatGridStyle = {
   display: 'grid',
-  gap: '8px',
-  marginTop: '14px',
+  gap: '10px',
+  marginTop: '10px',
 };
 
 const spotlightStatRowStyle = {
   display: 'grid',
-  gap: '4px',
-  padding: '10px 12px',
+  gridTemplateColumns: '120px minmax(0, 1fr)',
+  alignItems: 'center',
+  gap: '10px',
+  padding: '12px 14px',
   borderRadius: '14px',
   border: '1px solid rgba(148,163,184,0.14)',
-  background: 'rgba(255,255,255,0.64)',
+  background: 'var(--screen-field-bg, rgba(255,255,255,0.64))',
 };
 
 const spotlightStatLabelStyle = {
   color: 'var(--screen-muted, #64748b)',
-  fontSize: '12px',
+  fontSize: '11px',
   fontWeight: 800,
   letterSpacing: '0.08em',
   textTransform: 'uppercase' as const,
@@ -1979,6 +1985,8 @@ const spotlightStatValueStyle = {
   fontSize: '14px',
   fontWeight: 800,
   lineHeight: 1.5,
+  textAlign: 'right' as const,
+  wordBreak: 'break-word' as const,
 };
 
 export default Dashboard;
