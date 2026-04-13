@@ -268,7 +268,6 @@ function RecognitionWall({
     [monthSales, teamScope]
   );
 
-
   const entries = useMemo<RecognitionEntry[]>(() => {
     const results: RecognitionEntry[] = [];
 
@@ -281,7 +280,7 @@ function RecognitionWall({
           subtitle: qualityLeader.label,
           badge: 'Quality',
           helper: 'Based on this month audit rankings',
-          featured: true,
+          kind: 'quality',
         });
       }
 
@@ -294,6 +293,7 @@ function RecognitionWall({
             subtitle: leader.label,
             badge: 'Calls',
             helper: 'Top calls quantity for this month',
+            kind: 'volume',
           });
         }
       }
@@ -307,6 +307,7 @@ function RecognitionWall({
             subtitle: leader.label,
             badge: 'Tickets',
             helper: 'Top tickets quantity for this month',
+            kind: 'volume',
           });
         }
       }
@@ -320,6 +321,7 @@ function RecognitionWall({
             subtitle: leader.label,
             badge: 'Sales',
             helper: 'Top sales amount for this month',
+            kind: 'volume',
           });
         }
       }
@@ -332,7 +334,7 @@ function RecognitionWall({
           subtitle: callsQualityLeader.label,
           badge: 'Calls Quality',
           helper: 'Based on this month audit rankings',
-          featured: true,
+          kind: 'quality',
         });
       }
 
@@ -344,7 +346,7 @@ function RecognitionWall({
           subtitle: ticketsQualityLeader.label,
           badge: 'Tickets Quality',
           helper: 'Based on this month audit rankings',
-          featured: true,
+          kind: 'quality',
         });
       }
 
@@ -356,6 +358,7 @@ function RecognitionWall({
           subtitle: callsLeader.label,
           badge: 'Calls',
           helper: 'Top calls quantity for this month',
+          kind: 'volume',
         });
       }
 
@@ -367,6 +370,7 @@ function RecognitionWall({
           subtitle: ticketsLeader.label,
           badge: 'Tickets',
           helper: 'Top tickets quantity for this month',
+          kind: 'volume',
         });
       }
 
@@ -378,6 +382,7 @@ function RecognitionWall({
           subtitle: salesLeader.label,
           badge: 'Sales',
           helper: 'Top sales amount for this month',
+          kind: 'volume',
         });
       }
     }
@@ -407,14 +412,13 @@ function RecognitionWall({
         subtitle: teamScope ? releasedLeader.label : `${releasedLeader.label} • ${releasedLeader.team}`,
         badge: 'Released',
         helper: 'Most shared audits this month',
+        kind: 'released',
       });
     }
 
-    return compact ? results.slice(0, 4) : results;
+    return compact ? results.slice(0, 3) : results;
   }, [compact, scopedAudits, scopedCalls, scopedTickets, scopedSales, teamScope]);
 
-  const featuredEntries = entries.filter((entry) => entry.featured);
-  const standardEntries = entries.filter((entry) => !entry.featured);
   return (
     <div data-no-theme-invert="true" style={{ marginTop: '30px', ...(themeVars as CSSProperties) }}>
       <div style={eyebrowStyle}>Recognition</div>
@@ -430,34 +434,16 @@ function RecognitionWall({
       ) : entries.length === 0 ? (
         <p style={subtextStyle}>No recognition entries yet for this month.</p>
       ) : (
-        <div style={{ display: 'grid', gap: '16px' }}>
-          {featuredEntries.length > 0 ? (
-            <div style={featuredGridStyle(compact, teamScope, featuredEntries.length)}>
-              {featuredEntries.map((entry) => (
-                <div key={`${entry.title}-${entry.subtitle}`} style={featuredCardStyle}>
-                  <div style={badgeStyle}>{entry.badge}</div>
-                  <div style={featuredTitleStyle}>{entry.title}</div>
-                  <div style={featuredValueStyle}>{entry.value}</div>
-                  <div style={featuredSubtitleStyle}>{entry.subtitle}</div>
-                  <div style={helperStyle}>{entry.helper}</div>
-                </div>
-              ))}
+        <div style={gridStyle(compact, teamScope, entries.length)}>
+          {entries.map((entry) => (
+            <div key={`${entry.title}-${entry.subtitle}`} style={cardStyle}>
+              <div style={badgeStyle}>{entry.badge}</div>
+              <div style={titleStyle}>{entry.title}</div>
+              <div style={valueStyle}>{entry.value}</div>
+              <div style={subtitleStyle}>{entry.subtitle}</div>
+              <div style={helperStyle}>{entry.helper}</div>
             </div>
-          ) : null}
-
-          {standardEntries.length > 0 ? (
-            <div style={gridStyle(compact, teamScope, standardEntries.length)}>
-              {standardEntries.map((entry) => (
-                <div key={`${entry.title}-${entry.subtitle}`} style={cardStyle}>
-                  <div style={badgeStyle}>{entry.badge}</div>
-                  <div style={titleStyle}>{entry.title}</div>
-                  <div style={valueStyle}>{entry.value}</div>
-                  <div style={subtitleStyle}>{entry.subtitle}</div>
-                  <div style={helperStyle}>{entry.helper}</div>
-                </div>
-              ))}
-            </div>
-          ) : null}
+          ))}
         </div>
       )}
     </div>
@@ -487,23 +473,6 @@ const subtextStyle = {
   marginBottom: 0,
 };
 
-
-const featuredGridStyle = (
-  compact: boolean,
-  teamScope?: TeamName | null,
-  entryCount?: number
-) => ({
-  display: 'grid',
-  gridTemplateColumns: compact
-    ? 'repeat(auto-fit, minmax(260px, 1fr))'
-    : teamScope
-    ? 'minmax(0, 1fr)'
-    : entryCount && entryCount > 1
-    ? 'repeat(2, minmax(0, 1fr))'
-    : 'minmax(0, 1fr)',
-  gap: '16px',
-});
-
 const gridStyle = (
   compact: boolean,
   teamScope?: TeamName | null,
@@ -511,40 +480,29 @@ const gridStyle = (
 ) => ({
   display: 'grid',
   gridTemplateColumns: compact
-    ? 'repeat(auto-fit, minmax(220px, 1fr))'
+    ? 'repeat(auto-fit, minmax(250px, 1fr))'
     : teamScope
-    ? 'repeat(auto-fit, minmax(260px, 1fr))'
+    ? 'repeat(auto-fit, minmax(320px, 1fr))'
     : entryCount && entryCount <= 2
-    ? 'repeat(2, minmax(260px, 1fr))'
-    : 'repeat(auto-fit, minmax(260px, 1fr))',
+    ? 'repeat(2, minmax(320px, 1fr))'
+    : 'repeat(auto-fit, minmax(320px, 1fr))',
   gap: '16px',
 });
 
-const featuredCardStyle = {
-  borderRadius: '24px',
-  border: '1px solid var(--rw-border, rgba(203,213,225,0.92))',
-  background: 'var(--rw-card-bg, #ffffff)',
-  boxShadow: 'var(--rw-shadow, 0 18px 40px rgba(15,23,42,0.10))',
-  padding: '20px 22px',
-  minHeight: '240px',
-  display: 'grid',
-  alignContent: 'start',
-};
-
 const cardStyle = {
-  borderRadius: '20px',
+  borderRadius: '22px',
   border: '1px solid var(--rw-border, rgba(203,213,225,0.92))',
   background: 'var(--rw-card-bg, #ffffff)',
   boxShadow: 'var(--rw-shadow, 0 18px 40px rgba(15,23,42,0.10))',
-  padding: '18px 20px',
-  minHeight: '190px',
+  padding: '20px',
+  minHeight: '220px',
   display: 'grid',
   alignContent: 'start',
 };
 
 const badgeStyle = {
   display: 'inline-block',
-  marginBottom: '16px',
+  marginBottom: '14px',
   padding: '6px 12px',
   borderRadius: '999px',
   background: 'var(--rw-pill-bg, rgba(37,99,235,0.10))',
@@ -552,14 +510,6 @@ const badgeStyle = {
   color: 'var(--rw-accent, #2563eb)',
   fontSize: '12px',
   fontWeight: 800,
-};
-
-const featuredTitleStyle = {
-  color: 'var(--rw-heading, #0f172a)',
-  fontSize: '28px',
-  fontWeight: 900,
-  lineHeight: 1.15,
-  marginBottom: '18px',
 };
 
 const titleStyle = {
@@ -570,28 +520,12 @@ const titleStyle = {
   marginBottom: '14px',
 };
 
-const featuredValueStyle = {
-  color: 'var(--rw-heading, #0f172a)',
-  fontSize: '56px',
-  fontWeight: 900,
-  lineHeight: 1,
-  marginBottom: '14px',
-};
-
 const valueStyle = {
   color: 'var(--rw-heading, #0f172a)',
-  fontSize: '38px',
+  fontSize: '42px',
   fontWeight: 900,
   lineHeight: 1,
   marginBottom: '12px',
-};
-
-const featuredSubtitleStyle = {
-  color: 'var(--rw-text, #334155)',
-  fontSize: '16px',
-  lineHeight: 1.5,
-  fontWeight: 700,
-  marginBottom: '10px',
 };
 
 const subtitleStyle = {
@@ -607,6 +541,5 @@ const helperStyle = {
   fontSize: '13px',
   lineHeight: 1.5,
 };
-
 
 export default RecognitionWall;
