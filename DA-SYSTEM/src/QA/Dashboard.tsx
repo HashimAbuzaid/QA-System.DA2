@@ -160,21 +160,12 @@ function shiftDateStringByMonths(dateValue: string, monthOffset: number) {
   const day = Number(dayText);
 
   const shiftedMonthIndex = monthIndex + monthOffset;
-  const targetYear =
-    year + Math.floor(shiftedMonthIndex / 12);
-  const normalizedMonthIndex =
-    ((shiftedMonthIndex % 12) + 12) % 12;
-  const daysInTargetMonth = new Date(
-    targetYear,
-    normalizedMonthIndex + 1,
-    0
-  ).getDate();
+  const targetYear = year + Math.floor(shiftedMonthIndex / 12);
+  const normalizedMonthIndex = ((shiftedMonthIndex % 12) + 12) % 12;
+  const daysInTargetMonth = new Date(targetYear, normalizedMonthIndex + 1, 0).getDate();
   const safeDay = Math.min(day, daysInTargetMonth);
 
-  const shifted = new Date(
-    Date.UTC(targetYear, normalizedMonthIndex, safeDay)
-  );
-
+  const shifted = new Date(Date.UTC(targetYear, normalizedMonthIndex, safeDay));
   return shifted.toISOString().slice(0, 10);
 }
 
@@ -1024,12 +1015,31 @@ function Dashboard({
   const mostConsistentPerformer = consistencyPool[0] || null;
 
 
-  const callsRecordCount = filteredCalls.length;
-  const ticketsRecordCount = filteredTickets.length;
-  const salesRecordCount = filteredSales.length;
-  const previousCallsRecordCount = previousCalls.length;
-  const previousTicketsRecordCount = previousTickets.length;
-  const previousSalesRecordCount = previousSales.length;
+  const currentCallsTotal = filteredCalls.reduce(
+    (sum, item) => sum + Number(item.calls_count),
+    0
+  );
+  const currentTicketsTotal = filteredTickets.reduce(
+    (sum, item) => sum + Number(item.tickets_count),
+    0
+  );
+  const currentSalesTotal = filteredSales.reduce(
+    (sum, item) => sum + Number(item.amount),
+    0
+  );
+
+  const previousCallsTotal = previousCalls.reduce(
+    (sum, item) => sum + Number(item.calls_count),
+    0
+  );
+  const previousTicketsTotal = previousTickets.reduce(
+    (sum, item) => sum + Number(item.tickets_count),
+    0
+  );
+  const previousSalesTotal = previousSales.reduce(
+    (sum, item) => sum + Number(item.amount),
+    0
+  );
 
   const openRequestsCount = filteredRequests.filter((item) => item.status !== 'Closed').length;
   const openFeedbackCount = filteredFeedback.filter((item) => item.status !== 'Closed').length;
@@ -1044,9 +1054,9 @@ function Dashboard({
   const previousSalesTrend = getTeamAverage(previousSalesAudits);
 
   const teamCountsLabel = [
-    `Calls ${callsRecordCount} (${formatPercentDelta(callsRecordCount, previousCallsRecordCount)})`,
-    `Tickets ${ticketsRecordCount} (${formatPercentDelta(ticketsRecordCount, previousTicketsRecordCount)})`,
-    `Sales ${salesRecordCount} (${formatPercentDelta(salesRecordCount, previousSalesRecordCount)})`,
+    `Calls ${currentCallsTotal} (${formatPercentDelta(currentCallsTotal, previousCallsTotal)})`,
+    `Tickets ${currentTicketsTotal} (${formatPercentDelta(currentTicketsTotal, previousTicketsTotal)})`,
+    `Sales $${currentSalesTotal.toFixed(2)} (${formatPercentDelta(currentSalesTotal, previousSalesTotal)})`,
   ].join('\n');
 
   const crossTeamTrendLabel = [
@@ -1132,7 +1142,7 @@ function Dashboard({
           </p>
           <div style={infoPillRowStyle}>
             <div style={metaPillStyle}>Quality Source: Audits</div>
-            <div style={metaPillStyle}>Quantity Source: Team Record Counts</div>
+            <div style={metaPillStyle}>Quantity Source: Team Totals</div>
             <div style={metaPillStyle}>
               Scope: {dateFrom || 'Any'} to {dateTo || 'Any'}
             </div>
