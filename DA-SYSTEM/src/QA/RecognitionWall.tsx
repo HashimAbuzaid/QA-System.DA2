@@ -56,6 +56,7 @@ type RecognitionEntry = {
   subtitle: string;
   badge: string;
   helper: string;
+  kind: 'quality' | 'volume' | 'released';
 };
 
 type RecognitionWallProps = {
@@ -90,7 +91,7 @@ function matchesRange(startDate?: string | null, endDate?: string | null) {
   const recordStart = String(startDate || '').slice(0, 10);
   const recordEnd = String(endDate || startDate || '').slice(0, 10);
   if (!recordStart) return false;
-  return recordEnd >= start && recordStart <= end
+  return recordEnd >= start && recordStart <= end;
 }
 
 function getRecognitionThemeVars(): Record<string, string> {
@@ -177,6 +178,57 @@ function RecognitionWall({
     return `${agentName || '-'} - ${agentId || '-'}`;
   }
 
+  function getQualityLeader(team: TeamName, scopedAudits: AuditItem[]) {
+    const grouped = new Map<string, { label: string; scores: number[] }>();
+
+    scopedAudits
+      .filter((audit) => audit.team === team)
+      .forEach((audit) => {
+        const key = getAgentKey(audit.agent_id, audit.agent_name);
+        const existing = grouped.get(key);
+        if (existing) {
+          existing.scores.push(Number(audit.quality_score));
+        } else {
+          grouped.set(key, {
+            label: getAgentLabel(audit.agent_id, audit.agent_name, team),
+            scores: [Number(audit.quality_score)],
+          });
+        }
+      });
+
+    return Array.from(grouped.values())
+      .map((item) => ({
+        label: item.label,
+        average: item.scores.reduce((sum, value) => sum + value, 0) / item.scores.length,
+      }))
+      .sort((a, b) => b.average - a.average)[0] || null;
+  }
+
+  function getVolumeLeader(team: TeamName, records: Array<CallsRecord | TicketsRecord | SalesRecord>) {
+    const grouped = new Map<string, { label: string; total: number }>();
+    records.forEach((record) => {
+      const key = getAgentKey(record.agent_id, record.agent_name);
+      const existing = grouped.get(key);
+      const amount =
+        team === 'Calls'
+          ? Number((record as CallsRecord).calls_count || 0)
+          : team === 'Tickets'
+          ? Number((record as TicketsRecord).tickets_count || 0)
+          : Number((record as SalesRecord).amount || 0);
+
+      if (existing) {
+        existing.total += amount;
+      } else {
+        grouped.set(key, {
+          label: getAgentLabel(record.agent_id, record.agent_name, team),
+          total: amount,
+        });
+      }
+    });
+
+    return Array.from(grouped.values()).sort((a, b) => b.total - a.total)[0] || null;
+  }
+
   const teamScope =
     currentUser?.role === 'agent' || currentUser?.role === 'supervisor'
       ? currentUser.team || null
@@ -186,17 +238,14 @@ function RecognitionWall({
     () => audits.filter((audit) => matchesRange(audit.audit_date, audit.audit_date)),
     [audits]
   );
-
   const monthCalls = useMemo(
     () => callsRecords.filter((record) => matchesRange(record.call_date, record.date_to || null)),
     [callsRecords]
   );
-
   const monthTickets = useMemo(
     () => ticketsRecords.filter((record) => matchesRange(record.ticket_date, record.date_to || null)),
     [ticketsRecords]
   );
-
   const monthSales = useMemo(
     () => salesRecords.filter((record) => matchesRange(record.sale_date, record.date_to || null)),
     [salesRecords]
@@ -206,17 +255,14 @@ function RecognitionWall({
     () => monthAudits.filter((audit) => (teamScope ? audit.team === teamScope : true)),
     [monthAudits, teamScope]
   );
-
   const scopedCalls = useMemo(
     () => (teamScope && teamScope !== 'Calls' ? [] : monthCalls),
     [monthCalls, teamScope]
   );
-
   const scopedTickets = useMemo(
     () => (teamScope && teamScope !== 'Tickets' ? [] : monthTickets),
     [monthTickets, teamScope]
   );
-
   const scopedSales = useMemo(
     () => (teamScope && teamScope !== 'Sales' ? [] : monthSales),
     [monthSales, teamScope]
@@ -225,104 +271,118 @@ function RecognitionWall({
   const entries = useMemo<RecognitionEntry[]>(() => {
     const results: RecognitionEntry[] = [];
 
-    const qualityMap = new Map<string, { label: string; team: string; scores: number[] }>();
-    scopedAudits.forEach((audit) => {
-      const key = getAgentKey(audit.agent_id, audit.agent_name);
-      const existing = qualityMap.get(key);
-      if (existing) {
-        existing.scores.push(Number(audit.quality_score));
-      } else {
-        qualityMap.set(key, {
-          label: getAgentLabel(audit.agent_id, audit.agent_name, audit.team),
-          team: String(audit.team || '-'),
-          scores: [Number(audit.quality_score)],
+    if (teamScope) {
+      const qualityLeader = getQualityLeader(teamScope, scopedAudits);
+      if (qualityLeader) {
+        results.push({
+          title: `${teamScope} Quality Champion`,
+          value: `${qualityLeader.average.toFixed(2)}%`,
+          subtitle: qualityLeader.label,
+          badge: 'Quality',
+          helper: 'Based on this month audit rankings',
+          kind: 'quality',
         });
       }
-    });
 
-    const qualityLeader = Array.from(qualityMap.values())
-      .map((item) => ({
-        label: item.label,
-        team: item.team,
-        average: item.scores.reduce((sum, value) => sum + value, 0) / item.scores.length,
-      }))
-      .sort((a, b) => b.average - a.average)[0];
+      if (teamScope === 'Calls') {
+        const leader = getVolumeLeader('Calls', scopedCalls);
+        if (leader) {
+          results.push({
+            title: 'Calls Star',
+            value: `${leader.total}`,
+            subtitle: leader.label,
+            badge: 'Calls',
+            helper: 'Top calls quantity for this month',
+            kind: 'volume',
+          });
+        }
+      }
 
-    if (qualityLeader) {
-      results.push({
-        title: teamScope ? `${teamScope} Quality Champion` : 'Quality Champion',
-        value: `${qualityLeader.average.toFixed(2)}%`,
-        subtitle: teamScope ? qualityLeader.label : `${qualityLeader.label} • ${qualityLeader.team}`,
-        badge: 'Quality',
-        helper: 'Based on this month audit rankings',
-      });
-    }
+      if (teamScope === 'Tickets') {
+        const leader = getVolumeLeader('Tickets', scopedTickets);
+        if (leader) {
+          results.push({
+            title: 'Tickets Star',
+            value: `${leader.total}`,
+            subtitle: leader.label,
+            badge: 'Tickets',
+            helper: 'Top tickets quantity for this month',
+            kind: 'volume',
+          });
+        }
+      }
 
-    if (!teamScope || teamScope === 'Calls') {
-      const callsMap = new Map<string, { label: string; total: number }>();
-      scopedCalls.forEach((record) => {
-        const key = getAgentKey(record.agent_id, record.agent_name);
-        const existing = callsMap.get(key);
-        if (existing) existing.total += Number(record.calls_count || 0);
-        else callsMap.set(key, {
-          label: getAgentLabel(record.agent_id, record.agent_name, 'Calls'),
-          total: Number(record.calls_count || 0),
+      if (teamScope === 'Sales') {
+        const leader = getVolumeLeader('Sales', scopedSales);
+        if (leader) {
+          results.push({
+            title: 'Sales Star',
+            value: `$${leader.total.toFixed(2)}`,
+            subtitle: leader.label,
+            badge: 'Sales',
+            helper: 'Top sales amount for this month',
+            kind: 'volume',
+          });
+        }
+      }
+    } else {
+      const callsQualityLeader = getQualityLeader('Calls', scopedAudits);
+      if (callsQualityLeader) {
+        results.push({
+          title: 'Calls Quality Champion',
+          value: `${callsQualityLeader.average.toFixed(2)}%`,
+          subtitle: callsQualityLeader.label,
+          badge: 'Calls Quality',
+          helper: 'Based on this month audit rankings',
+          kind: 'quality',
         });
-      });
-      const leader = Array.from(callsMap.values()).sort((a, b) => b.total - a.total)[0];
-      if (leader) {
+      }
+
+      const ticketsQualityLeader = getQualityLeader('Tickets', scopedAudits);
+      if (ticketsQualityLeader) {
+        results.push({
+          title: 'Tickets Quality Champion',
+          value: `${ticketsQualityLeader.average.toFixed(2)}%`,
+          subtitle: ticketsQualityLeader.label,
+          badge: 'Tickets Quality',
+          helper: 'Based on this month audit rankings',
+          kind: 'quality',
+        });
+      }
+
+      const callsLeader = getVolumeLeader('Calls', scopedCalls);
+      if (callsLeader) {
         results.push({
           title: 'Calls Star',
-          value: `${leader.total}`,
-          subtitle: leader.label,
+          value: `${callsLeader.total}`,
+          subtitle: callsLeader.label,
           badge: 'Calls',
           helper: 'Top calls quantity for this month',
+          kind: 'volume',
         });
       }
-    }
 
-    if (!teamScope || teamScope === 'Tickets') {
-      const ticketsMap = new Map<string, { label: string; total: number }>();
-      scopedTickets.forEach((record) => {
-        const key = getAgentKey(record.agent_id, record.agent_name);
-        const existing = ticketsMap.get(key);
-        if (existing) existing.total += Number(record.tickets_count || 0);
-        else ticketsMap.set(key, {
-          label: getAgentLabel(record.agent_id, record.agent_name, 'Tickets'),
-          total: Number(record.tickets_count || 0),
-        });
-      });
-      const leader = Array.from(ticketsMap.values()).sort((a, b) => b.total - a.total)[0];
-      if (leader) {
+      const ticketsLeader = getVolumeLeader('Tickets', scopedTickets);
+      if (ticketsLeader) {
         results.push({
           title: 'Tickets Star',
-          value: `${leader.total}`,
-          subtitle: leader.label,
+          value: `${ticketsLeader.total}`,
+          subtitle: ticketsLeader.label,
           badge: 'Tickets',
           helper: 'Top tickets quantity for this month',
+          kind: 'volume',
         });
       }
-    }
 
-    if (!teamScope || teamScope === 'Sales') {
-      const salesMap = new Map<string, { label: string; total: number }>();
-      scopedSales.forEach((record) => {
-        const key = getAgentKey(record.agent_id, record.agent_name);
-        const existing = salesMap.get(key);
-        if (existing) existing.total += Number(record.amount || 0);
-        else salesMap.set(key, {
-          label: getAgentLabel(record.agent_id, record.agent_name, 'Sales'),
-          total: Number(record.amount || 0),
-        });
-      });
-      const leader = Array.from(salesMap.values()).sort((a, b) => b.total - a.total)[0];
-      if (leader) {
+      const salesLeader = getVolumeLeader('Sales', scopedSales);
+      if (salesLeader) {
         results.push({
           title: 'Sales Star',
-          value: `$${leader.total.toFixed(2)}`,
-          subtitle: leader.label,
+          value: `$${salesLeader.total.toFixed(2)}`,
+          subtitle: salesLeader.label,
           badge: 'Sales',
           helper: 'Top sales amount for this month',
+          kind: 'volume',
         });
       }
     }
@@ -333,12 +393,15 @@ function RecognitionWall({
       .forEach((audit) => {
         const key = getAgentKey(audit.agent_id, audit.agent_name);
         const existing = releasedMap.get(key);
-        if (existing) existing.count += 1;
-        else releasedMap.set(key, {
-          label: getAgentLabel(audit.agent_id, audit.agent_name, audit.team),
-          count: 1,
-          team: String(audit.team || '-'),
-        });
+        if (existing) {
+          existing.count += 1;
+        } else {
+          releasedMap.set(key, {
+            label: getAgentLabel(audit.agent_id, audit.agent_name, audit.team),
+            count: 1,
+            team: String(audit.team || '-'),
+          });
+        }
       });
 
     const releasedLeader = Array.from(releasedMap.values()).sort((a, b) => b.count - a.count)[0];
@@ -349,13 +412,12 @@ function RecognitionWall({
         subtitle: teamScope ? releasedLeader.label : `${releasedLeader.label} • ${releasedLeader.team}`,
         badge: 'Released',
         helper: 'Most shared audits this month',
+        kind: 'released',
       });
     }
 
-    return results;
+    return compact ? results.slice(0, 3) : results;
   }, [compact, scopedAudits, scopedCalls, scopedTickets, scopedSales, teamScope]);
-
-  const visibleEntries = compact ? entries.slice(0, Math.max(2, entries.length)) : entries;
 
   return (
     <div data-no-theme-invert="true" style={{ marginTop: '30px', ...(themeVars as CSSProperties) }}>
@@ -369,11 +431,11 @@ function RecognitionWall({
 
       {loading ? (
         <p style={subtextStyle}>Loading recognition wall...</p>
-      ) : visibleEntries.length === 0 ? (
+      ) : entries.length === 0 ? (
         <p style={subtextStyle}>No recognition entries yet for this month.</p>
       ) : (
-        <div style={gridStyle(compact, teamScope)}>
-          {visibleEntries.map((entry) => (
+        <div style={gridStyle(compact, teamScope, entries.length)}>
+          {entries.map((entry) => (
             <div key={`${entry.title}-${entry.subtitle}`} style={cardStyle}>
               <div style={badgeStyle}>{entry.badge}</div>
               <div style={titleStyle}>{entry.title}</div>
@@ -411,15 +473,20 @@ const subtextStyle = {
   marginBottom: 0,
 };
 
-const gridStyle = (compact: boolean, teamScope?: TeamName | null) => ({
+const gridStyle = (
+  compact: boolean,
+  teamScope?: TeamName | null,
+  entryCount?: number
+) => ({
   display: 'grid',
-  gridTemplateColumns:
-    compact
-      ? 'repeat(auto-fit, minmax(240px, 1fr))'
-      : teamScope
-      ? 'repeat(auto-fit, minmax(280px, 1fr))'
-      : 'repeat(auto-fit, minmax(260px, 1fr))',
-  gap: '14px',
+  gridTemplateColumns: compact
+    ? 'repeat(auto-fit, minmax(250px, 1fr))'
+    : teamScope
+    ? 'repeat(auto-fit, minmax(320px, 1fr))'
+    : entryCount && entryCount <= 2
+    ? 'repeat(2, minmax(320px, 1fr))'
+    : 'repeat(auto-fit, minmax(320px, 1fr))',
+  gap: '16px',
 });
 
 const cardStyle = {
@@ -428,6 +495,9 @@ const cardStyle = {
   background: 'var(--rw-card-bg, #ffffff)',
   boxShadow: 'var(--rw-shadow, 0 18px 40px rgba(15,23,42,0.10))',
   padding: '20px',
+  minHeight: '220px',
+  display: 'grid',
+  alignContent: 'start',
 };
 
 const badgeStyle = {
@@ -444,9 +514,9 @@ const badgeStyle = {
 
 const titleStyle = {
   color: 'var(--rw-heading, #0f172a)',
-  fontSize: '28px',
+  fontSize: '20px',
   fontWeight: 900,
-  lineHeight: 1.2,
+  lineHeight: 1.25,
   marginBottom: '14px',
 };
 
