@@ -1014,6 +1014,22 @@ function Dashboard({
   );
   const mostConsistentPerformer = consistencyPool[0] || null;
 
+  const peopleOpsLeader = (() => {
+    const crossTeamCombinedPool = [...callsHybridTop, ...ticketsHybridTop].sort(
+      (a, b) => b.combinedScore - a.combinedScore
+    );
+
+    if (crossTeamCombinedPool.length > 0) {
+      return crossTeamCombinedPool[0].label;
+    }
+
+    if (salesTop.length > 0) {
+      return salesTop[0].label;
+    }
+
+    return '-';
+  })();
+
 
   const currentCallsTotal = filteredCalls.reduce(
     (sum, item) => sum + Number(item.calls_count),
@@ -1078,7 +1094,7 @@ function Dashboard({
       return [
         { label: 'Agents', value: `${profiles.length}` },
         { label: 'Recognition', value: `${callsQualityTop.length + ticketsQualityTop.length + salesTop.length}` },
-        { label: 'Leader', value: callsHybridTop[0]?.label || ticketsHybridTop[0]?.label || salesTop[0]?.label || '-' },
+        { label: 'Leader', value: peopleOpsLeader },
       ];
     }
 
