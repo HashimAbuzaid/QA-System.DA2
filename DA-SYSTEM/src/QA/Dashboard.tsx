@@ -151,6 +151,48 @@ function getMonthStartValue() {
     .slice(0, 10);
 }
 
+function shiftDateStringByMonths(dateValue: string, monthOffset: number) {
+  if (!dateValue) return '';
+
+  const [yearText, monthText, dayText] = dateValue.split('-');
+  const year = Number(yearText);
+  const monthIndex = Number(monthText) - 1;
+  const day = Number(dayText);
+
+  const shiftedMonthIndex = monthIndex + monthOffset;
+  const targetYear =
+    year + Math.floor(shiftedMonthIndex / 12);
+  const normalizedMonthIndex =
+    ((shiftedMonthIndex % 12) + 12) % 12;
+  const daysInTargetMonth = new Date(
+    targetYear,
+    normalizedMonthIndex + 1,
+    0
+  ).getDate();
+  const safeDay = Math.min(day, daysInTargetMonth);
+
+  const shifted = new Date(
+    Date.UTC(targetYear, normalizedMonthIndex, safeDay)
+  );
+
+  return shifted.toISOString().slice(0, 10);
+}
+
+function getPercentChange(current: number, previous: number) {
+  if (previous === 0) {
+    if (current === 0) return 0;
+    return 100;
+  }
+
+  return ((current - previous) / previous) * 100;
+}
+
+function formatPercentDelta(current: number, previous: number) {
+  const delta = getPercentChange(current, previous);
+  const sign = delta > 0 ? '+' : '';
+  return `${sign}${delta.toFixed(2)}% vs last month`;
+}
+
 function matchesDateRange(
   startDate?: string | null,
   endDate?: string | null,
@@ -316,7 +358,7 @@ function Dashboard({
       return {
         title: 'Admin Spotlight',
         cards: [
-          { title: 'System Pulse', description: 'Watch uploads, released audits, and cross-team quality trends from one place.' },
+          { title: 'System Pulse', description: 'Watch calls, tickets, sales, released audits, and cross-team quality trends from one place.' },
           { title: 'People Ops', description: 'Use reports, accounts, and recognition to keep every team aligned.' },
           { title: 'Action Queue', description: 'Review feedback, monitoring, and supervisor requests that need attention.' },
         ],
@@ -560,6 +602,41 @@ function Dashboard({
     );
   }, [monitoringItems, dateFrom, dateTo]);
 
+  const comparisonDateFrom = dateFrom || getMonthStartValue();
+  const comparisonDateTo = dateTo || getCurrentDateValue();
+  const previousDateFrom = useMemo(
+    () => shiftDateStringByMonths(comparisonDateFrom, -1),
+    [comparisonDateFrom]
+  );
+  const previousDateTo = useMemo(
+    () => shiftDateStringByMonths(comparisonDateTo, -1),
+    [comparisonDateTo]
+  );
+
+  const previousAudits = useMemo(() => {
+    return audits.filter((item) =>
+      matchesDateRange(item.audit_date, item.audit_date, previousDateFrom, previousDateTo)
+    );
+  }, [audits, previousDateFrom, previousDateTo]);
+
+  const previousCalls = useMemo(() => {
+    return callsRecords.filter((item) =>
+      matchesDateRange(item.call_date, item.date_to || null, previousDateFrom, previousDateTo)
+    );
+  }, [callsRecords, previousDateFrom, previousDateTo]);
+
+  const previousTickets = useMemo(() => {
+    return ticketsRecords.filter((item) =>
+      matchesDateRange(item.ticket_date, item.date_to || null, previousDateFrom, previousDateTo)
+    );
+  }, [ticketsRecords, previousDateFrom, previousDateTo]);
+
+  const previousSales = useMemo(() => {
+    return salesRecords.filter((item) =>
+      matchesDateRange(item.sale_date, item.date_to || null, previousDateFrom, previousDateTo)
+    );
+  }, [salesRecords, previousDateFrom, previousDateTo]);
+
   const filteredCallsAudits = useMemo(
     () => filteredAudits.filter((item) => item.team === 'Calls'),
     [filteredAudits]
@@ -573,6 +650,21 @@ function Dashboard({
   const filteredSalesAudits = useMemo(
     () => filteredAudits.filter((item) => item.team === 'Sales'),
     [filteredAudits]
+  );
+
+  const previousCallsAudits = useMemo(
+    () => previousAudits.filter((item) => item.team === 'Calls'),
+    [previousAudits]
+  );
+
+  const previousTicketsAudits = useMemo(
+    () => previousAudits.filter((item) => item.team === 'Tickets'),
+    [previousAudits]
+  );
+
+  const previousSalesAudits = useMemo(
+    () => previousAudits.filter((item) => item.team === 'Sales'),
+    [previousAudits]
   );
 
   const auditedCallsKeys = useMemo(() => {
@@ -932,21 +1024,41 @@ function Dashboard({
   const mostConsistentPerformer = consistencyPool[0] || null;
 
 
-  const uploadsRowCount = filteredCalls.length + filteredTickets.length + filteredSales.length;
+  const callsRecordCount = filteredCalls.length;
+  const ticketsRecordCount = filteredTickets.length;
+  const salesRecordCount = filteredSales.length;
+  const previousCallsRecordCount = previousCalls.length;
+  const previousTicketsRecordCount = previousTickets.length;
+  const previousSalesRecordCount = previousSales.length;
+
   const openRequestsCount = filteredRequests.filter((item) => item.status !== 'Closed').length;
   const openFeedbackCount = filteredFeedback.filter((item) => item.status !== 'Closed').length;
   const activeMonitoringCount = filteredMonitoring.filter((item) => item.status === 'active').length;
   const releasedRate = totalAudits > 0 ? (releasedAudits / totalAudits) * 100 : 0;
+
+  const currentCallsTrend = getTeamAverage(filteredCallsAudits);
+  const currentTicketsTrend = getTeamAverage(filteredTicketsAudits);
+  const currentSalesTrend = getTeamAverage(filteredSalesAudits);
+  const previousCallsTrend = getTeamAverage(previousCallsAudits);
+  const previousTicketsTrend = getTeamAverage(previousTicketsAudits);
+  const previousSalesTrend = getTeamAverage(previousSalesAudits);
+
+  const teamCountsLabel = [
+    `Calls ${callsRecordCount} (${formatPercentDelta(callsRecordCount, previousCallsRecordCount)})`,
+    `Tickets ${ticketsRecordCount} (${formatPercentDelta(ticketsRecordCount, previousTicketsRecordCount)})`,
+    `Sales ${salesRecordCount} (${formatPercentDelta(salesRecordCount, previousSalesRecordCount)})`,
+  ].join('\n');
+
   const crossTeamTrendLabel = [
-    `Calls ${getTeamAverage(filteredCallsAudits).toFixed(2)}%`,
-    `Tickets ${getTeamAverage(filteredTicketsAudits).toFixed(2)}%`,
-    `Sales ${getTeamAverage(filteredSalesAudits).toFixed(2)}%`,
-  ].join(' • ');
+    `Calls ${currentCallsTrend.toFixed(2)}% (${formatPercentDelta(currentCallsTrend, previousCallsTrend)})`,
+    `Tickets ${currentTicketsTrend.toFixed(2)}% (${formatPercentDelta(currentTicketsTrend, previousTicketsTrend)})`,
+    `Sales ${currentSalesTrend.toFixed(2)}% (${formatPercentDelta(currentSalesTrend, previousSalesTrend)})`,
+  ].join('\n');
 
   function getSpotlightStats(cardTitle: string) {
     if (cardTitle === 'System Pulse') {
       return [
-        { label: 'Upload Rows', value: `${uploadsRowCount}` },
+        { label: 'Counts', value: teamCountsLabel },
         { label: 'Released', value: `${releasedAudits}` },
         { label: 'Trend', value: crossTeamTrendLabel },
       ];
@@ -1020,7 +1132,7 @@ function Dashboard({
           </p>
           <div style={infoPillRowStyle}>
             <div style={metaPillStyle}>Quality Source: Audits</div>
-            <div style={metaPillStyle}>Quantity Source: Upload Rows</div>
+            <div style={metaPillStyle}>Quantity Source: Team Record Counts</div>
             <div style={metaPillStyle}>
               Scope: {dateFrom || 'Any'} to {dateTo || 'Any'}
             </div>
@@ -1966,10 +2078,10 @@ const spotlightStatGridStyle = {
 const spotlightStatRowStyle = {
   display: 'grid',
   gridTemplateColumns: '120px minmax(0, 1fr)',
-  alignItems: 'center',
+  alignItems: 'start',
   gap: '14px',
   padding: '14px 16px',
-  minHeight: '58px',
+  minHeight: '72px',
   borderRadius: '14px',
   border: '1px solid rgba(148,163,184,0.14)',
   background: 'rgba(255,255,255,0.78)',
@@ -1988,8 +2100,9 @@ const spotlightStatValueStyle = {
   color: 'var(--screen-heading, #0f172a)',
   fontSize: '14px',
   fontWeight: 800,
-  lineHeight: 1.5,
+  lineHeight: 1.6,
   wordBreak: 'break-word' as const,
+  whiteSpace: 'pre-line' as const,
   textAlign: 'left' as const,
 };
 
