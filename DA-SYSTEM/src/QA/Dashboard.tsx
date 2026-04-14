@@ -1645,6 +1645,7 @@ function getTeamAverage(audits: AuditItem[]) {
 
 const heroStyle = {
   marginTop: '8px',
+  padding: '6px 2px 2px 2px',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'flex-start',
@@ -1660,14 +1661,14 @@ const heroTitleStyle = {
 };
 
 const heroSubtitleStyle = {
-  display: 'none',
+  display: 'block',
   margin: '10px 0 0 0',
   color: 'var(--da-subtitle, #94a3b8)',
   fontSize: '15px',
 };
 
 const infoPillRowStyle = {
-  display: 'none',
+  display: 'flex',
   gap: '10px',
   flexWrap: 'wrap' as const,
   marginTop: '16px',
@@ -1895,7 +1896,7 @@ const panelStyle = {
   background: 'var(--da-panel-bg, linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%))',
   border: 'var(--da-panel-border, 1px solid rgba(148, 163, 184, 0.14))',
   borderRadius: '20px',
-  padding: '18px',
+  padding: '20px',
   boxShadow: 'var(--da-panel-shadow, 0 18px 40px rgba(2, 6, 23, 0.35))',
   backdropFilter: 'blur(14px)',
 };
@@ -2054,8 +2055,8 @@ const statusPillStyle = {
 };
 
 const spotlightPanelStyle = {
-  marginBottom: '24px',
-  borderRadius: '24px',
+  marginBottom: '28px',
+  borderRadius: '30px',
   border: '1px solid rgba(148,163,184,0.14)',
   background: 'var(--screen-panel-bg, rgba(15,23,42,0.78))',
   boxShadow: 'var(--screen-shadow, 0 18px 40px rgba(2,6,23,0.35))',
@@ -2065,13 +2066,13 @@ const spotlightPanelStyle = {
 
 const spotlightGridStyle = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-  gap: '16px',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+  gap: '18px',
   alignItems: 'stretch',
 };
 
 const spotlightCardStyle = {
-  borderRadius: '18px',
+  borderRadius: '24px',
   border: '1px solid rgba(148,163,184,0.14)',
   background: 'var(--screen-card-soft-bg, rgba(15,23,42,0.52))',
   padding: '18px',
@@ -2082,7 +2083,8 @@ const spotlightCardStyle = {
 
 const spotlightCardTitleStyle = {
   color: 'var(--screen-heading, #f8fafc)',
-  fontWeight: 800,
+  fontWeight: 900,
+  fontSize: '22px',
   marginBottom: '8px',
 };
 
@@ -2103,14 +2105,15 @@ const spotlightStatGridStyle = {
 
 const spotlightStatRowStyle = {
   display: 'grid',
-  gridTemplateColumns: '120px minmax(0, 1fr)',
+  gridTemplateColumns: '132px minmax(0, 1fr)',
   alignItems: 'start',
   gap: '14px',
   padding: '14px 16px',
-  minHeight: '72px',
+  minHeight: '84px',
   borderRadius: '14px',
   border: '1px solid rgba(148,163,184,0.14)',
-  background: 'rgba(255,255,255,0.78)',
+  background: 'var(--screen-field-bg, rgba(255,255,255,0.92))',
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.32)',
 };
 
 const spotlightStatLabelStyle = {
