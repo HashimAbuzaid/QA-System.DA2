@@ -305,12 +305,12 @@ function AccountsSupabase() {
   }
 
   return (
-    <div style={{ color: 'var(--da-page-text, #e5eefb)' }}>
+    <div style={{ color: '#e5eefb' }}>
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Access Management</div>
           <h2 style={{ margin: 0, fontSize: '30px' }}>Accounts</h2>
-          <p style={{ margin: '10px 0 0 0', color: 'var(--da-subtle-text, #94a3b8)' }}>
+          <p style={{ margin: '10px 0 0 0', color: '#94a3b8' }}>
             Create and manage profile rows after the user already exists in
             Supabase Authentication.
           </p>
@@ -331,7 +331,7 @@ function AccountsSupabase() {
       ) : null}
 
       <div style={panelStyle}>
-        <h3 style={{ marginTop: 0, color: 'var(--da-title, #f8fafc)' }}>
+        <h3 style={{ marginTop: 0, color: '#f8fafc' }}>
           {editingProfileId ? 'Edit Profile' : 'Create Profile'}
         </h3>
 
@@ -462,9 +462,9 @@ function AccountsSupabase() {
       <div style={{ marginTop: '32px' }}>
         <div style={sectionEyebrow}>Saved Profiles</div>
         {loading ? (
-          <p style={{ color: 'var(--da-subtle-text, #94a3b8)' }}>Loading accounts...</p>
+          <p style={{ color: '#94a3b8' }}>Loading accounts...</p>
         ) : profiles.length === 0 ? (
-          <p style={{ color: 'var(--da-subtle-text, #94a3b8)' }}>No profiles found.</p>
+          <p style={{ color: '#94a3b8' }}>No profiles found.</p>
         ) : (
           <div style={tableWrapStyle}>
             <table style={tableStyle}>
@@ -544,7 +544,7 @@ const pageHeaderStyle = {
 };
 
 const sectionEyebrow = {
-  color: 'var(--da-accent-text, #60a5fa)',
+  color: '#60a5fa',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -554,7 +554,7 @@ const sectionEyebrow = {
 
 const panelStyle = {
   background:
-    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
+    'linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%)',
   border: '1px solid rgba(148, 163, 184, 0.14)',
   borderRadius: '24px',
   padding: '22px',
@@ -576,7 +576,7 @@ const labelStyle = {
   display: 'block',
   marginBottom: '8px',
   fontSize: '13px',
-  color: 'var(--da-muted-text, #cbd5e1)',
+  color: '#cbd5e1',
   fontWeight: 700,
 };
 
@@ -585,8 +585,8 @@ const fieldStyle = {
   padding: '14px 16px',
   borderRadius: '16px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'var(--da-surface-bg, rgba(15, 23, 42, 0.7))',
-  color: 'var(--da-page-text, #e5eefb)',
+  background: 'rgba(15, 23, 42, 0.7)',
+  color: '#e5eefb',
 };
 
 const actionRowStyle = {
@@ -611,8 +611,8 @@ const secondaryButton = {
   padding: '14px 18px',
   borderRadius: '16px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'var(--da-field-bg, rgba(15, 23, 42, 0.74))',
-  color: 'var(--da-page-text, #e5eefb)',
+  background: 'rgba(15, 23, 42, 0.74)',
+  color: '#e5eefb',
   fontWeight: 700,
   cursor: 'pointer',
 };
@@ -622,7 +622,7 @@ const tableWrapStyle = {
   borderRadius: '20px',
   border: '1px solid rgba(148, 163, 184, 0.14)',
   background:
-    'linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.74)) 0%, var(--da-card-bg, rgba(15, 23, 42, 0.56)) 100%)',
+    'linear-gradient(180deg, rgba(15, 23, 42, 0.74) 0%, rgba(15, 23, 42, 0.56) 100%)',
 };
 
 const tableStyle = {
@@ -635,15 +635,15 @@ const headerCell = {
   padding: '14px 16px',
   textAlign: 'left' as const,
   whiteSpace: 'nowrap' as const,
-  color: 'var(--da-accent-text, #93c5fd)',
+  color: '#93c5fd',
   borderBottom: '1px solid rgba(148, 163, 184, 0.14)',
-  backgroundColor: 'var(--da-card-bg, rgba(15, 23, 42, 0.42))',
+  backgroundColor: 'rgba(15, 23, 42, 0.42)',
 };
 
 const bodyCell = {
   padding: '14px 16px',
   verticalAlign: 'top' as const,
-  color: 'var(--da-page-text, #e5eefb)',
+  color: '#e5eefb',
   borderBottom: '1px solid rgba(148, 163, 184, 0.1)',
 };
 
@@ -671,18 +671,18 @@ const errorBannerStyle = {
   marginBottom: '16px',
   padding: '14px 16px',
   borderRadius: '16px',
-  border: 'var(--da-error-border, 1px solid rgba(248, 113, 113, 0.22))',
-  background: 'var(--da-error-bg, rgba(127, 29, 29, 0.24))',
-  color: 'var(--da-error-text, #fecaca)',
+  border: '1px solid rgba(248, 113, 113, 0.22)',
+  background: 'rgba(127, 29, 29, 0.24)',
+  color: '#fecaca',
 };
 
 const successBannerStyle = {
   marginBottom: '16px',
   padding: '14px 16px',
   borderRadius: '16px',
-  border: 'var(--da-success-border, 1px solid rgba(74, 222, 128, 0.2))',
-  background: 'var(--da-success-bg, rgba(22, 101, 52, 0.16))',
-  color: 'var(--da-success-text, #bbf7d0)',
+  border: '1px solid rgba(74, 222, 128, 0.2)',
+  background: 'rgba(22, 101, 52, 0.16)',
+  color: '#bbf7d0',
 };
 
 const warningCardStyle = {
