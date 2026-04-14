@@ -1053,11 +1053,11 @@ const collapsedMessageStyle = {
 
 const pageHeaderStyle = {
   display: 'flex',
-  gap: '12px',
+  gap: '16px',
   justifyContent: 'space-between',
   alignItems: 'center',
   flexWrap: 'wrap' as const,
-  marginBottom: '18px',
+  marginBottom: '22px',
 };
 
 const sectionEyebrow = {
@@ -1100,9 +1100,10 @@ const panelStyle = {
   background:
     'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
   border: 'var(--da-panel-border, 1px solid rgba(148,163,184,0.14))',
-  borderRadius: '20px',
-  padding: '20px',
-  boxShadow: 'var(--da-panel-shadow, 0 8px 24px rgba(2,6,23,0.2))',
+  borderRadius: '24px',
+  padding: '22px',
+  boxShadow: 'var(--da-panel-shadow, 0 18px 40px rgba(2,6,23,0.26))',
+  backdropFilter: 'blur(16px)',
 };
 
 const filterGridStyle = {
@@ -1203,9 +1204,9 @@ const cardStyle = {
   background:
     'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
   border: 'var(--da-panel-border, 1px solid rgba(148,163,184,0.14))',
-  borderRadius: '18px',
-  padding: '20px',
-  boxShadow: 'var(--da-panel-shadow, 0 8px 24px rgba(2,6,23,0.2))',
+  borderRadius: '22px',
+  padding: '22px',
+  boxShadow: 'var(--da-panel-shadow, 0 18px 40px rgba(2,6,23,0.24))',
 };
 
 const secondaryButton = {
