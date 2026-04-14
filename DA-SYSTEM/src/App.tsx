@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import heroUrl from '/hero.png';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
 import Login from './QA/Login';
@@ -244,7 +243,7 @@ function getThemePalette(mode: ThemeMode): ThemePalette {
   };
 }
 
-function createStyles(theme: ThemePalette, mode: ThemeMode) {
+function createStyles(theme: ThemePalette) {
   const secondaryButtonBase: CSSProperties = {
     padding: '12px 18px',
     borderRadius: '14px',
@@ -706,7 +705,7 @@ function App() {
 
   const theme = useMemo(() => getThemePalette(themeMode), [themeMode]);
   const isCompactLayout = viewportWidth < 1180;
-  const styles = useMemo(() => createStyles(theme, themeMode), [theme, themeMode]);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   useEffect(() => {
     recoveryModeRef.current = recoveryMode;
@@ -1018,7 +1017,7 @@ function App() {
         <div style={styles.headerLeft}>
           <div style={styles.brandWrap}>
             <div style={styles.brandLogoWrap}>
-              <img src={heroUrl} alt="Detroit Axle QA" style={styles.brandLogo} />
+              <div style={{ fontWeight: 900, fontSize: "18px", color: theme.brandTitle, letterSpacing: "0.08em" }}>DA</div>
             </div>
             <div style={styles.brandAccent} />
             <div>
