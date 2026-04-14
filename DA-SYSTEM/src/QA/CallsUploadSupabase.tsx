@@ -18,6 +18,22 @@ type CallsDraft = {
   notes: string;
 };
 
+type PreparedCsvRow = {
+  rowNumber: number;
+  rawAgentName: string;
+  rawAgentId: string;
+  matchedAgentLabel: string;
+  agent_id: string;
+  agent_name: string;
+  calls_count: number;
+};
+
+type SkippedCsvRow = {
+  rowNumber: number;
+  agentLabel: string;
+  reason: string;
+};
+
 const TEAM_NAME = 'Calls';
 
 const emptyDraft: CallsDraft = {
@@ -42,6 +58,12 @@ function CallsUploadSupabase() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isAgentPickerOpen, setIsAgentPickerOpen] = useState(false);
+
+  const [csvFileName, setCsvFileName] = useState('');
+  const [csvPreparing, setCsvPreparing] = useState(false);
+  const [csvSaving, setCsvSaving] = useState(false);
+  const [preparedCsvRows, setPreparedCsvRows] = useState<PreparedCsvRow[]>([]);
+  const [skippedCsvRows, setSkippedCsvRows] = useState<SkippedCsvRow[]>([]);
 
   const agentPickerRef = useRef<HTMLDivElement | null>(null);
 
@@ -92,6 +114,272 @@ function CallsUploadSupabase() {
       : `${profile.agent_name} - ${profile.agent_id}`;
   }
 
+  function normalizeText(value?: string | null) {
+    return String(value || '').replace(/\u00a0/g, ' ').trim();
+  }
+
+  function normalizeAgentId(value?: string | null) {
+    const raw = normalizeText(value);
+    if (!raw) return '';
+    return raw.replace(/\.0+$/, '').trim();
+  }
+
+  function normalizeAgentName(value?: string | null) {
+    return normalizeText(value).toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  function parseCallsCount(value?: string | null) {
+    const raw = normalizeText(value).replace(/,/g, '');
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : NaN;
+  }
+
+  function parseCsv(textValue: string) {
+    const rows: string[][] = [];
+    let current = '';
+    let row: string[] = [];
+    let inQuotes = false;
+    const input = textValue.replace(/^\ufeff/, '');
+
+    for (let i = 0; i < input.length; i += 1) {
+      const char = input[i];
+      const next = input[i + 1];
+
+      if (char === '"') {
+        if (inQuotes && next === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+
+      if (char === ',' && !inQuotes) {
+        row.push(current);
+        current = '';
+        continue;
+      }
+
+      if ((char === '\n' || char === '\r') && !inQuotes) {
+        if (char === '\r' && next === '\n') {
+          i += 1;
+        }
+        row.push(current);
+        if (row.some((cell) => normalizeText(cell) !== '')) {
+          rows.push(row);
+        }
+        row = [];
+        current = '';
+        continue;
+      }
+
+      current += char;
+    }
+
+    if (current.length > 0 || row.length > 0) {
+      row.push(current);
+      if (row.some((cell) => normalizeText(cell) !== '')) {
+        rows.push(row);
+      }
+    }
+
+    return rows;
+  }
+
+  function normalizeHeader(value?: string | null) {
+    return normalizeText(value).toLowerCase().replace(/[^a-z0-9]+/g, '');
+  }
+
+  function findMatchingAgentProfile(rawAgentName: string, rawAgentId: string) {
+    const normalizedName = normalizeAgentName(rawAgentName);
+    const normalizedId = normalizeAgentId(rawAgentId);
+
+    if (normalizedId) {
+      const byId = agentProfiles.find(
+        (profile) => normalizeAgentId(profile.agent_id || '') === normalizedId
+      );
+      if (byId) return byId;
+    }
+
+    if (!normalizedName) return null;
+
+    const byFullLabel = agentProfiles.find(
+      (profile) => normalizeAgentName(getAgentLabel(profile)) === normalizedName
+    );
+    if (byFullLabel) return byFullLabel;
+
+    const byAgentName = agentProfiles.find(
+      (profile) => normalizeAgentName(profile.agent_name) === normalizedName
+    );
+    if (byAgentName) return byAgentName;
+
+    const byDisplayName = agentProfiles.find(
+      (profile) => normalizeAgentName(profile.display_name || '') === normalizedName
+    );
+    if (byDisplayName) return byDisplayName;
+
+    return null;
+  }
+
+  async function handleCsvFileChange(file?: File | null) {
+    if (!file) return;
+
+    setCsvPreparing(true);
+    setCsvFileName(file.name);
+    setPreparedCsvRows([]);
+    setSkippedCsvRows([]);
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    try {
+      const csvText = await file.text();
+      const rows = parseCsv(csvText);
+
+      if (rows.length === 0) {
+        setErrorMessage('The uploaded CSV is empty.');
+        return;
+      }
+
+      const headers = rows[0].map((cell) => normalizeHeader(cell));
+      const agentNameIndex = headers.indexOf('agentname');
+      const agentIdIndex = headers.indexOf('agentid');
+      const handledIndex = headers.indexOf('handled');
+
+      if (agentNameIndex === -1 || agentIdIndex === -1 || handledIndex === -1) {
+        setErrorMessage(
+          'This CSV must include Agent name, Agent Id, and Handled columns.'
+        );
+        return;
+      }
+
+      const nextPrepared: PreparedCsvRow[] = [];
+      const nextSkipped: SkippedCsvRow[] = [];
+
+      rows.slice(1).forEach((cells, rowIndex) => {
+        const rowNumber = rowIndex + 2;
+        const rawAgentName = normalizeText(cells[agentNameIndex]);
+        const rawAgentId = normalizeAgentId(cells[agentIdIndex]);
+        const rawHandled = normalizeText(cells[handledIndex]);
+
+        if (!rawAgentName && !rawAgentId) {
+          nextSkipped.push({
+            rowNumber,
+            agentLabel: '-',
+            reason: 'Missing Agent name and Agent Id.',
+          });
+          return;
+        }
+
+        const matchedProfile = findMatchingAgentProfile(rawAgentName, rawAgentId);
+        if (!matchedProfile?.agent_id) {
+          nextSkipped.push({
+            rowNumber,
+            agentLabel: rawAgentName || rawAgentId || '-',
+            reason: 'No matching Calls agent profile was found.',
+          });
+          return;
+        }
+
+        const callsCount = parseCallsCount(rawHandled);
+        if (!Number.isFinite(callsCount)) {
+          nextSkipped.push({
+            rowNumber,
+            agentLabel: rawAgentName || rawAgentId || '-',
+            reason: 'Handled value is missing or invalid.',
+          });
+          return;
+        }
+
+        nextPrepared.push({
+          rowNumber,
+          rawAgentName,
+          rawAgentId,
+          matchedAgentLabel: getAgentLabel(matchedProfile),
+          agent_id: matchedProfile.agent_id,
+          agent_name: matchedProfile.agent_name,
+          calls_count: callsCount,
+        });
+      });
+
+      setPreparedCsvRows(nextPrepared);
+      setSkippedCsvRows(nextSkipped);
+
+      if (nextPrepared.length === 0) {
+        setErrorMessage('No importable calls rows were found in this CSV.');
+      } else {
+        setSuccessMessage(
+          `${nextPrepared.length} calls row(s) are ready to import. ${nextSkipped.length} row(s) will be skipped.`
+        );
+      }
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Could not parse the Calls CSV.'
+      );
+    } finally {
+      setCsvPreparing(false);
+    }
+  }
+
+  async function handleSaveCsv() {
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    if (preparedCsvRows.length === 0) {
+      setErrorMessage('Please upload a valid Calls CSV first.');
+      return;
+    }
+
+    if (!draft.dateFrom || !draft.dateTo) {
+      setErrorMessage('Please fill Date From and Date To once for the whole CSV import.');
+      return;
+    }
+
+    if (draft.dateTo < draft.dateFrom) {
+      setErrorMessage('Date To cannot be earlier than Date From.');
+      return;
+    }
+
+    setCsvSaving(true);
+
+    try {
+      const payload = preparedCsvRows.map((row) => ({
+        agent_id: row.agent_id,
+        agent_name: row.agent_name,
+        calls_count: row.calls_count,
+        call_date: draft.dateFrom,
+        date_to: draft.dateTo,
+        notes: draft.notes || null,
+      }));
+
+      const chunkSize = 200;
+      for (let start = 0; start < payload.length; start += chunkSize) {
+        const chunk = payload.slice(start, start + chunkSize);
+        const { error } = await supabase.from('calls_records').insert(chunk);
+        if (error) throw error;
+      }
+
+      setPreparedCsvRows([]);
+      setSkippedCsvRows([]);
+      setCsvFileName('');
+      setSuccessMessage(
+        `${payload.length} Calls row(s) imported successfully from CSV.`
+      );
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Could not save the Calls CSV rows.'
+      );
+    } finally {
+      setCsvSaving(false);
+    }
+  }
+
+  function clearLoadedCsv() {
+    setCsvFileName('');
+    setPreparedCsvRows([]);
+    setSkippedCsvRows([]);
+  }
+
   const visibleAgents = useMemo(() => {
     const search = draft.agentSearch.trim().toLowerCase();
 
@@ -114,6 +402,16 @@ function CallsUploadSupabase() {
       (profile) => profile.id === draft.selectedAgentProfileId
     ) || null;
 
+  const previewCsvRows = useMemo(
+    () => preparedCsvRows.slice(0, 12),
+    [preparedCsvRows]
+  );
+
+  const previewSkippedCsvRows = useMemo(
+    () => skippedCsvRows.slice(0, 20),
+    [skippedCsvRows]
+  );
+
   function handleSelectAgent(profile: AgentProfile) {
     setDraft((prev) => ({
       ...prev,
@@ -126,6 +424,7 @@ function CallsUploadSupabase() {
   function resetForm() {
     setDraft(emptyDraft);
     setIsAgentPickerOpen(false);
+    clearLoadedCsv();
   }
 
   async function handleSave() {
@@ -175,12 +474,12 @@ function CallsUploadSupabase() {
   }
 
   return (
-    <div style={{ color: '#e5eefb' }}>
+    <div style={{ color: 'var(--da-page-text, #e5eefb)' }}>
       <div style={pageHeaderStyle}>
         <div>
           <div style={sectionEyebrow}>Operations Upload</div>
           <h2 style={{ margin: 0, fontSize: '30px' }}>Calls Upload</h2>
-          <p style={{ margin: '10px 0 0 0', color: '#94a3b8' }}>
+          <p style={{ margin: '10px 0 0 0', color: 'var(--da-subtle-text, #94a3b8)' }}>
             Upload calls production using the live Calls agent directory from
             profiles.
           </p>
@@ -204,6 +503,8 @@ function CallsUploadSupabase() {
       ) : null}
 
       <div style={panelStyle}>
+        <div style={infoCardTitleStyle}>Manual Upload</div>
+
         <div style={formGridStyle}>
           <div style={wideFieldStyle}>
             <label style={labelStyle}>Agent</label>
@@ -213,10 +514,14 @@ function CallsUploadSupabase() {
                 onClick={() => setIsAgentPickerOpen((prev) => !prev)}
                 style={pickerButtonStyle}
               >
-                <span style={{ color: selectedAgent ? '#f8fafc' : '#94a3b8' }}>
-                  {selectedAgent
-                    ? getAgentLabel(selectedAgent)
-                    : 'Select agent'}
+                <span
+                  style={{
+                    color: selectedAgent
+                      ? 'var(--da-title, #f8fafc)'
+                      : 'var(--da-subtle-text, #94a3b8)',
+                  }}
+                >
+                  {selectedAgent ? getAgentLabel(selectedAgent) : 'Select agent'}
                 </span>
                 <span>▼</span>
               </button>
@@ -246,9 +551,7 @@ function CallsUploadSupabase() {
                         Could not load agents: {agentLoadError}
                       </div>
                     ) : visibleAgents.length === 0 ? (
-                      <div style={pickerInfoStyle}>
-                        No agents found for Calls
-                      </div>
+                      <div style={pickerInfoStyle}>No agents found for Calls</div>
                     ) : (
                       visibleAgents.map((profile) => (
                         <button
@@ -278,8 +581,7 @@ function CallsUploadSupabase() {
               <strong>Agent Name:</strong> {selectedAgent?.agent_name || '-'}
             </p>
             <p style={infoLineStyle}>
-              <strong>Display Name:</strong>{' '}
-              {selectedAgent?.display_name || '-'}
+              <strong>Display Name:</strong> {selectedAgent?.display_name || '-'}
             </p>
             <p style={infoLineStyle}>
               <strong>Agent ID:</strong> {selectedAgent?.agent_id || '-'}
@@ -371,6 +673,172 @@ function CallsUploadSupabase() {
           Clear Draft
         </button>
       </div>
+
+      <div style={csvPanelStyle}>
+        <div style={csvHeaderStyle}>
+          <div>
+            <div style={infoCardTitleStyle}>CSV Import</div>
+            <p style={csvSubtextStyle}>
+              Upload the Calls quantity CSV you shared. The importer uses the
+              Agent name, Agent Id, and Handled columns, ignores the extra
+              columns, and applies Date From / Date To once for the whole CSV
+              import.
+            </p>
+          </div>
+        </div>
+
+        <div style={formGridStyle}>
+          <div style={wideFieldStyle}>
+            <label style={labelStyle}>Calls CSV File</label>
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(event) =>
+                void handleCsvFileChange(event.target.files?.[0] || null)
+              }
+              style={fieldStyle}
+            />
+            <div style={helperTextStyle}>
+              Expected columns from your file: Agent name, Agent Id, Handled.
+            </div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Loaded File</label>
+            <div style={summaryValueCardStyle}>{csvFileName || '-'}</div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Ready Rows</label>
+            <div style={summaryValueCardStyle}>{preparedCsvRows.length}</div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Skipped Rows</label>
+            <div style={summaryValueCardStyle}>{skippedCsvRows.length}</div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Date From (whole CSV)</label>
+            <input
+              type="date"
+              value={draft.dateFrom}
+              onChange={(event) =>
+                setDraft((prev) => ({
+                  ...prev,
+                  dateFrom: event.target.value,
+                }))
+              }
+              style={fieldStyle}
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Date To (whole CSV)</label>
+            <input
+              type="date"
+              value={draft.dateTo}
+              onChange={(event) =>
+                setDraft((prev) => ({
+                  ...prev,
+                  dateTo: event.target.value,
+                }))
+              }
+              style={fieldStyle}
+            />
+          </div>
+
+          <div style={wideFieldStyle}>
+            <label style={labelStyle}>Notes for whole CSV import</label>
+            <textarea
+              value={draft.notes}
+              onChange={(event) =>
+                setDraft((prev) => ({
+                  ...prev,
+                  notes: event.target.value,
+                }))
+              }
+              rows={3}
+              style={fieldStyle}
+              placeholder="Optional notes applied to all imported rows"
+            />
+          </div>
+        </div>
+
+        <div style={actionRowStyle}>
+          <button
+            type="button"
+            onClick={() => void handleSaveCsv()}
+            disabled={csvSaving || csvPreparing || preparedCsvRows.length === 0}
+            style={primaryButton}
+          >
+            {csvSaving ? 'Importing...' : 'Import Calls CSV'}
+          </button>
+
+          <button
+            type="button"
+            onClick={clearLoadedCsv}
+            disabled={csvSaving || csvPreparing}
+            style={secondaryButton}
+          >
+            Clear Loaded CSV
+          </button>
+        </div>
+
+        {previewCsvRows.length > 0 ? (
+          <div style={{ marginTop: '22px' }}>
+            <div style={infoCardTitleStyle}>CSV Preview</div>
+            <div style={tableWrapStyle}>
+              <div style={tableStyle}>
+                <div style={{ ...tableRowStyle, ...tableHeaderRowStyle }}>
+                  <div style={csvCellRowStyle}>Row</div>
+                  <div style={csvCellAgentStyle}>Agent</div>
+                  <div style={csvCellCountStyle}>Handled</div>
+                </div>
+
+                {previewCsvRows.map((row) => (
+                  <div key={`${row.rowNumber}-${row.agent_id}`} style={entryStyle}>
+                    <div style={tableRowStyle}>
+                      <div style={csvCellRowStyle}>
+                        <div style={primaryCellTextStyle}>{row.rowNumber}</div>
+                      </div>
+                      <div style={csvCellAgentStyle}>
+                        <div style={primaryCellTextStyle}>{row.matchedAgentLabel}</div>
+                        <div style={secondaryCellTextStyle}>
+                          CSV: {row.rawAgentName || '-'} • {row.rawAgentId || '-'} •{' '}
+                          {row.agent_id}
+                        </div>
+                      </div>
+                      <div style={csvCellCountStyle}>
+                        <div style={primaryCellTextStyle}>{row.calls_count}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {previewSkippedCsvRows.length > 0 ? (
+          <div style={{ marginTop: '22px' }}>
+            <div style={infoCardTitleStyle}>Skipped Rows</div>
+            <div style={{ display: 'grid', gap: '10px' }}>
+              {previewSkippedCsvRows.map((row) => (
+                <div
+                  key={`${row.rowNumber}-${row.agentLabel}-${row.reason}`}
+                  style={skippedRowStyle}
+                >
+                  <div style={primaryCellTextStyle}>
+                    Row {row.rowNumber} • {row.agentLabel || '-'}
+                  </div>
+                  <div style={secondaryCellTextStyle}>{row.reason}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -385,7 +853,7 @@ const pageHeaderStyle = {
 };
 
 const sectionEyebrow = {
-  color: '#60a5fa',
+  color: 'var(--da-accent-text, #60a5fa)',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -397,19 +865,34 @@ const teamBadgeStyle = {
   padding: '12px 14px',
   borderRadius: '14px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'rgba(15, 23, 42, 0.62)',
-  color: '#cbd5e1',
+  background: 'var(--da-surface-bg, rgba(15, 23, 42, 0.62))',
+  color: 'var(--da-muted-text, #cbd5e1)',
   fontWeight: 700,
 };
 
 const panelStyle = {
   background:
-    'linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.68) 100%)',
+    'var(--da-panel-bg, linear-gradient(180deg, var(--da-field-bg, rgba(15, 23, 42, 0.82)) 0%, var(--da-surface-bg, rgba(15, 23, 42, 0.68)) 100%))',
   border: '1px solid rgba(148, 163, 184, 0.14)',
   borderRadius: '24px',
   padding: '22px',
   boxShadow: '0 18px 40px rgba(2, 6, 23, 0.35)',
   backdropFilter: 'blur(14px)',
+};
+
+const csvPanelStyle = {
+  ...panelStyle,
+  marginTop: '26px',
+};
+
+const csvHeaderStyle = {
+  marginBottom: '18px',
+};
+
+const csvSubtextStyle = {
+  margin: '6px 0 0 0',
+  color: 'var(--da-subtle-text, #94a3b8)',
+  lineHeight: 1.6,
 };
 
 const formGridStyle = {
@@ -426,8 +909,15 @@ const labelStyle = {
   display: 'block',
   marginBottom: '8px',
   fontSize: '13px',
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
   fontWeight: 700,
+};
+
+const helperTextStyle = {
+  marginTop: '8px',
+  color: 'var(--da-subtle-text, #94a3b8)',
+  fontSize: '12px',
+  lineHeight: 1.5,
 };
 
 const fieldStyle = {
@@ -435,8 +925,20 @@ const fieldStyle = {
   padding: '14px 16px',
   borderRadius: '16px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'rgba(15, 23, 42, 0.7)',
-  color: '#e5eefb',
+  background: 'var(--da-surface-bg, rgba(15, 23, 42, 0.7))',
+  color: 'var(--da-page-text, #e5eefb)',
+};
+
+const summaryValueCardStyle = {
+  minHeight: '52px',
+  display: 'flex',
+  alignItems: 'center',
+  padding: '14px 16px',
+  borderRadius: '16px',
+  border: '1px solid rgba(148, 163, 184, 0.16)',
+  background: 'var(--da-card-bg, rgba(15, 23, 42, 0.5))',
+  color: 'var(--da-title, #f8fafc)',
+  fontWeight: 700,
 };
 
 const pickerButtonStyle = {
@@ -444,8 +946,8 @@ const pickerButtonStyle = {
   padding: '14px 16px',
   borderRadius: '16px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'rgba(15, 23, 42, 0.7)',
-  color: '#e5eefb',
+  background: 'var(--da-surface-bg, rgba(15, 23, 42, 0.7))',
+  color: 'var(--da-page-text, #e5eefb)',
   textAlign: 'left' as const,
   cursor: 'pointer',
   display: 'flex',
@@ -458,7 +960,7 @@ const pickerMenuStyle = {
   top: 'calc(100% + 8px)',
   left: 0,
   right: 0,
-  background: 'rgba(15, 23, 42, 0.96)',
+  background: 'var(--da-menu-bg, rgba(15, 23, 42, 0.96))',
   border: '1px solid rgba(148, 163, 184, 0.16)',
   borderRadius: '18px',
   boxShadow: '0 18px 44px rgba(2, 6, 23, 0.45)',
@@ -483,32 +985,32 @@ const pickerListStyle = {
 const pickerInfoStyle = {
   padding: '12px',
   borderRadius: '12px',
-  backgroundColor: 'rgba(15, 23, 42, 0.68)',
-  color: '#94a3b8',
+  backgroundColor: 'var(--da-surface-bg, rgba(15, 23, 42, 0.68))',
+  color: 'var(--da-subtle-text, #94a3b8)',
 };
 
 const pickerErrorStyle = {
   padding: '12px',
   borderRadius: '12px',
-  backgroundColor: 'rgba(127, 29, 29, 0.24)',
-  color: '#fecaca',
-  border: '1px solid rgba(248, 113, 113, 0.22)',
+  backgroundColor: 'var(--da-error-bg, rgba(127, 29, 29, 0.24))',
+  color: 'var(--da-error-text, #fecaca)',
+  border: 'var(--da-error-border, 1px solid rgba(248, 113, 113, 0.22))',
 };
 
 const pickerOptionStyle = {
   padding: '12px 14px',
   borderRadius: '12px',
   border: '1px solid rgba(148, 163, 184, 0.12)',
-  backgroundColor: 'rgba(15, 23, 42, 0.6)',
+  backgroundColor: 'var(--da-surface-bg, rgba(15, 23, 42, 0.6))',
   textAlign: 'left' as const,
   cursor: 'pointer',
   fontWeight: 600,
-  color: '#e5eefb',
+  color: 'var(--da-page-text, #e5eefb)',
 };
 
 const pickerOptionActiveStyle = {
   border: '1px solid rgba(96, 165, 250, 0.36)',
-  backgroundColor: 'rgba(30, 64, 175, 0.32)',
+  backgroundColor: 'var(--da-active-option-bg, rgba(30, 64, 175, 0.32))',
 };
 
 const infoCardStyle = {
@@ -516,11 +1018,11 @@ const infoCardStyle = {
   borderRadius: '18px',
   padding: '18px',
   border: '1px solid rgba(148, 163, 184, 0.12)',
-  background: 'rgba(15, 23, 42, 0.5)',
+  background: 'var(--da-card-bg, rgba(15, 23, 42, 0.5))',
 };
 
 const infoCardTitleStyle = {
-  color: '#93c5fd',
+  color: 'var(--da-accent-text, #93c5fd)',
   fontSize: '12px',
   fontWeight: 800,
   textTransform: 'uppercase' as const,
@@ -530,7 +1032,7 @@ const infoCardTitleStyle = {
 
 const infoLineStyle = {
   margin: '0 0 8px 0',
-  color: '#cbd5e1',
+  color: 'var(--da-muted-text, #cbd5e1)',
 };
 
 const actionRowStyle = {
@@ -555,8 +1057,8 @@ const secondaryButton = {
   padding: '14px 18px',
   borderRadius: '16px',
   border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'rgba(15, 23, 42, 0.74)',
-  color: '#e5eefb',
+  background: 'var(--da-field-bg, rgba(15, 23, 42, 0.74))',
+  color: 'var(--da-page-text, #e5eefb)',
   fontWeight: 700,
   cursor: 'pointer',
 };
@@ -565,9 +1067,9 @@ const errorBannerStyle = {
   marginBottom: '16px',
   padding: '14px 16px',
   borderRadius: '16px',
-  backgroundColor: 'rgba(127, 29, 29, 0.24)',
-  border: '1px solid rgba(252, 165, 165, 0.24)',
-  color: '#fecaca',
+  backgroundColor: 'var(--da-error-bg, rgba(127, 29, 29, 0.24))',
+  border: 'var(--da-warning-border, 1px solid rgba(252, 165, 165, 0.24))',
+  color: 'var(--da-error-text, #fecaca)',
   fontWeight: 700,
 };
 
@@ -577,8 +1079,69 @@ const successBannerStyle = {
   borderRadius: '16px',
   backgroundColor: 'rgba(22, 101, 52, 0.24)',
   border: '1px solid rgba(134, 239, 172, 0.22)',
-  color: '#bbf7d0',
+  color: 'var(--da-success-text, #bbf7d0)',
   fontWeight: 700,
+};
+
+const tableWrapStyle = {
+  overflowX: 'auto' as const,
+  borderRadius: '18px',
+  border: '1px solid rgba(148, 163, 184, 0.14)',
+  background: 'var(--da-card-bg, rgba(15, 23, 42, 0.5))',
+};
+
+const tableStyle = {
+  minWidth: '760px',
+};
+
+const entryStyle = {
+  borderBottom: '1px solid rgba(148, 163, 184, 0.08)',
+};
+
+const tableRowStyle = {
+  display: 'grid',
+  gridTemplateColumns: '100px minmax(320px, 1.5fr) 180px',
+  gap: '14px',
+  alignItems: 'center',
+  padding: '14px 16px',
+};
+
+const tableHeaderRowStyle = {
+  position: 'sticky' as const,
+  top: 0,
+  zIndex: 1,
+  background: 'var(--da-widget-bg, rgba(2,6,23,0.92))',
+  color: '#93c5fd',
+  fontSize: '12px',
+  fontWeight: 800,
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.12em',
+};
+
+const csvCellRowStyle = {};
+const csvCellAgentStyle = {};
+const csvCellCountStyle = {};
+
+const primaryCellTextStyle = {
+  color: 'var(--da-title, #f8fafc)',
+  fontSize: '14px',
+  fontWeight: 700,
+  lineHeight: 1.45,
+};
+
+const secondaryCellTextStyle = {
+  marginTop: '4px',
+  color: 'var(--da-subtle-text, #94a3b8)',
+  fontSize: '12px',
+  fontWeight: 600,
+  lineHeight: 1.4,
+};
+
+const skippedRowStyle = {
+  borderRadius: '14px',
+  border: '1px solid rgba(148, 163, 184, 0.14)',
+  background: 'var(--da-card-bg, rgba(15, 23, 42, 0.5))',
+  padding: '14px 16px',
 };
 
 export default CallsUploadSupabase;
