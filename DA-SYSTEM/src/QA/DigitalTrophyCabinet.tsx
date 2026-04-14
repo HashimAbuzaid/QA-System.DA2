@@ -201,7 +201,7 @@ const gridStyle = {
 };
 
 const cardStyle = (unlocked: boolean) => ({
-  borderRadius: '18px',
+  borderRadius: '24px',
   border: unlocked
     ? '1px solid rgba(34,197,94,0.28)'
     : '1px solid var(--screen-border, rgba(148,163,184,0.16))',
