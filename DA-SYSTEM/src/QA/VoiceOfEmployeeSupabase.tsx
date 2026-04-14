@@ -195,11 +195,12 @@ const subtextStyle = {
 };
 
 const panelStyle = {
-  borderRadius: '18px',
+  borderRadius: '24px',
   border: '1px solid var(--screen-border, rgba(148,163,184,0.16))',
   background: 'var(--screen-card-bg, rgba(15,23,42,0.7))',
   boxShadow: 'var(--screen-shadow, 0 18px 40px rgba(2,6,23,0.35))',
-  padding: '18px',
+  padding: '22px',
+  backdropFilter: 'blur(16px)',
 };
 
 const gridStyle = {
@@ -273,7 +274,7 @@ const recentTitleStyle = {
 };
 
 const itemCardStyle = {
-  borderRadius: '16px',
+  borderRadius: '20px',
   border: '1px solid var(--screen-border, rgba(148,163,184,0.16))',
   background: 'var(--screen-card-soft-bg, rgba(15,23,42,0.52))',
   padding: '14px 16px',
