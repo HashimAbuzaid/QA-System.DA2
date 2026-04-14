@@ -490,12 +490,12 @@ const gridStyle = (
 });
 
 const cardStyle = {
-  borderRadius: '22px',
+  borderRadius: '28px',
   border: '1px solid var(--rw-border, rgba(203,213,225,0.92))',
   background: 'var(--rw-card-bg, #ffffff)',
   boxShadow: 'var(--rw-shadow, 0 18px 40px rgba(15,23,42,0.10))',
-  padding: '20px',
-  minHeight: '220px',
+  padding: '24px',
+  minHeight: '240px',
   display: 'grid',
   alignContent: 'start',
 };
@@ -514,7 +514,7 @@ const badgeStyle = {
 
 const titleStyle = {
   color: 'var(--rw-heading, #0f172a)',
-  fontSize: '20px',
+  fontSize: '32px',
   fontWeight: 900,
   lineHeight: 1.25,
   marginBottom: '14px',
@@ -522,7 +522,7 @@ const titleStyle = {
 
 const valueStyle = {
   color: 'var(--rw-heading, #0f172a)',
-  fontSize: '42px',
+  fontSize: '56px',
   fontWeight: 900,
   lineHeight: 1,
   marginBottom: '12px',
