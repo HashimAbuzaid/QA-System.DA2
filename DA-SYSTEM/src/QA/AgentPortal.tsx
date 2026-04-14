@@ -1247,11 +1247,11 @@ const collapsedMessageStyle = {
 
 const pageHeaderStyle = {
   display: 'flex',
-  gap: '16px',
+  gap: '12px',
   justifyContent: 'space-between',
   alignItems: 'center',
   flexWrap: 'wrap' as const,
-  marginBottom: '22px',
+  marginBottom: '18px',
 };
 
 const sectionEyebrow = {
@@ -1266,10 +1266,8 @@ const sectionEyebrow = {
 const panelStyle = {
   background: 'var(--screen-card-bg)',
   border: '1px solid var(--screen-border)',
-  borderRadius: '24px',
-  padding: '22px',
-  boxShadow: 'var(--screen-shadow)',
-  backdropFilter: 'blur(16px)',
+  borderRadius: '20px',
+  padding: '20px',
 };
 
 const filterGridStyle = {
@@ -1308,16 +1306,15 @@ const summaryGridStyle = {
 const cardStyle = {
   background: 'var(--screen-card-bg)',
   border: '1px solid var(--screen-border)',
-  borderRadius: '22px',
-  padding: '22px',
+  borderRadius: '18px',
+  padding: '20px',
   boxShadow: 'var(--screen-shadow)',
-  backdropFilter: 'blur(16px)',
 };
 
 const auditTableWrapStyle = {
-  marginTop: '18px',
+  marginTop: '16px',
   overflowX: 'auto' as const,
-  borderRadius: '22px',
+  borderRadius: '18px',
   border: '1px solid var(--screen-border)',
   background: 'var(--screen-card-bg)',
   boxShadow: 'var(--screen-shadow)',
@@ -1482,7 +1479,6 @@ const metricNoteTextStyle = {
 };
 
 const feedbackTableWrapStyle = {
-  marginTop: '18px',
   marginTop: '16px',
   overflowX: 'auto' as const,
   borderRadius: '18px',
