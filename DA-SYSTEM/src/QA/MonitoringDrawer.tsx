@@ -54,7 +54,7 @@ function getDrawerThemeVars(): Record<string, string> {
 
   const isLight = themeMode === 'light' || themeMode === 'white';
   const isCompact = typeof window !== 'undefined' ? window.innerWidth < 900 : false;
-  const topOffset = isCompact ? 0 : 190;
+  const topOffset = isCompact ? 0 : 224;
 
   return {
     '--md-overlay': isLight ? 'rgba(15,23,42,0.16)' : 'rgba(2,6,23,0.56)',
@@ -75,7 +75,7 @@ function getDrawerThemeVars(): Record<string, string> {
       ? 'linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(245,248,253,0.98) 100%)'
       : 'linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.66) 100%)',
     '--md-empty-bg': isLight ? 'rgba(241,245,249,0.98)' : 'rgba(15,23,42,0.52)',
-    '--md-shadow': isLight ? '-16px 0 40px rgba(15,23,42,0.12)' : '-16px 0 40px rgba(2,6,23,0.42)',
+    '--md-shadow': isLight ? '-20px 0 48px rgba(15,23,42,0.14)' : '-20px 0 48px rgba(2,6,23,0.42)',
     '--md-top': `${topOffset}px`,
     '--md-height': isCompact ? '100vh' : `calc(100vh - ${topOffset}px)`,
     '--md-radius': isCompact ? '0px' : '28px 0 0 28px',
