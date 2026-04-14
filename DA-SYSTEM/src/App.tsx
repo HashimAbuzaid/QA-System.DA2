@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import heroUrl from '/hero.png';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
 import Login from './QA/Login';
@@ -300,15 +301,15 @@ function createStyles(theme: ThemePalette) {
     } as CSSProperties,
     headerShell: {
       position: 'sticky',
-      top: '24px',
+      top: '16px',
       zIndex: 30,
       display: 'flex',
       justifyContent: 'space-between',
       gap: '20px',
       alignItems: 'center',
       flexWrap: 'wrap',
-      padding: '26px 28px',
-      borderRadius: '24px',
+      padding: '22px 24px',
+      borderRadius: '28px',
       border: theme.headerBorder,
       background: theme.headerBackground,
       boxShadow: theme.headerShadow,
@@ -329,6 +330,25 @@ function createStyles(theme: ThemePalette) {
       gap: '16px',
       alignItems: 'center',
       minWidth: 0,
+    } as CSSProperties,
+    brandLogoWrap: {
+      width: '64px',
+      height: '64px',
+      borderRadius: '20px',
+      border: theme.metaBorder,
+      background: theme.metaBackground,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      boxShadow: theme.headerShadow,
+      padding: '10px',
+      flexShrink: 0,
+    } as CSSProperties,
+    brandLogo: {
+      width: '40px',
+      height: '40px',
+      objectFit: 'contain',
+      filter: mode === 'light' ? 'drop-shadow(0 12px 22px rgba(37,99,235,0.18))' : 'drop-shadow(0 12px 24px rgba(96,165,250,0.24))',
     } as CSSProperties,
     brandAccent: {
       width: '10px',
@@ -385,6 +405,38 @@ function createStyles(theme: ThemePalette) {
       marginTop: '2px',
       marginBottom: '18px',
     } as CSSProperties,
+    workspaceShell: {
+      display: 'grid',
+      gridTemplateColumns: '280px minmax(0, 1fr)',
+      gap: '20px',
+      alignItems: 'start',
+    } as CSSProperties,
+    sidebarPanel: {
+      position: 'sticky',
+      top: '132px',
+      borderRadius: '26px',
+      border: theme.panelBorder,
+      background: theme.panelBackground,
+      boxShadow: theme.panelShadow,
+      backdropFilter: 'blur(18px)',
+      padding: '18px',
+      display: 'grid',
+      gap: '10px',
+    } as CSSProperties,
+    sidebarTitle: {
+      color: theme.brandEyebrow,
+      fontSize: '11px',
+      fontWeight: 800,
+      textTransform: 'uppercase',
+      letterSpacing: '0.18em',
+      marginBottom: '2px',
+    } as CSSProperties,
+    sidebarText: {
+      color: theme.metaText,
+      fontSize: '13px',
+      lineHeight: 1.5,
+      margin: 0,
+    } as CSSProperties,
     navScroller: {
       display: 'flex',
       gap: '10px',
@@ -411,9 +463,9 @@ function createStyles(theme: ThemePalette) {
     } as CSSProperties,
     contentShell: { position: 'relative', zIndex: 1 } as CSSProperties,
     contentInner: {
-      minHeight: 'calc(100vh - 240px)',
+      minHeight: 'calc(100vh - 220px)',
       width: '100%',
-      padding: '28px',
+      padding: '30px',
       borderRadius: '28px',
       border: theme.panelBorder,
       background: theme.panelBackground,
@@ -422,7 +474,7 @@ function createStyles(theme: ThemePalette) {
       color: theme.contentText,
     } as CSSProperties,
     profilePanel: {
-      borderRadius: '24px',
+      borderRadius: '28px',
       border: theme.panelBorder,
       background: theme.profileCardBackground,
       padding: '28px',
@@ -646,15 +698,28 @@ function App() {
   const [profileErrorMessage, setProfileErrorMessage] = useState('');
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => readStoredTheme());
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === 'undefined' ? 1440 : window.innerWidth
+  );
 
   const recoveryModeRef = useRef<boolean>(false);
 
   const theme = useMemo(() => getThemePalette(themeMode), [themeMode]);
+  const isCompactLayout = viewportWidth < 1180;
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   useEffect(() => {
     recoveryModeRef.current = recoveryMode;
   }, [recoveryMode]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => setViewportWidth(window.innerWidth);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -843,7 +908,7 @@ function App() {
   function renderStaffPage() {
     switch (page) {
       case 'dashboard':
-        return <Dashboard currentUser={profile} />;
+        return <Dashboard />;
       case 'newAudit':
         return <NewAuditSupabase />;
       case 'auditsUpload':
@@ -898,7 +963,7 @@ function App() {
           </div>
         );
       default:
-        return <Dashboard currentUser={profile} />;
+        return <Dashboard />;
     }
   }
 
@@ -952,6 +1017,9 @@ function App() {
       <header style={styles.headerShell}>
         <div style={styles.headerLeft}>
           <div style={styles.brandWrap}>
+            <div style={styles.brandLogoWrap}>
+              <img src={heroUrl} alt="Detroit Axle QA" style={styles.brandLogo} />
+            </div>
             <div style={styles.brandAccent} />
             <div>
               <div style={styles.brandEyebrow}>Detroit Axle Workspace</div>
@@ -981,28 +1049,53 @@ function App() {
       </header>
 
       {isStaff ? (
-        <>
-          <nav style={styles.navShell}>
-            <div style={styles.navScroller}>
-              {navItems.map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setPage(item.key)}
-                  style={{
-                    ...styles.navButton,
-                    ...(page === item.key ? styles.activeNavButton : {}),
-                  }}
-                >
-                  {item.label}
-                </button>
-              ))}
+        <main style={styles.contentShell}>
+          {isCompactLayout ? (
+            <>
+              <nav style={styles.navShell}>
+                <div style={styles.navScroller}>
+                  {navItems.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setPage(item.key)}
+                      style={{
+                        ...styles.navButton,
+                        ...(page === item.key ? styles.activeNavButton : {}),
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </nav>
+              <div style={styles.contentInner}>{renderStaffPage()}</div>
+            </>
+          ) : (
+            <div style={styles.workspaceShell}>
+              <aside style={styles.sidebarPanel}>
+                <div style={styles.sidebarTitle}>Workspace Navigation</div>
+                <p style={styles.sidebarText}>Jump between operations, audits, uploads, reports, and people workflows from one place.</p>
+                {navItems.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setPage(item.key)}
+                    style={{
+                      ...styles.navButton,
+                      textAlign: 'left',
+                      justifyContent: 'flex-start',
+                      ...(page === item.key ? styles.activeNavButton : {}),
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </aside>
+              <div style={styles.contentInner}>{renderStaffPage()}</div>
             </div>
-          </nav>
-          <main style={styles.contentShell}>
-            <div style={styles.contentInner}>{renderStaffPage()}</div>
-          </main>
-        </>
+          )}
+        </main>
       ) : isSupervisor ? (
         <main style={styles.contentShell}>
           <div style={styles.contentInner}>
