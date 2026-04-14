@@ -4,7 +4,7 @@ function readStoredValue<T>(key: string, initialValue: T): T {
   if (typeof window === 'undefined') return initialValue;
 
   try {
-    const rawValue = window.localStorage.getItem(key);
+    const rawValue = window.sessionStorage.getItem(key);
     if (!rawValue) return initialValue;
     return JSON.parse(rawValue) as T;
   } catch {
@@ -19,7 +19,7 @@ export function usePersistentState<T>(key: string, initialValue: T) {
     if (typeof window === 'undefined') return;
 
     try {
-      window.localStorage.setItem(key, JSON.stringify(value));
+      window.sessionStorage.setItem(key, JSON.stringify(value));
     } catch {
       // ignore storage write failures
     }
@@ -29,12 +29,10 @@ export function usePersistentState<T>(key: string, initialValue: T) {
     if (typeof window === 'undefined') return;
 
     try {
-      window.localStorage.removeItem(key);
+      window.sessionStorage.removeItem(key);
     } catch {
       // ignore storage remove failures
     }
-
-    setValue(initialValue);
   }
 
   return [value, setValue, clearStoredValue] as const;
