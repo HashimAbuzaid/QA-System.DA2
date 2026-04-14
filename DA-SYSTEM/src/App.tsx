@@ -243,7 +243,7 @@ function getThemePalette(mode: ThemeMode): ThemePalette {
   };
 }
 
-function createStyles(theme: ThemePalette) {
+function createStyles(theme: ThemePalette, mode: ThemeMode) {
   const secondaryButtonBase: CSSProperties = {
     padding: '12px 18px',
     borderRadius: '14px',
@@ -705,7 +705,7 @@ function App() {
 
   const theme = useMemo(() => getThemePalette(themeMode), [themeMode]);
   const isCompactLayout = viewportWidth < 1180;
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, themeMode), [theme, themeMode]);
 
   useEffect(() => {
     recoveryModeRef.current = recoveryMode;
