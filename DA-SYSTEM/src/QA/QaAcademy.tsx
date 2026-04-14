@@ -289,12 +289,12 @@ const subtextStyle = {
 
 const gridStyle = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-  gap: '14px',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+  gap: '18px',
 };
 
 const cardStyle = {
-  borderRadius: '18px',
+  borderRadius: '24px',
   border: '1px solid var(--screen-border, rgba(148,163,184,0.16))',
   background: 'var(--screen-card-bg, rgba(15,23,42,0.7))',
   boxShadow: 'var(--screen-shadow, 0 18px 40px rgba(2,6,23,0.35))',
